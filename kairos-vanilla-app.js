@@ -6246,8 +6246,10 @@
           // JPY表示の場合はレート変換
           var jpyRate = appState.priceCurrency === 'JPY' ? 150 : 1;
 
+          // JST(+9h)オフセット
+          var jstOffset = 9 * 60 * 60;
           data.forEach(function(item) {
-            var time = Math.floor(item[0] / 1000);
+            var time = Math.floor(item[0] / 1000) + jstOffset;
             candles.push({
               time: time,
               open: parseFloat(item[1]) * jpyRate,
@@ -6299,9 +6301,10 @@
           var endPrice = parseFloat(data[data.length - 1][4]) * jpyRate;
           var changePercent = ((endPrice - startPrice) / startPrice) * 100;
 
+          var jstOffset = 9 * 60 * 60;
           data.forEach(function(item) {
             lineData.push({
-              time: Math.floor(item[0] / 1000),
+              time: Math.floor(item[0] / 1000) + jstOffset,
               value: parseFloat(item[4]) * jpyRate // 終値を使用
             });
           });
@@ -11542,9 +11545,10 @@
           return;
         }
 
+        var jstOffset = 9 * 60 * 60;
         var chartData = data.map(function(item) {
           return {
-            time: Math.floor(item[0] / 1000),
+            time: Math.floor(item[0] / 1000) + jstOffset,
             value: parseFloat(item[4]) // 終値
           };
         });
