@@ -865,7 +865,11 @@
         var holding = holdings[currencyId];
         if (holding.remainingQuantity <= 0) return;
 
+        // 価格取得: liveData.prices → scoreCache → 0
         var price = currentPrices[currencyId] ? currentPrices[currencyId].jpy : 0;
+        if (!price && typeof scoreCache !== 'undefined' && scoreCache.data && scoreCache.data[currencyId]) {
+          price = (scoreCache.data[currencyId].price || 0) * 150;
+        }
         var unrealized = InvestmentCalculator.calculateUnrealizedPnl(holding, price);
 
         totalInvested += holding.averageCost * holding.remainingQuantity;
@@ -4917,10 +4921,11 @@
       }
     });
 
-    // 現在の価値（簡易計算）
+    // 現在の価値（簡易計算）: scoreCache → all_results → 0
+    var cachedCoin = (typeof scoreCache !== 'undefined' && scoreCache.data) ? scoreCache.data[ticker] : null;
     var allResults = kairosData.all_results || [];
     var coinData = allResults.find(function(r) { return r.ticker === ticker; }) || {};
-    var currentPrice = coinData.current_price || kairosData.current_price || 0;
+    var currentPrice = (cachedCoin && cachedCoin.price) || coinData.current_price || 0;
     var currentValue = totalAmount * currentPrice * 150; // JPY
     var monthlyChange = currentValue - totalInvested;
     var avgPrice = totalAmount > 0 ? totalInvested / totalAmount : 0;
