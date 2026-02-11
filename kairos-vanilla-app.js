@@ -7172,6 +7172,28 @@
   window.KairosApp.showFeatureTooltip = showFeatureTooltip;
 
   // クイック積立モーダル
+  // Binanceから過去の特定時刻の価格を取得
+  function fetchHistoricalPrice(ticker, dateObj) {
+    return new Promise(function(resolve, reject) {
+      var symbol = ticker.toUpperCase() + 'USDT';
+      var timestamp = dateObj.getTime();
+      var url = 'https://api.binance.com/api/v3/klines?symbol=' + symbol +
+        '&interval=1m&startTime=' + timestamp + '&limit=1';
+
+      fetch(url)
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (Array.isArray(data) && data.length > 0) {
+            // [openTime, open, high, low, close, ...]
+            resolve(parseFloat(data[0][4])); // close price
+          } else {
+            reject(new Error('No data'));
+          }
+        })
+        .catch(reject);
+    });
+  }
+
   function openQuickBuyModal(ticker) {
     if (document.getElementById('kairos-quick-buy-modal')) return;
 
@@ -7180,6 +7202,10 @@
     var allResults = kairosData.all_results || [];
     var coinData = allResults.find(function(r) { return r.ticker === ticker; }) || {};
     var currentPrice = (cachedCoin && cachedCoin.price) || coinData.current_price || 0;
+
+    // モーダル内で使う価格（日時変更時に更新される）
+    var activePrice = currentPrice;
+    var activeDate = null; // null = 現在
 
     // JPY/USD切り替え対応
     var isJpy = appState.priceCurrency === 'JPY';
@@ -7198,6 +7224,14 @@
       '<button class="quick-buy-preset" data-amount="300">$300</button>' +
       '<button class="quick-buy-preset" data-amount="500">$500</button>';
 
+    // 現在日時をdatetime-local形式で取得（デフォルト値）
+    var now = new Date();
+    var nowLocal = now.getFullYear() + '-' +
+      ('0' + (now.getMonth() + 1)).slice(-2) + '-' +
+      ('0' + now.getDate()).slice(-2) + 'T' +
+      ('0' + now.getHours()).slice(-2) + ':' +
+      ('0' + now.getMinutes()).slice(-2);
+
     var modal = document.createElement('div');
     modal.id = 'kairos-quick-buy-modal';
     modal.className = 'quick-buy-overlay';
@@ -7206,8 +7240,17 @@
         '<span class="quick-buy-modal__title">' + getCoinIcon(ticker) + ' ' + ticker + ' 積立</span>' +
         '<button class="quick-buy-modal__close" onclick="document.getElementById(\'kairos-quick-buy-modal\').remove()">×</button>' +
       '</div>' +
-      '<div class="quick-buy-modal__price">現在価格: ' + priceDisplay + '</div>' +
+      '<div class="quick-buy-modal__price" id="quick-buy-price-display">現在価格: ' + priceDisplay + '</div>' +
       '<div class="quick-buy-modal__form">' +
+        '<div class="quick-buy-modal__field">' +
+          '<label>購入日時</label>' +
+          '<div class="quick-buy-modal__input-group">' +
+            '<input type="datetime-local" id="quick-buy-date" value="' + nowLocal + '" ' +
+              'style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);' +
+              'border-radius:8px;padding:8px 12px;color:#fff;font-size:14px;">' +
+          '</div>' +
+          '<div id="quick-buy-date-status" style="font-size:11px;margin-top:4px;color:rgba(255,255,255,0.4);">現在の価格で購入</div>' +
+        '</div>' +
         '<div class="quick-buy-modal__field">' +
           '<label>金額 (' + currencyLabel + ')</label>' +
           '<div class="quick-buy-modal__input-group">' +
@@ -7231,18 +7274,71 @@
       if (e.target === modal) modal.remove();
     };
 
+    // 日時変更時: 過去の価格を取得
+    var dateInput = document.getElementById('quick-buy-date');
+    var dateStatus = document.getElementById('quick-buy-date-status');
+    var priceDisplayEl = document.getElementById('quick-buy-price-display');
+
+    dateInput.addEventListener('change', function() {
+      var selectedDate = new Date(dateInput.value);
+      var diffMs = Date.now() - selectedDate.getTime();
+
+      // 5分以内なら「現在」として扱う
+      if (diffMs < 5 * 60 * 1000 && diffMs > -60000) {
+        activePrice = currentPrice;
+        activeDate = null;
+        var display = isJpy ? formatYen(currentPrice * usdRate) : formatUSD(currentPrice);
+        priceDisplayEl.textContent = '現在価格: ' + display;
+        dateStatus.textContent = '現在の価格で購入';
+        dateStatus.style.color = 'rgba(255,255,255,0.4)';
+        updateQuickBuyCalc(ticker, activePrice);
+        return;
+      }
+
+      // 未来は不可
+      if (diffMs < 0) {
+        dateStatus.textContent = '未来の日時は指定できません';
+        dateStatus.style.color = '#ef4444';
+        return;
+      }
+
+      // 過去の価格を取得
+      dateStatus.textContent = '価格を取得中...';
+      dateStatus.style.color = '#d4a853';
+
+      fetchHistoricalPrice(ticker, selectedDate).then(function(price) {
+        activePrice = price;
+        activeDate = selectedDate;
+        var display = isJpy ? formatYen(price * usdRate) : formatUSD(price);
+        var dateStr = selectedDate.getFullYear() + '/' +
+          (selectedDate.getMonth() + 1) + '/' + selectedDate.getDate() + ' ' +
+          ('0' + selectedDate.getHours()).slice(-2) + ':' + ('0' + selectedDate.getMinutes()).slice(-2);
+        priceDisplayEl.textContent = dateStr + ' の価格: ' + display;
+        dateStatus.textContent = '過去の実際の価格で記録されます';
+        dateStatus.style.color = '#10b981';
+        updateQuickBuyCalc(ticker, activePrice);
+      }).catch(function(err) {
+        console.error('[KAIROS] Historical price fetch failed:', err);
+        dateStatus.textContent = '価格取得失敗 - 現在価格を使用します';
+        dateStatus.style.color = '#ef4444';
+        activePrice = currentPrice;
+        activeDate = selectedDate;
+        updateQuickBuyCalc(ticker, activePrice);
+      });
+    });
+
     // Preset buttons
     modal.querySelectorAll('.quick-buy-preset').forEach(function(btn) {
       btn.addEventListener('click', function() {
         document.getElementById('quick-buy-amount').value = btn.getAttribute('data-amount');
-        updateQuickBuyCalc(ticker, currentPrice);
+        updateQuickBuyCalc(ticker, activePrice);
       });
     });
 
     // Amount input
     var amountInput = document.getElementById('quick-buy-amount');
     amountInput.addEventListener('input', function() {
-      updateQuickBuyCalc(ticker, currentPrice);
+      updateQuickBuyCalc(ticker, activePrice);
     });
 
     // Submit
@@ -7256,10 +7352,11 @@
         // JPY/USD対応: 内部記録は常にJPYで保存
         var amountJpy = isJpy ? amount : amount * usdRate;
         var displayStr = isJpy ? '\u00a5' + amount.toLocaleString() : '$' + amount.toLocaleString();
-        recordVirtualBuy(ticker, amountJpy, currentPrice).then(function(record) {
+        recordVirtualBuy(ticker, amountJpy, activePrice, activeDate).then(function(record) {
           modal.remove();
           if (window.KAIROS && window.KAIROS.Features && window.KAIROS.Features.showToast) {
-            window.KAIROS.Features.showToast(ticker + ' ' + displayStr + ' 積立完了', 'success');
+            var dateNote = activeDate ? '（過去記録）' : '';
+            window.KAIROS.Features.showToast(ticker + ' ' + displayStr + ' 積立完了' + dateNote, 'success');
           }
           renderApp();
         }).catch(function(err) {
@@ -7273,7 +7370,7 @@
       }
     });
 
-    updateQuickBuyCalc(ticker, currentPrice);
+    updateQuickBuyCalc(ticker, activePrice);
   }
 
   function updateQuickBuyCalc(ticker, price) {
@@ -7288,8 +7385,8 @@
     }
   }
 
-  // 新しいInvestmentManagerを使用した購入記録
-  function recordVirtualBuy(ticker, amountJpy, priceUsd) {
+  // 新しいInvestmentManagerを使用した購入記録（customDate: 過去日時指定対応）
+  function recordVirtualBuy(ticker, amountJpy, priceUsd, customDate) {
     return new Promise(function(resolve, reject) {
       function onBuySuccess(record) {
         // ポートフォリオスナップショットを記録
@@ -7302,6 +7399,7 @@
       // InvestmentManagerを使用
       var usdRate = 150;
       var priceJpy = priceUsd > 0 ? priceUsd * usdRate : 0;
+      var recordDate = customDate ? customDate.toISOString() : undefined;
 
       if (window.KairosInvestment && window.KairosInvestment.Manager) {
         window.KairosInvestment.Manager.addBuyRecord({
@@ -7309,7 +7407,8 @@
           amountJpy: amountJpy,
           priceJpy: priceJpy,
           priceUsd: priceUsd,
-          note: 'クイック積立'
+          date: recordDate,
+          note: customDate ? '過去記録（' + customDate.toLocaleDateString('ja-JP') + '）' : 'クイック積立'
         }).then(onBuySuccess).catch(reject);
       } else {
         // フォールバック：従来の方法
@@ -7321,7 +7420,7 @@
 
           var record = {
             id: Date.now().toString(36) + Math.random().toString(36).substr(2, 9),
-            date: new Date().toISOString(),
+            date: customDate ? customDate.toISOString() : new Date().toISOString(),
             type: 'buy',
             currencyId: ticker,
             quantity: qty,
