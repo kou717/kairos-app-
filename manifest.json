@@ -1,0 +1,48 @@
+{
+  "name": "KAIROS - 仮想通貨投資分析",
+  "short_name": "KAIROS",
+  "description": "AI駆動の仮想通貨投資分析アプリケーション",
+  "start_url": "./kairos.html",
+  "display": "standalone",
+  "background_color": "#080a0f",
+  "theme_color": "#d4a853",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23080a0f' width='100' height='100' rx='20'/%3E%3Ctext x='50' y='38' font-size='14' text-anchor='middle' fill='%23d4a853' font-weight='bold' font-family='Arial'%3EKAIROS%3C/text%3E%3Ctext x='50' y='70' font-size='36' text-anchor='middle' fill='%23d4a853'%3E%E2%9C%A8%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23080a0f' width='100' height='100' rx='20'/%3E%3Ctext x='50' y='38' font-size='14' text-anchor='middle' fill='%23d4a853' font-weight='bold' font-family='Arial'%3EKAIROS%3C/text%3E%3Ctext x='50' y='70' font-size='36' text-anchor='middle' fill='%23d4a853'%3E%E2%9C%A8%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "business"],
+  "lang": "ja",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "ポートフォリオ",
+      "short_name": "Portfolio",
+      "description": "ポートフォリオを表示",
+      "url": "./kairos.html?screen=home"
+    },
+    {
+      "name": "通貨一覧",
+      "short_name": "Currencies",
+      "description": "通貨一覧を表示",
+      "url": "./kairos.html?screen=currencies"
+    },
+    {
+      "name": "マーケット",
+      "short_name": "Market",
+      "description": "市場情報を表示",
+      "url": "./kairos.html?screen=market"
+    }
+  ]
+}
