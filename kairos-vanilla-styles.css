@@ -378,10 +378,10 @@
   --border-medium: rgba(0, 166, 153, 0.25);
   --border-accent: rgba(0, 166, 153, 0.40);
 
-  /* テキスト - ライト背景用（見やすさ重視） */
-  --text-primary: #1a3a3a;
-  --text-secondary: #0d7d74;
-  --text-tertiary: #5a8a87;
+  /* テキスト - ターコイズカラー統一（黒不使用） */
+  --text-primary: #0f766e;
+  --text-secondary: #0d9488;
+  --text-tertiary: #5eada6;
 
   /* メインアクセント（ターコイズ） */
   --accent: #0d9488;
@@ -452,7 +452,7 @@
 }
 [data-theme="turquoise"] .global-header__title,
 [data-theme="turquoise"] .global-header__rank-value {
-  color: #1a3a3a !important;
+  color: #115e59 !important;
 }
 [data-theme="turquoise"] .bottom-nav-container,
 [data-theme="turquoise"] .bottom-nav {
@@ -461,14 +461,14 @@
 }
 [data-theme="turquoise"] .nav-item__icon,
 [data-theme="turquoise"] .nav-item__label {
-  color: #5a8a87 !important;
+  color: #5eada6 !important;
 }
 [data-theme="turquoise"] .nav-item--active .nav-item__icon,
 [data-theme="turquoise"] .nav-item--active .nav-item__label {
   color: #0d9488 !important;
 }
 [data-theme="turquoise"] .ticker-bar__item {
-  color: #1a3a3a !important;
+  color: #0d9488 !important;
 }
 [data-theme="turquoise"] .ticker-bar__change--positive {
   color: #059669 !important;
@@ -480,10 +480,10 @@
 [data-theme="turquoise"] .quick-buy-modal,
 [data-theme="turquoise"] .kairos-side-menu {
   background: #f5f9f9 !important;
-  color: #1a3a3a !important;
+  color: #0f766e !important;
 }
 [data-theme="turquoise"] .kairos-side-menu-section-label {
-  color: #5a8a87 !important;
+  color: #5eada6 !important;
 }
 /* 全体の背景グラデーション */
 [data-theme="turquoise"] #root {
@@ -506,7 +506,7 @@
   color: #0d7d74 !important;
 }
 [data-theme="turquoise"] .portfolio-hero__value {
-  color: #1a3a3a !important;
+  color: #115e59 !important;
 }
 /* 通貨カード */
 [data-theme="turquoise"] .currency-card {
@@ -515,17 +515,17 @@
   box-shadow: 0 1px 6px rgba(0,0,0,0.04) !important;
 }
 [data-theme="turquoise"] .currency-card__name {
-  color: #1a3a3a !important;
+  color: #0f766e !important;
 }
 [data-theme="turquoise"] .currency-card__price {
-  color: #2d3d3d !important;
+  color: #0d9488 !important;
 }
 /* 詳細画面 */
 [data-theme="turquoise"] .detail__header-name {
-  color: #1a3a3a !important;
+  color: #0f766e !important;
 }
 [data-theme="turquoise"] .detail__price-current {
-  color: #1a3a3a !important;
+  color: #115e59 !important;
 }
 /* ストラテジーバッジ */
 [data-theme="turquoise"] .strategy-badge {
@@ -548,7 +548,7 @@
 
 /* --- グローバル: 全要素のデフォルト文字色 --- */
 [data-theme="turquoise"] {
-  color: #1a3a3a !important;
+  color: #0f766e !important;
 }
 
 /* --- サイドメニュー --- */
@@ -558,7 +558,7 @@
 [data-theme="turquoise"] .kairos-side-menu-item-text,
 [data-theme="turquoise"] .kairos-side-menu-portfolio-label,
 [data-theme="turquoise"] .kairos-side-menu-portfolio-pnl {
-  color: #1a3a3a !important;
+  color: #0f766e !important;
 }
 [data-theme="turquoise"] .kairos-side-menu-portfolio-value {
   color: #0d7d74 !important;
@@ -567,7 +567,7 @@
   color: #0d9488 !important;
 }
 [data-theme="turquoise"] .kairos-side-menu-section-label {
-  color: #5a8a87 !important;
+  color: #5eada6 !important;
 }
 [data-theme="turquoise"] .kairos-side-menu-divider {
   border-color: rgba(0,0,0,0.08) !important;
@@ -580,7 +580,7 @@
 [data-theme="turquoise"] [style*="color: #ffffff"],
 [data-theme="turquoise"] [style*="color:white"],
 [data-theme="turquoise"] [style*="color: white"] {
-  color: #1a3a3a !important;
+  color: #0d9488 !important;
 }
 [data-theme="turquoise"] [style*="color:rgba(255,255,255,0.5)"],
 [data-theme="turquoise"] [style*="color:rgba(255,255,255,0.4)"],
@@ -590,7 +590,7 @@
 [data-theme="turquoise"] [style*="color:rgba(255,255,255,0.6)"],
 [data-theme="turquoise"] [style*="color:rgba(255,255,255,0.7)"],
 [data-theme="turquoise"] [style*="color:rgba(255,255,255,0.8)"] {
-  color: #5a8a87 !important;
+  color: #5eada6 !important;
 }
 
 /* --- モーダル背景（暗い背景は維持: ダークのまま） --- */
@@ -610,39 +610,39 @@
 [data-theme="turquoise"] .market-card__value,
 [data-theme="turquoise"] .market-item__name,
 [data-theme="turquoise"] .market-item__price {
-  color: #1a3a3a !important;
+  color: #0f766e !important;
 }
 [data-theme="turquoise"] .market-card__label,
 [data-theme="turquoise"] .market-item__change,
 [data-theme="turquoise"] .market-header__sub {
-  color: #5a8a87 !important;
+  color: #5eada6 !important;
 }
 
 /* --- 通貨一覧画面 --- */
 [data-theme="turquoise"] .currencies-screen * {
-  color: #1a3a3a;
+  color: #0f766e;
 }
 [data-theme="turquoise"] .currencies-header__title {
-  color: #1a3a3a !important;
+  color: #0f766e !important;
 }
 
 /* --- 詳細画面 --- */
 [data-theme="turquoise"] .detail-screen *:not(.rank-badge):not([class*="positive"]):not([class*="negative"]) {
-  color: #1a3a3a;
+  color: #0f766e;
 }
 [data-theme="turquoise"] .detail__header-ticker,
 [data-theme="turquoise"] .detail__header-name,
 [data-theme="turquoise"] .detail__price-current,
 [data-theme="turquoise"] .detail__summary-value,
 [data-theme="turquoise"] .detail__summary-label {
-  color: #1a3a3a !important;
+  color: #0f766e !important;
 }
 [data-theme="turquoise"] .detail__summary-sub,
 [data-theme="turquoise"] .detail__info-label {
-  color: #5a8a87 !important;
+  color: #5eada6 !important;
 }
 [data-theme="turquoise"] .detail__info-value {
-  color: #1a3a3a !important;
+  color: #0f766e !important;
 }
 
 /* --- AI関連 --- */
@@ -650,22 +650,22 @@
 [data-theme="turquoise"] .ai-header__title,
 [data-theme="turquoise"] .ai-card__title,
 [data-theme="turquoise"] .ai-card__text {
-  color: #1a3a3a !important;
+  color: #0f766e !important;
 }
 
 /* --- ホーム画面・ポートフォリオ詳細 --- */
 [data-theme="turquoise"] .home *:not(.portfolio-hero__pnl):not([class*="positive"]):not([class*="negative"]) {
-  color: #1a3a3a;
+  color: #0f766e;
 }
 [data-theme="turquoise"] .portfolio-detail__group-title,
 [data-theme="turquoise"] .portfolio-detail__group-subtotal,
 [data-theme="turquoise"] .portfolio-detail__pnl-label {
-  color: #1a3a3a !important;
+  color: #0f766e !important;
 }
 
 /* --- シグナルカード --- */
 [data-theme="turquoise"] .trading-signal-card *:not([class*="positive"]):not([class*="negative"]) {
-  color: #1a3a3a;
+  color: #0f766e;
 }
 [data-theme="turquoise"] .signal-label,
 [data-theme="turquoise"] .signal-direction {
@@ -674,7 +674,7 @@
 
 /* --- チャート周辺テキスト --- */
 [data-theme="turquoise"] .chart-period-btn {
-  color: #5a8a87 !important;
+  color: #5eada6 !important;
 }
 [data-theme="turquoise"] .chart-period-btn--active,
 [data-theme="turquoise"] .chart-period-btn.active {
@@ -686,12 +686,12 @@
 [data-theme="turquoise"] .pattern-confluence *,
 [data-theme="turquoise"] .pattern-confluence__title,
 [data-theme="turquoise"] .confluence-label {
-  color: #1a3a3a !important;
+  color: #0f766e !important;
 }
 
 /* --- ストラテジーセレクター --- */
 [data-theme="turquoise"] .strategy-selector__option {
-  color: #5a8a87 !important;
+  color: #5eada6 !important;
   border-color: rgba(0,0,0,0.1) !important;
 }
 [data-theme="turquoise"] .strategy-selector__option--active {
@@ -727,7 +727,7 @@
 /* --- Fear&Greed ゲージ --- */
 [data-theme="turquoise"] .fear-greed-label,
 [data-theme="turquoise"] .fear-greed-value {
-  color: #1a3a3a !important;
+  color: #0f766e !important;
 }
 
 /* --- 比較モーダル・ニュース・計算機 --- */
@@ -735,13 +735,13 @@
 [data-theme="turquoise"] .news-modal *,
 [data-theme="turquoise"] .tax-modal *,
 [data-theme="turquoise"] .dca-modal * {
-  color: #1a3a3a;
+  color: #0f766e;
 }
 
 /* --- ウォッチリスト --- */
 [data-theme="turquoise"] .watchlist-item__name,
 [data-theme="turquoise"] .watchlist-item__price {
-  color: #1a3a3a !important;
+  color: #0f766e !important;
 }
 
 /* --- 購入/売却ボタン（カラー背景維持） --- */
@@ -766,8 +766,8 @@
 [data-theme="turquoise"] input[style*="color: #fff"],
 [data-theme="turquoise"] textarea[style*="color:#fff"],
 [data-theme="turquoise"] textarea[style*="color: #fff"] {
-  color: #1a3a3a !important;
-  background: rgba(0,0,0,0.04) !important;
+  color: #115e59 !important;
+  background: rgba(13,148,136,0.05) !important;
   border-color: rgba(13,148,136,0.2) !important;
 }
 
