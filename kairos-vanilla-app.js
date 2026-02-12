@@ -8040,7 +8040,8 @@
       { id: 'kairos', name: 'KAIROS', accent: '#d4a853', gradient: 'linear-gradient(135deg, #ffd700, #d4a853, #b8860b)' },
       { id: 'cyber', name: 'Cyber', accent: '#3b82f6', gradient: null },
       { id: 'emerald', name: 'Emerald', accent: '#14b8a6', gradient: null },
-      { id: 'neon', name: 'Aurora', accent: '#22d3ee', gradient: null }
+      { id: 'neon', name: 'Aurora', accent: '#22d3ee', gradient: null },
+      { id: 'turquoise', name: 'Turquoise', accent: '#0d9488', gradient: 'linear-gradient(135deg, #2dd4bf, #0d9488)' }
     ];
 
     var themeButtonsHtml = THEMES.map(function(t) {

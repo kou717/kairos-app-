@@ -363,6 +363,184 @@
   --text-secondary: #f9a8d4;
 }
 
+/* ===== Turquoise テーマ (ライトモード) ===== */
+[data-theme="turquoise"] {
+  /* 白背景 → 下部にかけて淡いグレーのグラデーション */
+  --bg-primary: #f8fafa;
+  --bg-secondary: #f0f4f4;
+
+  /* カード・サーフェス */
+  --surface-card: rgba(0, 166, 153, 0.06);
+  --surface-elevated: rgba(0, 166, 153, 0.10);
+
+  /* ボーダー */
+  --border-subtle: rgba(0, 166, 153, 0.15);
+  --border-medium: rgba(0, 166, 153, 0.25);
+  --border-accent: rgba(0, 166, 153, 0.40);
+
+  /* テキスト - ライト背景用（見やすさ重視） */
+  --text-primary: #1a3a3a;
+  --text-secondary: #0d7d74;
+  --text-tertiary: #5a8a87;
+
+  /* メインアクセント（ターコイズ） */
+  --accent: #0d9488;
+  --accent-rgb: 13, 148, 136;
+  --accent-light: #2dd4bf;
+  --accent-dark: #0f766e;
+  --accent-glow: rgba(13, 148, 136, 0.25);
+  --accent-gradient: linear-gradient(135deg, #2dd4bf 0%, #0d9488 50%, #0f766e 100%);
+
+  /* ポジティブ・ネガティブ（ライト背景対応） */
+  --positive: #059669;
+  --positive-rgb: 5, 150, 105;
+  --positive-glow: rgba(5, 150, 105, 0.15);
+  --negative: #dc2626;
+  --negative-rgb: 220, 38, 38;
+  --negative-glow: rgba(220, 38, 38, 0.15);
+  --warning: #d97706;
+
+  /* グラス効果 */
+  --glass-bg: rgba(0, 166, 153, 0.04);
+  --glass-border: rgba(0, 166, 153, 0.18);
+  --glass-blur: 20px;
+
+  /* モードカラー（Turquoise） */
+  --mode-core-primary: #0891b2;
+  --mode-core-secondary: #06b6d4;
+  --mode-core-gradient: linear-gradient(135deg, #0891b2, #06b6d4);
+  --mode-core-glow: rgba(8, 145, 178, 0.25);
+  --mode-core-rgb: 8, 145, 178;
+  --mode-satellite-primary: #d946ef;
+  --mode-satellite-secondary: #c026d3;
+  --mode-satellite-gradient: linear-gradient(135deg, #d946ef, #c026d3);
+  --mode-satellite-glow: rgba(217, 70, 239, 0.25);
+  --mode-satellite-rgb: 217, 70, 239;
+
+  /* ライトテーマ用シャドウ */
+  --card-shadow: 0 2px 12px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0, 0, 0, 0.04);
+  --gold-border-glow: 0 2px 16px rgba(13, 148, 136, 0.12);
+}
+
+/* Turquoise + 長期 */
+[data-theme="turquoise"][data-mode="core"] {
+  --accent: #0891b2;
+  --accent-rgb: 8, 145, 178;
+  --accent-glow: rgba(8, 145, 178, 0.2);
+  --text-secondary: #0e7490;
+  --surface-card: rgba(8, 145, 178, 0.06);
+  --border-subtle: rgba(8, 145, 178, 0.15);
+  --glass-border: rgba(8, 145, 178, 0.18);
+}
+
+/* Turquoise + 短期 */
+[data-theme="turquoise"][data-mode="satellite"] {
+  --accent: #d946ef;
+  --accent-rgb: 217, 70, 239;
+  --accent-glow: rgba(217, 70, 239, 0.2);
+  --text-secondary: #a21caf;
+  --surface-card: rgba(217, 70, 239, 0.06);
+  --border-subtle: rgba(217, 70, 239, 0.12);
+  --glass-border: rgba(217, 70, 239, 0.18);
+}
+
+/* Turquoise ライトテーマ用オーバーライド */
+[data-theme="turquoise"] .global-header,
+[data-theme="turquoise"] .ticker-bar {
+  background: linear-gradient(180deg, #f0fafa, #e8f4f3) !important;
+  border-color: rgba(13, 148, 136, 0.15) !important;
+}
+[data-theme="turquoise"] .global-header__title,
+[data-theme="turquoise"] .global-header__rank-value {
+  color: #1a3a3a !important;
+}
+[data-theme="turquoise"] .bottom-nav-container,
+[data-theme="turquoise"] .bottom-nav {
+  background: linear-gradient(0deg, #e8eeee, #f0f5f5) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+[data-theme="turquoise"] .nav-item__icon,
+[data-theme="turquoise"] .nav-item__label {
+  color: #5a8a87 !important;
+}
+[data-theme="turquoise"] .nav-item--active .nav-item__icon,
+[data-theme="turquoise"] .nav-item--active .nav-item__label {
+  color: #0d9488 !important;
+}
+[data-theme="turquoise"] .ticker-bar__item {
+  color: #1a3a3a !important;
+}
+[data-theme="turquoise"] .ticker-bar__change--positive {
+  color: #059669 !important;
+}
+[data-theme="turquoise"] .ticker-bar__change--negative {
+  color: #dc2626 !important;
+}
+/* カード・モーダル背景 */
+[data-theme="turquoise"] .quick-buy-modal,
+[data-theme="turquoise"] .kairos-side-menu {
+  background: #f5f9f9 !important;
+  color: #1a3a3a !important;
+}
+[data-theme="turquoise"] .kairos-side-menu-section-label {
+  color: #5a8a87 !important;
+}
+/* 全体の背景グラデーション */
+[data-theme="turquoise"] #root {
+  background: linear-gradient(180deg, #ffffff 0%, #f0f4f4 40%, #e5ecec 100%) !important;
+  min-height: 100vh;
+}
+/* スクロール可能エリア */
+[data-theme="turquoise"] .home,
+[data-theme="turquoise"] .currencies-screen,
+[data-theme="turquoise"] .market-screen,
+[data-theme="turquoise"] .detail-screen {
+  background: transparent !important;
+}
+/* ポートフォリオヒーロー */
+[data-theme="turquoise"] .portfolio-hero {
+  background: linear-gradient(135deg, rgba(13,148,136,0.12), rgba(45,212,191,0.08)) !important;
+  border-color: rgba(13,148,136,0.2) !important;
+}
+[data-theme="turquoise"] .portfolio-hero__label {
+  color: #0d7d74 !important;
+}
+[data-theme="turquoise"] .portfolio-hero__value {
+  color: #1a3a3a !important;
+}
+/* 通貨カード */
+[data-theme="turquoise"] .currency-card {
+  background: rgba(255,255,255,0.7) !important;
+  border: 1px solid rgba(13,148,136,0.12) !important;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.04) !important;
+}
+[data-theme="turquoise"] .currency-card__name {
+  color: #1a3a3a !important;
+}
+[data-theme="turquoise"] .currency-card__price {
+  color: #2d3d3d !important;
+}
+/* 詳細画面 */
+[data-theme="turquoise"] .detail__header-name {
+  color: #1a3a3a !important;
+}
+[data-theme="turquoise"] .detail__price-current {
+  color: #1a3a3a !important;
+}
+/* ストラテジーバッジ */
+[data-theme="turquoise"] .strategy-badge {
+  color: #0d7d74 !important;
+}
+/* シグナルカード */
+[data-theme="turquoise"] .trading-signal-card {
+  background: rgba(255,255,255,0.8) !important;
+  border-color: rgba(13,148,136,0.15) !important;
+}
+/* グレードバッジ */
+[data-theme="turquoise"] .rank-badge {
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important;
+}
+
 /* ===== 共通CSS変数 ===== */
 :root {
   --font-number: 'Inter', 'Noto Sans JP', -apple-system, sans-serif;
