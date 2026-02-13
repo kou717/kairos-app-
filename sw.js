@@ -1,7 +1,7 @@
-// KAIROS Service Worker v19.10 - JPY/USD price toggle
-const CACHE_NAME = 'kairos-v19-10';
-const STATIC_CACHE = 'kairos-static-v19-10';
-const DYNAMIC_CACHE = 'kairos-dynamic-v19-10';
+// KAIROS Service Worker v19.11 - Early Mover DEX Detection
+const CACHE_NAME = 'kairos-v19-11';
+const STATIC_CACHE = 'kairos-static-v19-11';
+const DYNAMIC_CACHE = 'kairos-dynamic-v19-11';
 
 // 静的アセット（必ずキャッシュ）
 const STATIC_ASSETS = [
@@ -52,7 +52,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter(name => !name.includes('v19-10'))
+          .filter(name => !name.includes('v19-11'))
           .map(name => {
             console.log('[SW] Deleting old cache:', name);
             return caches.delete(name);

@@ -1119,6 +1119,25 @@
             .catch(reject);
         });
       });
+    },
+
+    getEarlyMovers: function() {
+      var self = this;
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) {
+            reject(new Error('Backend not available'));
+            return;
+          }
+          fetch(self.baseUrl + '/api/moonshot/early')
+            .then(function(response) {
+              if (!response.ok) throw new Error('API error');
+              return response.json();
+            })
+            .then(resolve)
+            .catch(reject);
+        });
+      });
     }
   };
 
@@ -1222,7 +1241,9 @@
     portfolioDetailOpen: false,
     returnToPortfolioDetail: false,
     // 通貨一覧の表示モード（null=個別設定依存, 'swing', 'longterm'）
-    currenciesViewMode: null
+    currenciesViewMode: null,
+    // Moonshotタブ（early / trending）
+    moonshotTab: 'early'
   };
 
   // ニュースキャッシュ
@@ -1237,6 +1258,20 @@
     data: null,
     timestamp: 0,
     TTL: 5 * 60 * 1000 // 5分キャッシュ
+  };
+
+  // Early Moverキャッシュ
+  var earlyMoverCache = {
+    data: null,
+    timestamp: 0,
+    TTL: 10 * 60 * 1000, // 10分キャッシュ
+    lastNotifiedCoins: {} // { token_address: timestamp } — 通知済みコイン（2h重複防止）
+  };
+
+  // Early Mover通知レート制限
+  var earlyMoverNotifications = {
+    MAX_PER_HOUR: 3,
+    history: [] // [timestamp, ...]
   };
 
   function loadMoonshotCoins() {
@@ -1264,6 +1299,41 @@
       })
       .catch(function(err) {
         console.error('Moonshot fetch error:', err);
+        container.innerHTML = '<div class="moonshot-empty">' +
+          '<div class="moonshot-empty__icon">⚠️</div>' +
+          '<div class="moonshot-empty__text">データ取得に失敗しました</div>' +
+          '<div class="moonshot-empty__hint">バックエンドが起動しているか確認してください</div>' +
+        '</div>';
+      });
+  }
+
+  function loadEarlyMovers() {
+    var container = document.getElementById('early-mover-coins');
+    if (!container) return;
+
+    var now = Date.now();
+    if (earlyMoverCache.data && (now - earlyMoverCache.timestamp) < earlyMoverCache.TTL) {
+      renderEarlyMoversIntoDOM(earlyMoverCache.data);
+      checkEarlyMoverNotifications(earlyMoverCache.data);
+      return;
+    }
+
+    container.innerHTML = '<div class="moonshot-loading">' +
+      '<div class="moonshot-loading__spinner"></div>' +
+      '<div class="moonshot-loading__text">DEX初動を検索中...</div>' +
+    '</div>';
+
+    fetch(BACKEND_URL + '/api/moonshot/early')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        earlyMoverCache.data = data.coins || [];
+        earlyMoverCache.timestamp = Date.now();
+        renderEarlyMoversIntoDOM(earlyMoverCache.data);
+        checkEarlyMoverNotifications(earlyMoverCache.data);
+        updateEarlyMoverBadge();
+      })
+      .catch(function(err) {
+        console.error('Early mover fetch error:', err);
         container.innerHTML = '<div class="moonshot-empty">' +
           '<div class="moonshot-empty__icon">⚠️</div>' +
           '<div class="moonshot-empty__text">データ取得に失敗しました</div>' +
@@ -4510,20 +4580,34 @@
     var budgetTotal = appState.moonshotBudget;
     var budgetPercent = Math.min((budgetUsed / budgetTotal) * 100, 100);
     var budgetRemaining = Math.max(budgetTotal - budgetUsed, 0);
+    var activeTab = appState.moonshotTab || 'early';
+
+    // Early Moverの通知対象数
+    var earlyAlertCount = getEarlyMoverAlertCount();
 
     var html = '<div class="moonshot-screen">' +
       // ヘッダー
       '<header class="moonshot-header">' +
         '<h1 class="moonshot-header__title">🎰 Moonshot</h1>' +
-        '<div class="moonshot-header__subtitle">トレンドコイン・ミーム枠</div>' +
+        '<div class="moonshot-header__subtitle">DEX初動検出 + トレンドコイン</div>' +
       '</header>' +
+
+      // タブUI
+      '<div class="moonshot-tabs">' +
+        '<button class="moonshot-tab' + (activeTab === 'early' ? ' moonshot-tab--active' : '') + '" onclick="switchMoonshotTab(\'early\')">' +
+          '🚀 Early' +
+          (earlyAlertCount > 0 ? '<span class="moonshot-tab__badge">' + earlyAlertCount + '</span>' : '') +
+        '</button>' +
+        '<button class="moonshot-tab' + (activeTab === 'trending' ? ' moonshot-tab--active' : '') + '" onclick="switchMoonshotTab(\'trending\')">' +
+          '🔥 Trending' +
+        '</button>' +
+      '</div>' +
 
       // 警告バナー
       '<div class="moonshot-warning">' +
         '<div class="moonshot-warning__icon">⚠️</div>' +
         '<div class="moonshot-warning__text">' +
-          '<strong>分析対象外</strong><br>' +
-          'KAIROSスコアは適用されません。自己判断でお願いします。' +
+          '<strong>分析対象外</strong> — KAIROSスコアは適用されません。自己判断でお願いします。' +
         '</div>' +
       '</div>' +
 
@@ -4541,55 +4625,17 @@
         '<div class="moonshot-budget__detail">' +
           formatYen(budgetUsed) + ' / ' + formatYen(budgetTotal) +
         '</div>' +
-      '</div>' +
+      '</div>';
 
-      // トレンドコインセクション（非同期読み込み）
-      '<div class="moonshot-section">' +
-        '<div class="moonshot-section__title">🔥 トレンドコイン</div>' +
-        '<div class="moonshot-section__desc">CoinGecko Trending + センチメント分析</div>' +
-        '<div id="moonshot-coins" class="moonshot-coins">' +
-          '<div class="moonshot-loading">' +
-            '<div class="moonshot-loading__spinner"></div>' +
-            '<div class="moonshot-loading__text">トレンドコインを検索中...</div>' +
-          '</div>' +
-        '</div>' +
-      '</div>' +
+    // タブコンテンツ
+    if (activeTab === 'early') {
+      html += renderEarlyDetectionContent();
+    } else {
+      html += renderTrendingContent();
+    }
 
-      // データソース説明
-      '<div class="moonshot-filters">' +
-        '<div class="moonshot-filters__title">📊 データソース</div>' +
-        '<div class="moonshot-filters__list">' +
-          '<div class="moonshot-filter">' +
-            '<span class="moonshot-filter__name">Hype</span>' +
-            '<span class="moonshot-filter__condition">0-100</span>' +
-            '<span class="moonshot-filter__desc">CoinGeckoトレンド順位</span>' +
-          '</div>' +
-          '<div class="moonshot-filter">' +
-            '<span class="moonshot-filter__name">Safety</span>' +
-            '<span class="moonshot-filter__condition">0-100</span>' +
-            '<span class="moonshot-filter__desc">時価総額ランクベース</span>' +
-          '</div>' +
-          '<div class="moonshot-filter">' +
-            '<span class="moonshot-filter__name">Momentum</span>' +
-            '<span class="moonshot-filter__condition">0-100</span>' +
-            '<span class="moonshot-filter__desc">価格変動 + ニュースセンチメント</span>' +
-          '</div>' +
-        '</div>' +
-      '</div>' +
-
-      // ルール説明
-      '<div class="moonshot-rules">' +
-        '<div class="moonshot-rules__title">📋 Moonshotのルール</div>' +
-        '<div class="moonshot-rules__list">' +
-          '<div class="moonshot-rule">💰 月間上限 ' + formatYen(budgetTotal) + '（厳格）</div>' +
-          '<div class="moonshot-rule">🎲 KAIROSスコア非表示（完全自己判断）</div>' +
-          '<div class="moonshot-rule">📤 利益が出たらコア資産へ振替推奨</div>' +
-          '<div class="moonshot-rule">📊 損失はポートフォリオ損益に含めない</div>' +
-        '</div>' +
-      '</div>' +
-
-      // 設定ボタン
-      '<div class="moonshot-actions">' +
+    // 設定ボタン
+    html += '<div class="moonshot-actions">' +
         '<button class="moonshot-action-btn moonshot-action-btn--settings" onclick="openMoonshotSettingsModal()">' +
           '⚙️ 予算設定' +
         '</button>' +
@@ -4597,10 +4643,103 @@
           '🔄 今月の使用額リセット' +
         '</button>' +
       '</div>' +
-
     '</div>';
 
     return html;
+  }
+
+  function switchMoonshotTab(tab) {
+    appState.moonshotTab = tab;
+    renderApp();
+  }
+  window.switchMoonshotTab = switchMoonshotTab;
+
+  function renderEarlyDetectionContent() {
+    return '<div class="moonshot-section">' +
+      '<div class="moonshot-section__title">🚀 DEX初動検出</div>' +
+      '<div class="moonshot-section__desc">DexScreener + GeckoTerminal → AI評価（Solana DEX）</div>' +
+      '<div id="early-mover-coins" class="moonshot-coins">' +
+        '<div class="moonshot-loading">' +
+          '<div class="moonshot-loading__spinner"></div>' +
+          '<div class="moonshot-loading__text">DEX初動を検索中...</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    // スコア説明
+    '<div class="moonshot-filters">' +
+      '<div class="moonshot-filters__title">📊 スコア内訳</div>' +
+      '<div class="moonshot-filters__list">' +
+        '<div class="moonshot-filter">' +
+          '<span class="moonshot-filter__name">Volume</span>' +
+          '<span class="moonshot-filter__condition">0-25</span>' +
+          '<span class="moonshot-filter__desc">24h出来高（対数スケール）</span>' +
+        '</div>' +
+        '<div class="moonshot-filter">' +
+          '<span class="moonshot-filter__name">Velocity</span>' +
+          '<span class="moonshot-filter__condition">0-25</span>' +
+          '<span class="moonshot-filter__desc">5m/1h/24h価格変動</span>' +
+        '</div>' +
+        '<div class="moonshot-filter">' +
+          '<span class="moonshot-filter__name">Buy圧</span>' +
+          '<span class="moonshot-filter__condition">0-25</span>' +
+          '<span class="moonshot-filter__desc">買い/売りトランザクション比率</span>' +
+        '</div>' +
+        '<div class="moonshot-filter">' +
+          '<span class="moonshot-filter__name">鮮度</span>' +
+          '<span class="moonshot-filter__condition">0-15</span>' +
+          '<span class="moonshot-filter__desc">プール作成からの経過時間</span>' +
+        '</div>' +
+        '<div class="moonshot-filter">' +
+          '<span class="moonshot-filter__name">ソース</span>' +
+          '<span class="moonshot-filter__condition">0-10</span>' +
+          '<span class="moonshot-filter__desc">複数APIで検出 = 信頼性UP</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderTrendingContent() {
+    return '<div class="moonshot-section">' +
+      '<div class="moonshot-section__title">🔥 トレンドコイン</div>' +
+      '<div class="moonshot-section__desc">CoinGecko Trending + センチメント分析</div>' +
+      '<div id="moonshot-coins" class="moonshot-coins">' +
+        '<div class="moonshot-loading">' +
+          '<div class="moonshot-loading__spinner"></div>' +
+          '<div class="moonshot-loading__text">トレンドコインを検索中...</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    // データソース説明
+    '<div class="moonshot-filters">' +
+      '<div class="moonshot-filters__title">📊 データソース</div>' +
+      '<div class="moonshot-filters__list">' +
+        '<div class="moonshot-filter">' +
+          '<span class="moonshot-filter__name">Hype</span>' +
+          '<span class="moonshot-filter__condition">0-100</span>' +
+          '<span class="moonshot-filter__desc">CoinGeckoトレンド順位</span>' +
+        '</div>' +
+        '<div class="moonshot-filter">' +
+          '<span class="moonshot-filter__name">Safety</span>' +
+          '<span class="moonshot-filter__condition">0-100</span>' +
+          '<span class="moonshot-filter__desc">時価総額ランクベース</span>' +
+        '</div>' +
+        '<div class="moonshot-filter">' +
+          '<span class="moonshot-filter__name">Momentum</span>' +
+          '<span class="moonshot-filter__condition">0-100</span>' +
+          '<span class="moonshot-filter__desc">価格変動 + ニュースセンチメント</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    // ルール説明
+    '<div class="moonshot-rules">' +
+      '<div class="moonshot-rules__title">📋 Moonshotのルール</div>' +
+      '<div class="moonshot-rules__list">' +
+        '<div class="moonshot-rule">💰 月間上限（厳格）</div>' +
+        '<div class="moonshot-rule">🎲 KAIROSスコア非表示（完全自己判断）</div>' +
+        '<div class="moonshot-rule">📤 利益が出たらコア資産へ振替推奨</div>' +
+        '<div class="moonshot-rule">📊 損失はポートフォリオ損益に含めない</div>' +
+      '</div>' +
+    '</div>';
   }
 
   function renderMoonshotCoinsIntoDOM(coins) {
@@ -4849,6 +4988,251 @@
     }
   }
   window.closeMoonshotDetailModal = closeMoonshotDetailModal;
+
+  // ===== Early Mover カード描画 =====
+  function formatAgeHours(hours) {
+    if (hours === null || hours === undefined) return '不明';
+    if (hours < 1) return Math.round(hours * 60) + '分';
+    if (hours < 24) return Math.round(hours) + '時間';
+    return Math.round(hours / 24) + '日';
+  }
+
+  function renderScoreBar(label, value, max) {
+    var pct = Math.min(100, (value / max) * 100);
+    var color = pct >= 70 ? '#22c55e' : pct >= 40 ? '#f59e0b' : '#ef4444';
+    return '<div class="early-mover__score-bar">' +
+      '<span class="early-mover__score-bar-label">' + label + '</span>' +
+      '<div class="early-mover__score-bar-track">' +
+        '<div class="early-mover__score-bar-fill" style="width:' + pct + '%;background:' + color + '"></div>' +
+      '</div>' +
+      '<span class="early-mover__score-bar-value">' + Math.round(value) + '/' + max + '</span>' +
+    '</div>';
+  }
+
+  function renderEarlyMoversIntoDOM(coins) {
+    var container = document.getElementById('early-mover-coins');
+    if (!container) return;
+
+    if (!coins || coins.length === 0) {
+      container.innerHTML = '<div class="moonshot-empty">' +
+        '<div class="moonshot-empty__icon">🔭</div>' +
+        '<div class="moonshot-empty__text">DEX初動コインが見つかりません</div>' +
+        '<div class="moonshot-empty__hint">しばらくしてからもう一度お試しください</div>' +
+      '</div>';
+      return;
+    }
+
+    window._earlyMovers = coins;
+
+    var html = '';
+    coins.forEach(function(coin, idx) {
+      var mscore = coin.moonshot_score || 0;
+      var scoreColor = mscore >= 70 ? '#22c55e' : mscore >= 50 ? '#f59e0b' : mscore >= 30 ? '#ef4444' : '#6b7280';
+      var change1h = coin.price_change_1h || 0;
+      var isNew = coin.age_hours !== null && coin.age_hours <= 6;
+      var isTop3 = idx < 3;
+
+      var riskBadge = '';
+      if (coin.risk_level === 'high') riskBadge = '<span class="early-mover__risk early-mover__risk--high">HIGH RISK</span>';
+      else if (coin.risk_level === 'medium') riskBadge = '<span class="early-mover__risk early-mover__risk--medium">MID RISK</span>';
+      else if (coin.risk_level === 'low') riskBadge = '<span class="early-mover__risk early-mover__risk--low">LOW RISK</span>';
+
+      html += '<div class="early-mover-coin' + (isTop3 ? ' early-mover-coin--top' : '') + '" onclick="openEarlyMoverDetail(' + idx + ')" style="animation-delay:' + (idx * 0.05) + 's">' +
+        '<div class="early-mover__header">' +
+          (coin.image_url ? '<img class="moonshot-coin__icon" src="' + coin.image_url + '" alt="">' : '<div class="moonshot-coin__icon-placeholder">🪙</div>') +
+          '<div class="moonshot-coin__info">' +
+            '<span class="moonshot-coin__symbol">' + coin.symbol +
+              (isNew ? ' <span class="early-mover__new-badge">NEW</span>' : '') +
+            '</span>' +
+            '<span class="moonshot-coin__name">' + (coin.name || '').substring(0, 20) + '</span>' +
+          '</div>' +
+          '<div class="early-mover__scores">' +
+            '<div class="early-mover__score-main" style="color:' + scoreColor + '">' + mscore + '</div>' +
+            '<div style="font-size:9px;color:#94a3b8">score</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="early-mover__meta">' +
+          '<span>Vol: ' + formatCompactNumber(coin.volume_24h || 0) + '</span>' +
+          '<span>Liq: ' + formatCompactNumber(coin.liquidity_usd || 0) + '</span>' +
+          '<span>Age: ' + formatAgeHours(coin.age_hours) + '</span>' +
+          '<span class="' + (change1h >= 0 ? 'positive' : 'negative') + '">' +
+            (change1h >= 0 ? '+' : '') + change1h.toFixed(1) + '% (1h)' +
+          '</span>' +
+        '</div>' +
+        (coin.ai_summary_ja ? '<div class="early-mover__ai-hint">🤖 ' + coin.ai_summary_ja + '</div>' : '') +
+        '<div class="early-mover__footer">' +
+          riskBadge +
+          (coin.ai_potential ? '<span class="early-mover__potential">🎯 ' + coin.ai_potential + '</span>' : '') +
+          '<span class="early-mover__sources">' + (coin.sources || []).join(' + ') + '</span>' +
+        '</div>' +
+      '</div>';
+    });
+
+    container.innerHTML = html;
+  }
+  window.renderEarlyMoversIntoDOM = renderEarlyMoversIntoDOM;
+
+  function openEarlyMoverDetail(idx) {
+    var coins = window._earlyMovers || [];
+    var coin = coins[idx];
+    if (!coin) return;
+
+    var mscore = coin.moonshot_score || 0;
+    var scoreColor = mscore >= 70 ? '#22c55e' : mscore >= 50 ? '#f59e0b' : mscore >= 30 ? '#ef4444' : '#6b7280';
+    var bd = coin.score_breakdown || {};
+    var change1h = coin.price_change_1h || 0;
+    var change24h = coin.price_change_24h || 0;
+    var change5m = coin.price_change_5m || 0;
+
+    var priceStr = coin.price_usd < 0.001 ? '$' + coin.price_usd.toFixed(8) : '$' + coin.price_usd.toFixed(4);
+
+    // リスクバッジ
+    var riskColor = coin.risk_level === 'high' ? '#ef4444' : coin.risk_level === 'medium' ? '#f59e0b' : coin.risk_level === 'low' ? '#22c55e' : '#6b7280';
+    var riskLabel = coin.risk_level === 'high' ? 'ハイリスク' : coin.risk_level === 'medium' ? 'ミドルリスク' : coin.risk_level === 'low' ? 'ローリスク' : '不明';
+
+    // Red flags
+    var redFlagsHtml = '';
+    if (coin.ai_red_flags && coin.ai_red_flags.length > 0) {
+      redFlagsHtml = '<div style="margin-top:8px">';
+      coin.ai_red_flags.forEach(function(flag) {
+        redFlagsHtml += '<span style="display:inline-block;padding:2px 8px;margin:2px;border-radius:4px;background:rgba(239,68,68,0.15);color:#ef4444;font-size:11px">🚩 ' + flag + '</span>';
+      });
+      redFlagsHtml += '</div>';
+    }
+
+    // トークンアドレス短縮
+    var addr = coin.token_address || '';
+    var shortAddr = addr.length > 12 ? addr.substring(0, 6) + '...' + addr.substring(addr.length - 4) : addr;
+
+    var modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'early-mover-detail-modal';
+    modal.innerHTML = '<div class="modal moonshot-detail-modal">' +
+      '<div class="modal-header">' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+          (coin.image_url ? '<img src="' + coin.image_url + '" style="width:28px;height:28px;border-radius:50%">' : '') +
+          '<h3>🚀 ' + coin.symbol + '</h3>' +
+          '<span style="color:#94a3b8;font-size:13px">' + (coin.name || '').substring(0, 25) + '</span>' +
+        '</div>' +
+        '<button class="modal-close" onclick="closeEarlyMoverDetailModal()">×</button>' +
+      '</div>' +
+      '<div class="modal-body" style="padding:16px">' +
+        // スコア + リスク
+        '<div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:16px">' +
+          '<div style="text-align:center">' +
+            '<div style="font-size:36px;font-weight:700;color:' + scoreColor + '">' + mscore + '</div>' +
+            '<div style="font-size:10px;color:#94a3b8">Moonshot Score</div>' +
+          '</div>' +
+          '<div style="text-align:center;padding:8px 16px;border-radius:8px;background:rgba(255,255,255,0.05)">' +
+            '<div style="font-size:14px;font-weight:600;color:' + riskColor + '">' + riskLabel + '</div>' +
+            '<div style="font-size:10px;color:#94a3b8">リスクレベル</div>' +
+          '</div>' +
+        '</div>' +
+
+        // 価格 + 変動
+        '<div style="text-align:center;margin-bottom:12px">' +
+          '<div style="font-size:20px;font-weight:700">' + priceStr + '</div>' +
+          '<div style="display:flex;justify-content:center;gap:12px;margin-top:4px;font-size:12px">' +
+            '<span class="' + (change5m >= 0 ? 'positive' : 'negative') + '">' + (change5m >= 0 ? '+' : '') + change5m.toFixed(1) + '% (5m)</span>' +
+            '<span class="' + (change1h >= 0 ? 'positive' : 'negative') + '">' + (change1h >= 0 ? '+' : '') + change1h.toFixed(1) + '% (1h)</span>' +
+            '<span class="' + (change24h >= 0 ? 'positive' : 'negative') + '">' + (change24h >= 0 ? '+' : '') + change24h.toFixed(1) + '% (24h)</span>' +
+          '</div>' +
+        '</div>' +
+
+        // スコア内訳バー
+        '<div style="padding:12px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:12px">' +
+          '<div style="font-size:12px;color:#94a3b8;margin-bottom:8px">📊 スコア内訳</div>' +
+          renderScoreBar('Volume', bd.volume || 0, 25) +
+          renderScoreBar('Velocity', bd.velocity || 0, 25) +
+          renderScoreBar('Buy圧', bd.buy_pressure || 0, 25) +
+          renderScoreBar('鮮度', bd.freshness || 0, 15) +
+          renderScoreBar('ソース', bd.multi_source || 0, 10) +
+        '</div>' +
+
+        // AI分析
+        (coin.ai_summary_ja ? '<div style="padding:12px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.2);border-radius:8px;margin-bottom:12px">' +
+          '<div style="font-size:12px;color:#a855f7;margin-bottom:4px">🤖 AI分析</div>' +
+          '<div style="font-size:14px;color:#e2e8f0">' + coin.ai_summary_ja + '</div>' +
+          (coin.ai_potential ? '<div style="margin-top:6px;font-size:13px;color:#d4a853">🎯 ポテンシャル: ' + coin.ai_potential + '</div>' : '') +
+          redFlagsHtml +
+        '</div>' : '') +
+
+        // マーケットデータ
+        '<div style="display:flex;gap:8px;margin-bottom:12px">' +
+          '<div style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px">' +
+            '<div style="font-size:10px;color:#94a3b8">出来高 (24h)</div>' +
+            '<div style="font-size:14px;font-weight:600">$' + formatCompactNumber(coin.volume_24h || 0) + '</div>' +
+          '</div>' +
+          '<div style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px">' +
+            '<div style="font-size:10px;color:#94a3b8">流動性</div>' +
+            '<div style="font-size:14px;font-weight:600">$' + formatCompactNumber(coin.liquidity_usd || 0) + '</div>' +
+          '</div>' +
+          '<div style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px">' +
+            '<div style="font-size:10px;color:#94a3b8">Age</div>' +
+            '<div style="font-size:14px;font-weight:600">' + formatAgeHours(coin.age_hours) + '</div>' +
+          '</div>' +
+        '</div>' +
+
+        // Buy/Sell
+        '<div style="display:flex;gap:8px;margin-bottom:12px">' +
+          '<div style="flex:1;padding:10px;background:rgba(34,197,94,0.08);border-radius:8px;text-align:center">' +
+            '<div style="font-size:10px;color:#22c55e">Buy (24h)</div>' +
+            '<div style="font-size:16px;font-weight:600;color:#22c55e">' + (coin.txns_buy_24h || 0) + '</div>' +
+          '</div>' +
+          '<div style="flex:1;padding:10px;background:rgba(239,68,68,0.08);border-radius:8px;text-align:center">' +
+            '<div style="font-size:10px;color:#ef4444">Sell (24h)</div>' +
+            '<div style="font-size:16px;font-weight:600;color:#ef4444">' + (coin.txns_sell_24h || 0) + '</div>' +
+          '</div>' +
+          '<div style="flex:1;padding:10px;background:rgba(34,197,94,0.08);border-radius:8px;text-align:center">' +
+            '<div style="font-size:10px;color:#22c55e">Buy (1h)</div>' +
+            '<div style="font-size:16px;font-weight:600;color:#22c55e">' + (coin.txns_buy_1h || 0) + '</div>' +
+          '</div>' +
+          '<div style="flex:1;padding:10px;background:rgba(239,68,68,0.08);border-radius:8px;text-align:center">' +
+            '<div style="font-size:10px;color:#ef4444">Sell (1h)</div>' +
+            '<div style="font-size:16px;font-weight:600;color:#ef4444">' + (coin.txns_sell_1h || 0) + '</div>' +
+          '</div>' +
+        '</div>' +
+
+        // アドレス
+        (addr ? '<div style="padding:8px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:12px;font-size:11px;color:#94a3b8;text-align:center">' +
+          'CA: ' + shortAddr +
+        '</div>' : '') +
+
+        // 外部リンク
+        '<div style="display:flex;gap:8px">' +
+          (coin.dex_url ?
+            '<a href="' + coin.dex_url + '" target="_blank" style="flex:1;display:block;text-align:center;padding:10px;background:rgba(255,255,255,0.08);border-radius:8px;color:#d4a853;text-decoration:none;font-size:13px">' +
+              '📊 DexScreener' +
+            '</a>' : '') +
+          (addr ?
+            '<a href="https://birdeye.so/token/' + addr + '?chain=solana" target="_blank" style="flex:1;display:block;text-align:center;padding:10px;background:rgba(255,255,255,0.08);border-radius:8px;color:#d4a853;text-decoration:none;font-size:13px">' +
+              '🦅 Birdeye' +
+            '</a>' : '') +
+          (addr ?
+            '<a href="https://solscan.io/token/' + addr + '" target="_blank" style="flex:1;display:block;text-align:center;padding:10px;background:rgba(255,255,255,0.08);border-radius:8px;color:#d4a853;text-decoration:none;font-size:13px">' +
+              '🔍 Solscan' +
+            '</a>' : '') +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+    document.body.appendChild(modal);
+    requestAnimationFrame(function() { modal.classList.add('active'); });
+
+    modal.onclick = function(e) {
+      if (e.target === modal) closeEarlyMoverDetailModal();
+    };
+  }
+  window.openEarlyMoverDetail = openEarlyMoverDetail;
+
+  function closeEarlyMoverDetailModal() {
+    var modal = document.getElementById('early-mover-detail-modal');
+    if (modal) {
+      modal.classList.remove('active');
+      setTimeout(function() { modal.remove(); }, 300);
+    }
+  }
+  window.closeEarlyMoverDetailModal = closeEarlyMoverDetailModal;
 
   // ===== 詳細画面 =====
   function renderDetailScreen() {
@@ -5332,9 +5716,13 @@
       showSummaryBarTemporarily();
     }
 
-    // Moonshot: load trending coins data
+    // Moonshot: load data based on active tab
     if (appState.currentScreen === 'moonshot') {
-      loadMoonshotCoins();
+      if (appState.moonshotTab === 'early') {
+        loadEarlyMovers();
+      } else {
+        loadMoonshotCoins();
+      }
     }
   }
 
@@ -8050,7 +8438,8 @@
         '<div class="kairos-side-menu-section-title">🎰 Moonshot</div>' +
         '<button class="kairos-side-menu-btn" onclick="window.KairosApp.showMoonshot(); closeSideMenu();">' +
           '<span class="kairos-side-menu-btn-icon">🎰</span>' +
-          '<span>トレンドコイン</span>' +
+          '<span>トレンド + Early検出</span>' +
+          '<span id="early-mover-menu-badge" class="early-mover-menu-badge" style="display:none"></span>' +
         '</button>' +
         '<div class="kairos-side-menu-moonshot-status">' +
           '<span>予算: ' + formatYen(appState.moonshotSpent) + ' / ' + formatYen(appState.moonshotBudget) + '</span>' +
@@ -13381,6 +13770,110 @@
     localStorage.setItem('kairosInvestmentRecords', JSON.stringify(records));
     console.log('[DEBUG] Cleared test trades. ' + records.length + ' real records remain.');
   };
+
+  // ===== Early Mover通知システム =====
+  function checkEarlyMoverNotifications(coins) {
+    if (!coins || coins.length === 0) return;
+
+    var now = Date.now();
+    var TWO_HOURS = 2 * 60 * 60 * 1000;
+
+    // レート制限チェック: 直近1時間以内の通知数
+    earlyMoverNotifications.history = earlyMoverNotifications.history.filter(function(t) {
+      return (now - t) < 60 * 60 * 1000;
+    });
+    if (earlyMoverNotifications.history.length >= earlyMoverNotifications.MAX_PER_HOUR) return;
+
+    // 古い通知済みエントリを削除
+    Object.keys(earlyMoverCache.lastNotifiedCoins).forEach(function(addr) {
+      if (now - earlyMoverCache.lastNotifiedCoins[addr] > TWO_HOURS) {
+        delete earlyMoverCache.lastNotifiedCoins[addr];
+      }
+    });
+
+    // moonshot_score >= 60 のコインをフィルタ
+    var alertCoins = coins.filter(function(c) {
+      if ((c.moonshot_score || 0) < 60) return false;
+      var addr = c.token_address || '';
+      if (earlyMoverCache.lastNotifiedCoins[addr]) return false;
+      return true;
+    });
+
+    if (alertCoins.length === 0) return;
+
+    // 通知権限チェック & 要求
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    // 上位3件まで通知
+    var toNotify = alertCoins.slice(0, 3);
+    toNotify.forEach(function(coin) {
+      var remaining = earlyMoverNotifications.MAX_PER_HOUR - earlyMoverNotifications.history.length;
+      if (remaining <= 0) return;
+
+      var addr = coin.token_address || coin.symbol;
+
+      // ブラウザ通知
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        try {
+          new Notification('🚀 Moonshot検出: ' + coin.symbol, {
+            body: (coin.ai_summary_ja || 'Score: ' + coin.moonshot_score) + '\n' +
+              (coin.ai_potential ? 'Potential: ' + coin.ai_potential : ''),
+            icon: coin.image_url || undefined,
+            tag: 'early-mover-' + addr,
+          });
+        } catch(e) {
+          console.warn('Notification error:', e);
+        }
+      }
+
+      // トースト通知
+      if (typeof showToast === 'function') {
+        showToast('🚀 ' + coin.symbol + ' (Score ' + coin.moonshot_score + ') ' + (coin.ai_summary_ja || ''), 'info');
+      }
+
+      // 記録
+      earlyMoverCache.lastNotifiedCoins[addr] = now;
+      earlyMoverNotifications.history.push(now);
+    });
+  }
+  window.checkEarlyMoverNotifications = checkEarlyMoverNotifications;
+
+  function getEarlyMoverAlertCount() {
+    var coins = (typeof earlyMoverCache !== 'undefined' && earlyMoverCache.data) ? earlyMoverCache.data : [];
+    var count = 0;
+    for (var i = 0; i < coins.length; i++) {
+      if ((coins[i].moonshot_score || 0) >= 60) count++;
+    }
+    return count;
+  }
+  window.getEarlyMoverAlertCount = getEarlyMoverAlertCount;
+
+  function updateEarlyMoverBadge() {
+    var count = getEarlyMoverAlertCount();
+    // ナビボタンのバッジ
+    var navBtns = document.querySelectorAll('.kairos-nav-btn');
+    navBtns.forEach(function(btn) {
+      if (btn.textContent.indexOf('Moonshot') >= 0 || btn.textContent.indexOf('🎰') >= 0) {
+        var existing = btn.querySelector('.moonshot-btn__badge');
+        if (existing) existing.remove();
+        if (count > 0) {
+          var badge = document.createElement('span');
+          badge.className = 'moonshot-btn__badge';
+          badge.textContent = count;
+          btn.appendChild(badge);
+        }
+      }
+    });
+    // サイドメニューのバッジ
+    var menuBadge = document.getElementById('early-mover-menu-badge');
+    if (menuBadge) {
+      menuBadge.textContent = count > 0 ? count : '';
+      menuBadge.style.display = count > 0 ? 'inline-flex' : 'none';
+    }
+  }
+  window.updateEarlyMoverBadge = updateEarlyMoverBadge;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
