@@ -1676,19 +1676,21 @@
 
   // 小額コイン対応版（Moonshot等で使用）
   function formatPriceCompact(usdValue) {
-    if (usdValue === undefined || usdValue === null) return '-';
+    if (usdValue === undefined || usdValue === null || usdValue === 0) return '-';
     if (appState.priceCurrency === 'JPY') {
       var jpyVal = usdValue * JPY_RATE;
       if (jpyVal >= 1000) return '¥' + Math.round(jpyVal).toLocaleString('ja-JP');
       if (jpyVal >= 1) return '¥' + jpyVal.toFixed(2);
       if (jpyVal >= 0.01) return '¥' + jpyVal.toFixed(4);
-      return '¥' + jpyVal.toFixed(6);
+      if (jpyVal >= 0.0001) return '¥' + jpyVal.toFixed(6);
+      return '¥' + jpyVal.toPrecision(2);
     }
     // USD
     if (usdValue >= 1000) return '$' + usdValue.toLocaleString('en-US', {maximumFractionDigits: 0});
     if (usdValue >= 1) return '$' + usdValue.toFixed(2);
     if (usdValue >= 0.001) return '$' + usdValue.toFixed(4);
-    return '$' + usdValue.toFixed(8);
+    if (usdValue >= 0.0000001) return '$' + usdValue.toFixed(8);
+    return '$' + usdValue.toPrecision(2);
   }
 
   // Volume/Mcap 用フォーマッタ（JPY/USD切替対応）
