@@ -4997,11 +4997,89 @@
     return Math.round(hours / 24) + '日';
   }
 
+  // スコア指標の説明マップ
+  var scoreExplanations = {
+    'Volume': {
+      title: '出来高（Volume）',
+      desc: '24時間の取引量を対数スケールで評価します。取引量が多いほど、そのコインに注目が集まっていることを意味します。',
+      good: '出来高が多い → 多くの人が売買している → 注目度が高い',
+      bad: '出来高が少ない → まだ誰も気づいていないか、興味がない',
+      max: 25
+    },
+    'Velocity': {
+      title: '価格変動速度（Velocity）',
+      desc: '直近5分・1時間・24時間の価格変動の大きさと方向を評価します。急上昇中のコインほど高スコアになります。',
+      good: '急上昇中 → 買いが殺到している可能性。初動を捉えるチャンス',
+      bad: '変動が小さい → まだ動き出していない、または停滞中',
+      max: 25
+    },
+    'Buy圧': {
+      title: '買い圧力（Buy Pressure）',
+      desc: '買いトランザクション数と売りトランザクション数の比率です。買いが売りより多ければ、価格が上がりやすい状態です。',
+      good: '買い > 売り → 需要が供給を上回っている → 価格上昇圧力',
+      bad: '売り > 買い → 利確や損切りが多い → 下落リスク',
+      max: 25
+    },
+    '鮮度': {
+      title: 'プールの新しさ（Freshness）',
+      desc: 'DEXにプールが作られてからの経過時間。新しいプールほど「初動」の可能性が高く、高スコアになります。',
+      good: '作成1時間以内 → まさに今始まったばかり。最も早い段階',
+      bad: '24時間以上経過 → すでに初動は過ぎている可能性',
+      max: 15
+    },
+    'ソース': {
+      title: '検出ソース数（Multi Source）',
+      desc: 'DexScreenerとGeckoTerminalの両方で検出されたかを評価します。複数のサイトで話題になっていれば信頼性が上がります。',
+      good: '複数ソースで検出 → 本物のトレンドの可能性が高い',
+      bad: '1ソースのみ → まだ一部でしか注目されていない',
+      max: 10
+    }
+  };
+
+  function showScoreExplanation(key, event) {
+    if (event) { event.stopPropagation(); event.preventDefault(); }
+    var info = scoreExplanations[key];
+    if (!info) return;
+
+    var existing = document.getElementById('score-explain-popup');
+    if (existing) existing.remove();
+
+    var popup = document.createElement('div');
+    popup.id = 'score-explain-popup';
+    popup.className = 'score-explain-overlay';
+    popup.innerHTML = '<div class="score-explain-popup">' +
+      '<div class="score-explain-popup__header">' +
+        '<span class="score-explain-popup__title">' + info.title + '</span>' +
+        '<span class="score-explain-popup__max">最大 ' + info.max + ' 点</span>' +
+      '</div>' +
+      '<div class="score-explain-popup__desc">' + info.desc + '</div>' +
+      '<div class="score-explain-popup__case score-explain-popup__case--good">' +
+        '<span class="score-explain-popup__case-icon">✅</span>' +
+        '<span>' + info.good + '</span>' +
+      '</div>' +
+      '<div class="score-explain-popup__case score-explain-popup__case--bad">' +
+        '<span class="score-explain-popup__case-icon">⚠️</span>' +
+        '<span>' + info.bad + '</span>' +
+      '</div>' +
+    '</div>';
+
+    document.body.appendChild(popup);
+    requestAnimationFrame(function() { popup.classList.add('active'); });
+
+    popup.onclick = function(e) {
+      if (e.target === popup || e.target.closest('.score-explain-popup')) {
+        popup.classList.remove('active');
+        setTimeout(function() { popup.remove(); }, 200);
+      }
+    };
+  }
+  window.showScoreExplanation = showScoreExplanation;
+
   function renderScoreBar(label, value, max) {
     var pct = Math.min(100, (value / max) * 100);
     var color = pct >= 70 ? '#22c55e' : pct >= 40 ? '#f59e0b' : '#ef4444';
-    return '<div class="early-mover__score-bar">' +
-      '<span class="early-mover__score-bar-label">' + label + '</span>' +
+    return '<div class="early-mover__score-bar" onclick="showScoreExplanation(\'' + label + '\', event)">' +
+      '<span class="early-mover__score-bar-label">' + label + ' <span class="early-mover__score-bar-help">?</span></span>' +
       '<div class="early-mover__score-bar-track">' +
         '<div class="early-mover__score-bar-fill" style="width:' + pct + '%;background:' + color + '"></div>' +
       '</div>' +
@@ -5060,6 +5138,13 @@
           '</span>' +
         '</div>' +
         (coin.ai_summary_ja ? '<div class="early-mover__ai-hint">🤖 ' + coin.ai_summary_ja + '</div>' : '') +
+        (coin.ai_reason_ja ? '<div class="early-mover__ai-reason-hint">💡 ' + (coin.ai_reason_ja.length > 40 ? coin.ai_reason_ja.substring(0, 38) + '...' : coin.ai_reason_ja) + '</div>' : '') +
+        // 価格予想ミニ
+        (coin.ai_price_prediction && coin.ai_price_prediction['1h'] ?
+          '<div class="early-mover__prediction-mini">' +
+            '<span>🔮 1h: ' + coin.ai_price_prediction['1h'] + '</span>' +
+            '<span>24h: ' + coin.ai_price_prediction['24h'] + '</span>' +
+          '</div>' : '') +
         '<div class="early-mover__footer">' +
           riskBadge +
           (coin.ai_potential ? '<span class="early-mover__potential">🎯 ' + coin.ai_potential + '</span>' : '') +
@@ -5139,9 +5224,9 @@
           '</div>' +
         '</div>' +
 
-        // スコア内訳バー
+        // スコア内訳バー（タップで説明表示）
         '<div style="padding:12px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:12px">' +
-          '<div style="font-size:12px;color:#94a3b8;margin-bottom:8px">📊 スコア内訳</div>' +
+          '<div style="font-size:12px;color:#94a3b8;margin-bottom:8px">📊 スコア内訳 <span style="font-size:10px;color:#64748b">（タップで意味を確認）</span></div>' +
           renderScoreBar('Volume', bd.volume || 0, 25) +
           renderScoreBar('Velocity', bd.velocity || 0, 25) +
           renderScoreBar('Buy圧', bd.buy_pressure || 0, 25) +
@@ -5149,13 +5234,53 @@
           renderScoreBar('ソース', bd.multi_source || 0, 10) +
         '</div>' +
 
-        // AI分析
-        (coin.ai_summary_ja ? '<div style="padding:12px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.2);border-radius:8px;margin-bottom:12px">' +
-          '<div style="font-size:12px;color:#a855f7;margin-bottom:4px">🤖 AI分析</div>' +
-          '<div style="font-size:14px;color:#e2e8f0">' + coin.ai_summary_ja + '</div>' +
-          (coin.ai_potential ? '<div style="margin-top:6px;font-size:13px;color:#d4a853">🎯 ポテンシャル: ' + coin.ai_potential + '</div>' : '') +
+        // AI分析 — 判断理由を詳しく
+        (coin.ai_summary_ja ? '<div class="early-mover__ai-section">' +
+          '<div class="early-mover__ai-section-title">🤖 AI分析</div>' +
+          '<div class="early-mover__ai-summary">' + coin.ai_summary_ja + '</div>' +
+          (coin.ai_reason_ja ? '<div class="early-mover__ai-reason">' +
+            '<div class="early-mover__ai-reason-label">💡 判断理由</div>' +
+            '<div class="early-mover__ai-reason-text">' + coin.ai_reason_ja + '</div>' +
+          '</div>' : '') +
+          (coin.ai_potential ? '<div class="early-mover__ai-potential">🎯 ポテンシャル: ' + coin.ai_potential + '</div>' : '') +
           redFlagsHtml +
         '</div>' : '') +
+
+        // AI価格予想
+        (coin.ai_price_prediction && coin.ai_price_prediction['1h'] ?
+          (function() {
+            var pred = coin.ai_price_prediction;
+            var confColor = pred.confidence === 'high' ? '#22c55e' : pred.confidence === 'medium' ? '#f59e0b' : '#ef4444';
+            var confLabel = pred.confidence === 'high' ? '自信あり' : pred.confidence === 'medium' ? 'やや自信' : '不確実';
+            return '<div class="early-mover__prediction">' +
+              '<div class="early-mover__prediction-header">' +
+                '<span class="early-mover__prediction-title">🔮 AI価格予想</span>' +
+                '<span class="early-mover__prediction-conf" style="color:' + confColor + '">' + confLabel + '</span>' +
+              '</div>' +
+              '<div class="early-mover__prediction-grid">' +
+                '<div class="early-mover__prediction-item">' +
+                  '<div class="early-mover__prediction-label">1時間後</div>' +
+                  '<div class="early-mover__prediction-value">' + (pred['1h'] || '-') + '</div>' +
+                '</div>' +
+                '<div class="early-mover__prediction-item">' +
+                  '<div class="early-mover__prediction-label">24時間後</div>' +
+                  '<div class="early-mover__prediction-value">' + (pred['24h'] || '-') + '</div>' +
+                '</div>' +
+              '</div>' +
+              '<div class="early-mover__prediction-scenarios">' +
+                '<div class="early-mover__prediction-scenario early-mover__prediction-scenario--best">' +
+                  '<span class="early-mover__prediction-scenario-label">✨ 最良</span>' +
+                  '<span>' + (pred.best_case || '-') + '</span>' +
+                '</div>' +
+                '<div class="early-mover__prediction-scenario early-mover__prediction-scenario--worst">' +
+                  '<span class="early-mover__prediction-scenario-label">💀 最悪</span>' +
+                  '<span>' + (pred.worst_case || '-') + '</span>' +
+                '</div>' +
+              '</div>' +
+              '<div class="early-mover__prediction-disclaimer">※ AI予想は参考情報です。投資判断は自己責任で行ってください。</div>' +
+            '</div>';
+          })()
+        : '') +
 
         // マーケットデータ
         '<div style="display:flex;gap:8px;margin-bottom:12px">' +

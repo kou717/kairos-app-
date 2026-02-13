@@ -11206,6 +11206,269 @@ body.has-ticker-bar {
   font-weight: 700;
   margin-left: auto;
 }
+
+/* スコア説明ポップアップ */
+.score-explain-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 10100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.score-explain-overlay.active {
+  opacity: 1;
+}
+
+.score-explain-popup {
+  background: #1e293b;
+  border-radius: 16px;
+  padding: 20px;
+  max-width: 340px;
+  width: 100%;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+}
+
+.score-explain-popup__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.score-explain-popup__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.score-explain-popup__max {
+  font-size: 12px;
+  color: #d4a853;
+  padding: 2px 8px;
+  background: rgba(212,168,83,0.15);
+  border-radius: 6px;
+}
+
+.score-explain-popup__desc {
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.score-explain-popup__case {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
+.score-explain-popup__case--good {
+  background: rgba(34,197,94,0.08);
+  color: #86efac;
+}
+
+.score-explain-popup__case--bad {
+  background: rgba(239,68,68,0.08);
+  color: #fca5a5;
+}
+
+.score-explain-popup__case-icon {
+  flex-shrink: 0;
+}
+
+/* スコアバーのヘルプアイコン */
+.early-mover__score-bar-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 700;
+  vertical-align: middle;
+  margin-left: 2px;
+  cursor: pointer;
+}
+
+.early-mover__score-bar {
+  cursor: pointer;
+}
+
+.early-mover__score-bar:active {
+  opacity: 0.7;
+}
+
+/* AI判断理由 */
+.early-mover__ai-section {
+  padding: 12px;
+  background: rgba(168,85,247,0.1);
+  border: 1px solid rgba(168,85,247,0.2);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.early-mover__ai-section-title {
+  font-size: 12px;
+  color: #a855f7;
+  margin-bottom: 6px;
+}
+
+.early-mover__ai-summary {
+  font-size: 14px;
+  color: #e2e8f0;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.early-mover__ai-reason {
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.early-mover__ai-reason-label {
+  font-size: 11px;
+  color: #c4b5fd;
+  margin-bottom: 4px;
+}
+
+.early-mover__ai-reason-text {
+  font-size: 13px;
+  color: #cbd5e1;
+  line-height: 1.6;
+}
+
+.early-mover__ai-potential {
+  font-size: 13px;
+  color: #d4a853;
+}
+
+/* カード内のAI理由ヒント */
+.early-mover__ai-reason-hint {
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+/* カード内の価格予想ミニ */
+.early-mover__prediction-mini {
+  display: flex;
+  gap: 12px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #818cf8;
+  margin-bottom: 4px;
+}
+
+/* AI価格予想セクション */
+.early-mover__prediction {
+  padding: 12px;
+  background: rgba(99,102,241,0.08);
+  border: 1px solid rgba(99,102,241,0.2);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.early-mover__prediction-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.early-mover__prediction-title {
+  font-size: 12px;
+  color: #818cf8;
+  font-weight: 600;
+}
+
+.early-mover__prediction-conf {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.early-mover__prediction-grid {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.early-mover__prediction-item {
+  flex: 1;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.early-mover__prediction-label {
+  font-size: 10px;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.early-mover__prediction-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.early-mover__prediction-scenarios {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.early-mover__prediction-scenario {
+  display: flex;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.early-mover__prediction-scenario--best {
+  background: rgba(34,197,94,0.08);
+  color: #86efac;
+}
+
+.early-mover__prediction-scenario--worst {
+  background: rgba(239,68,68,0.08);
+  color: #fca5a5;
+}
+
+.early-mover__prediction-scenario-label {
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.early-mover__prediction-disclaimer {
+  font-size: 10px;
+  color: #64748b;
+  text-align: center;
+}
 /* ============================================
    通貨別ストラテジーUI（長期/短期の2択）
    ============================================ */
