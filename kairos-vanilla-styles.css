@@ -10423,6 +10423,11 @@ button.moonshot-btn.moonshot-btn--active {
 /* Moonshot詳細モーダル */
 .moonshot-detail-modal {
   max-width: 440px;
+  width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--bg-secondary, #1a1a2e);
+  border-radius: 20px;
 }
 
 /* ===== トレーディングシグナルカード ===== */
