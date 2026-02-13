@@ -47,12 +47,12 @@ self.addEventListener('install', (event) => {
 
 // アクティベーション
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating KAIROS v19.3...');
+  console.log('[SW] Activating KAIROS v19.10...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter(name => !name.includes('v19.3'))
+          .filter(name => !name.includes('v19-10'))
           .map(name => {
             console.log('[SW] Deleting old cache:', name);
             return caches.delete(name);
