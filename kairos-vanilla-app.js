@@ -2148,6 +2148,7 @@
     'currencies': 'home',
     'market': 'home',
     'ai-compare': 'home',
+    'moonshot': 'home',
     'home': null  // ホームが最上位 → アプリ終了
   };
 
@@ -2196,6 +2197,13 @@
       }
     }
 
+    // スコア説明ポップアップ → 最優先で閉じる
+    var scorePopup = document.getElementById('score-explain-popup');
+    if (scorePopup) {
+      scorePopup.remove();
+      return true;
+    }
+
     // close関数がないモーダル → remove で閉じる
     var simpleModalIds = [
       'kairos-settings-modal', 'kairos-api-settings-modal',
@@ -2204,7 +2212,9 @@
       'kairos-history-modal', 'kairos-history-edit-modal',
       'kairos-pnl-modal', 'kairos-backup-modal',
       'kairos-dca-modal', 'kairos-category-help-modal',
-      'feargreed-detail-modal', 'indicator-help-popup'
+      'feargreed-detail-modal', 'indicator-help-popup',
+      'early-mover-detail-modal', 'moonshot-detail-modal',
+      'moonshot-settings-modal', 'news-detail-modal'
     ];
     for (var j = 0; j < simpleModalIds.length; j++) {
       var modal = document.getElementById(simpleModalIds[j]);

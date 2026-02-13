@@ -5712,7 +5712,7 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.home, .currencies, .market, .ai-compare, .detail {
+.home, .currencies, .market, .ai-compare, .detail, .moonshot-screen {
   animation: fadeIn 0.3s ease-out;
 }
 
@@ -9861,6 +9861,7 @@ button.moonshot-btn.moonshot-btn--active {
 /* Moonshot画面 */
 .moonshot-screen {
   padding: 16px;
+  padding-top: 84px;
   padding-bottom: 100px;
 }
 
