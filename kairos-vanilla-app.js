@@ -1346,13 +1346,6 @@
     var cardClass = isBuy ? 'trading-signal-card--buy trading-signal-card--expanded' : 'trading-signal-card--sell trading-signal-card--expanded';
     var signalClass = isBuy ? 'trading-signal-card__signal--buy' : 'trading-signal-card__signal--sell';
 
-    // 価格フォーマット
-    function formatPrice(price) {
-      if (price >= 1000) return '$' + price.toLocaleString('en-US', { maximumFractionDigits: 0 });
-      if (price >= 1) return '$' + price.toFixed(2);
-      return '$' + price.toFixed(6);
-    }
-
     // 理由リスト
     var reasonsHtml = '';
     if (signal.reasons && signal.reasons.length > 0) {
@@ -1410,17 +1403,17 @@
         '<div class="trading-signal-card__targets">' +
           '<div class="trading-signal-card__target">' +
             '<div class="trading-signal-card__target-label">損切り</div>' +
-            '<div class="trading-signal-card__target-price">' + formatPrice(signal.stop_loss) + '</div>' +
+            '<div class="trading-signal-card__target-price">' + formatPriceCompact(signal.stop_loss) + '</div>' +
             '<div class="trading-signal-card__target-pct negative">' + signal.stop_loss_pct.toFixed(1) + '%</div>' +
           '</div>' +
           '<div class="trading-signal-card__target">' +
             '<div class="trading-signal-card__target-label">エントリー</div>' +
-            '<div class="trading-signal-card__target-price">' + formatPrice(signal.entry_price) + '</div>' +
+            '<div class="trading-signal-card__target-price">' + formatPriceCompact(signal.entry_price) + '</div>' +
             '<div class="trading-signal-card__target-pct">現在</div>' +
           '</div>' +
           '<div class="trading-signal-card__target">' +
             '<div class="trading-signal-card__target-label">利確</div>' +
-            '<div class="trading-signal-card__target-price">' + formatPrice(signal.take_profit) + '</div>' +
+            '<div class="trading-signal-card__target-price">' + formatPriceCompact(signal.take_profit) + '</div>' +
             '<div class="trading-signal-card__target-pct positive">+' + signal.take_profit_pct.toFixed(1) + '%</div>' +
           '</div>' +
         '</div>' +
@@ -1643,6 +1636,8 @@
   }
 
   // ===== ユーティリティ =====
+  var JPY_RATE = 150;
+
   function formatYen(value) {
     if (value === undefined || value === null) return '-';
     return '¥' + Math.round(value).toLocaleString('ja-JP');
@@ -1668,6 +1663,49 @@
     if (value === undefined || value === null) return '-';
     var sign = value >= 0 ? '+' : '';
     return sign + value.toFixed(1) + '%';
+  }
+
+  // 統一価格フォーマッタ（appState.priceCurrency に応じてJPY/USD自動切替）
+  function formatPrice(usdValue) {
+    if (usdValue === undefined || usdValue === null) return '-';
+    if (appState.priceCurrency === 'JPY') {
+      return formatYen(usdValue * JPY_RATE);
+    }
+    return formatUSD(usdValue);
+  }
+
+  // 小額コイン対応版（Moonshot等で使用）
+  function formatPriceCompact(usdValue) {
+    if (usdValue === undefined || usdValue === null) return '-';
+    if (appState.priceCurrency === 'JPY') {
+      var jpyVal = usdValue * JPY_RATE;
+      if (jpyVal >= 1000) return '¥' + Math.round(jpyVal).toLocaleString('ja-JP');
+      if (jpyVal >= 1) return '¥' + jpyVal.toFixed(2);
+      if (jpyVal >= 0.01) return '¥' + jpyVal.toFixed(4);
+      return '¥' + jpyVal.toFixed(6);
+    }
+    // USD
+    if (usdValue >= 1000) return '$' + usdValue.toLocaleString('en-US', {maximumFractionDigits: 0});
+    if (usdValue >= 1) return '$' + usdValue.toFixed(2);
+    if (usdValue >= 0.001) return '$' + usdValue.toFixed(4);
+    return '$' + usdValue.toFixed(8);
+  }
+
+  // Volume/Mcap 用フォーマッタ（JPY/USD切替対応）
+  function formatValueCompact(usdValue) {
+    if (usdValue === undefined || usdValue === null) return '-';
+    if (appState.priceCurrency === 'JPY') {
+      var jpyVal = usdValue * JPY_RATE;
+      if (jpyVal >= 1e12) return '¥' + (jpyVal / 1e12).toFixed(1) + '兆';
+      if (jpyVal >= 1e8) return '¥' + (jpyVal / 1e8).toFixed(1) + '億';
+      if (jpyVal >= 1e4) return '¥' + (jpyVal / 1e4).toFixed(0) + '万';
+      return '¥' + Math.round(jpyVal).toLocaleString('ja-JP');
+    }
+    // USD
+    if (usdValue >= 1e9) return '$' + (usdValue / 1e9).toFixed(1) + 'B';
+    if (usdValue >= 1e6) return '$' + (usdValue / 1e6).toFixed(1) + 'M';
+    if (usdValue >= 1e3) return '$' + (usdValue / 1e3).toFixed(1) + 'K';
+    return '$' + usdValue.toString();
   }
 
   function getGradeClass(grade) {
@@ -3199,7 +3237,7 @@
           '<span class="currencies__list-card-icon">' + getCoinIcon(ticker) + '</span>' +
           '<div class="currencies__list-card-info">' +
             '<span class="currencies__list-card-symbol">' + ticker + ' <span class="strategy-badge strategy-badge--' + strat + '">' + stratCfg.icon + ' ' + stratCfg.label + '</span></span>' +
-            '<span class="currencies__list-card-price">' + formatUSD(price) + '</span>' +
+            '<span class="currencies__list-card-price">' + formatPrice(price) + '</span>' +
           '</div>' +
         '</div>' +
         '<div class="currencies__list-card-right">' +
@@ -3215,7 +3253,7 @@
         '<span class="currencies__list-card-rank">' + (idx + 1) + '</span>' +
         '<span class="currencies__list-card-icon">' + getCoinIcon(coin.ticker) + '</span>' +
         '<span class="currencies__list-card-symbol">' + coin.ticker + '</span>' +
-        '<span class="currencies__list-card-price">' + formatUSD(coin.price) + '</span>' +
+        '<span class="currencies__list-card-price">' + formatPrice(coin.price) + '</span>' +
         '<span class="currencies__list-card-change ' + changeClass + '">' + formatPercent(coin.change) + '</span>' +
         '<span class="rank-badge rank-badge--sm ' + getGradeClass(coin.grade) + '">' + coin.grade + '</span>' +
       '</div>';
@@ -4586,13 +4624,7 @@
       var momentumColor = coin.momentum >= 60 ? '#22c55e' : coin.momentum >= 40 ? '#f59e0b' : '#ef4444';
       var change = coin.price_change_24h || 0;
 
-      var priceStr = '';
-      if (coin.price_usd !== undefined && coin.price_usd !== null) {
-        if (coin.price_usd >= 1000) priceStr = '$' + coin.price_usd.toLocaleString('en-US', {maximumFractionDigits: 0});
-        else if (coin.price_usd >= 1) priceStr = '$' + coin.price_usd.toFixed(2);
-        else if (coin.price_usd >= 0.001) priceStr = '$' + coin.price_usd.toFixed(4);
-        else priceStr = '$' + coin.price_usd.toFixed(8);
-      }
+      var priceStr = formatPriceCompact(coin.price_usd);
 
       html += '<div class="moonshot-coin" onclick="openMoonshotCoinDetail(' + idx + ')" style="animation-delay:' + (idx * 0.05) + 's">' +
         '<div class="moonshot-coin__header">' +
@@ -4710,15 +4742,10 @@
     var changeClass = change >= 0 ? 'positive' : 'negative';
     var changeStr = (change >= 0 ? '+' : '') + change.toFixed(1) + '%';
 
-    var priceStr = '';
-    if (coin.price_usd !== undefined && coin.price_usd !== null) {
-      if (coin.price_usd >= 1000) priceStr = '$' + coin.price_usd.toLocaleString('en-US', {maximumFractionDigits: 2});
-      else if (coin.price_usd >= 1) priceStr = '$' + coin.price_usd.toFixed(4);
-      else priceStr = '$' + coin.price_usd.toFixed(8);
-    }
+    var priceStr = formatPriceCompact(coin.price_usd);
 
-    var volumeStr = coin.total_volume ? '$' + formatCompactNumber(coin.total_volume) : '-';
-    var mcapStr = coin.market_cap ? '$' + formatCompactNumber(coin.market_cap) : '-';
+    var volumeStr = coin.total_volume ? formatValueCompact(coin.total_volume) : '-';
+    var mcapStr = coin.market_cap ? formatValueCompact(coin.market_cap) : '-';
 
     var safetyColor = coin.safety >= 70 ? '#22c55e' : coin.safety >= 50 ? '#f59e0b' : '#ef4444';
     var hypeColor = coin.hype >= 70 ? '#a855f7' : coin.hype >= 50 ? '#818cf8' : '#6b7280';
@@ -4857,9 +4884,8 @@
     var changeClass = change >= 0 ? 'positive' : 'negative';
     var changeSign = change >= 0 ? '+' : '';
 
-    // 円建て価格（レート150で計算）
-    var jpyRate = 150;
-    var priceJpy = priceUsd * jpyRate;
+    // 円建て価格
+    var priceJpy = priceUsd * JPY_RATE;
 
     // コイン名マッピング - CRYPTO_CATEGORIESからも取得
     var coinNames = {
@@ -5396,12 +5422,12 @@
           var changeClass = change24h >= 0 ? 'positive' : 'negative';
           var changeSign = change24h >= 0 ? '+' : '';
 
-          // 価格表示を更新
+          // 価格表示を更新（JPY/USD切替対応）
           var priceJpyEl = document.querySelector('.detail__price-jpy');
           var priceUsdEl = document.querySelector('.detail__price-usd');
           var priceChangeEl = document.querySelector('.detail__price-change');
 
-          if (priceJpyEl) priceJpyEl.textContent = '¥' + Math.round(priceJpy).toLocaleString();
+          if (priceJpyEl) priceJpyEl.textContent = formatYen(priceJpy);
           if (priceUsdEl) priceUsdEl.textContent = formatUSD(price);
           if (priceChangeEl) {
             priceChangeEl.className = 'detail__price-change ' + changeClass;
@@ -8031,6 +8057,11 @@
 
       '<div class="kairos-side-menu-section">' +
         '<div class="kairos-side-menu-section-title">設定</div>' +
+        '<button class="kairos-side-menu-btn kairos-side-menu-btn--currency" onclick="togglePriceCurrency(); closeSideMenu();">' +
+          '<span class="kairos-side-menu-btn-icon">💱</span>' +
+          '<span>通貨: ' + (appState.priceCurrency === 'JPY' ? '¥ JPY' : '$ USD') + '</span>' +
+          '<span class="kairos-side-menu-btn-toggle">' + (appState.priceCurrency === 'JPY' ? '→ $ USD' : '→ ¥ JPY') + '</span>' +
+        '</button>' +
         '<button class="kairos-side-menu-btn" onclick="openSettingsModal(); closeSideMenu();">' +
           '<span class="kairos-side-menu-btn-icon">⚙️</span>' +
           '<span>設定</span>' +
