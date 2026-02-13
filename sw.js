@@ -1,7 +1,7 @@
-// KAIROS Service Worker v19.3 - Dual score (longterm + swing per coin)
-const CACHE_NAME = 'kairos-v19-3';
-const STATIC_CACHE = 'kairos-static-v19-3';
-const DYNAMIC_CACHE = 'kairos-dynamic-v19-3';
+// KAIROS Service Worker v19.9 - Moonshot real data
+const CACHE_NAME = 'kairos-v19-9';
+const STATIC_CACHE = 'kairos-static-v19-9';
+const DYNAMIC_CACHE = 'kairos-dynamic-v19-9';
 
 // 静的アセット（必ずキャッシュ）
 const STATIC_ASSETS = [

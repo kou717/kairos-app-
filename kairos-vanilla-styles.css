@@ -604,18 +604,12 @@
 }
 
 /* --- 市場画面 --- */
-[data-theme="turquoise"] .market-screen *,
-[data-theme="turquoise"] .market-header__title,
-[data-theme="turquoise"] .market-card__title,
-[data-theme="turquoise"] .market-card__value,
-[data-theme="turquoise"] .market-item__name,
-[data-theme="turquoise"] .market-item__price {
-  color: #0f766e !important;
+[data-theme="turquoise"] .market {
+  color: #0f766e;
 }
-[data-theme="turquoise"] .market-card__label,
-[data-theme="turquoise"] .market-item__change,
-[data-theme="turquoise"] .market-header__sub {
-  color: #5eada6 !important;
+[data-theme="turquoise"] .market__title,
+[data-theme="turquoise"] .market__header-time {
+  color: #0f766e !important;
 }
 
 /* --- 通貨一覧画面 --- */
@@ -776,7 +770,95 @@
   background: rgba(13,148,136,0.2) !important;
 }
 [data-theme="turquoise"] ::-webkit-scrollbar-track {
-  background: rgba(0,0,0,0.03) !important;
+  background: rgba(13,148,136,0.03) !important;
+}
+
+/* --- 黒テキスト完全排除（#000, black, rgb(0,0,0)） --- */
+[data-theme="turquoise"] [style*="color:#000"],
+[data-theme="turquoise"] [style*="color: #000"],
+[data-theme="turquoise"] [style*="color:black"],
+[data-theme="turquoise"] [style*="color: black"],
+[data-theme="turquoise"] [style*="color:rgb(0"] {
+  color: #0f766e !important;
+}
+
+/* ブラウザデフォルト黒テキストのオーバーライド */
+[data-theme="turquoise"] h1, [data-theme="turquoise"] h2,
+[data-theme="turquoise"] h3, [data-theme="turquoise"] h4,
+[data-theme="turquoise"] h5, [data-theme="turquoise"] h6,
+[data-theme="turquoise"] p, [data-theme="turquoise"] span,
+[data-theme="turquoise"] div, [data-theme="turquoise"] label,
+[data-theme="turquoise"] a, [data-theme="turquoise"] li,
+[data-theme="turquoise"] td, [data-theme="turquoise"] th {
+  color: inherit;
+}
+
+/* input/select/textareaのブラウザデフォルト黒 */
+[data-theme="turquoise"] input,
+[data-theme="turquoise"] select,
+[data-theme="turquoise"] textarea {
+  color: #115e59 !important;
+}
+
+/* numberインプット（価格・金額） */
+[data-theme="turquoise"] input[type="number"],
+[data-theme="turquoise"] input[type="text"],
+[data-theme="turquoise"] input[type="datetime-local"],
+[data-theme="turquoise"] input[type="date"] {
+  color: #115e59 !important;
+}
+
+/* CSS内の #000 を使っている要素（detail, menus等） */
+[data-theme="turquoise"] .detail__buy-price,
+[data-theme="turquoise"] .detail__sell-price,
+[data-theme="turquoise"] .portfolio-stat-value,
+[data-theme="turquoise"] .portfolio-stat-label,
+[data-theme="turquoise"] .dca-result-value,
+[data-theme="turquoise"] .export-title,
+[data-theme="turquoise"] .alert-config-title {
+  color: #0f766e !important;
+}
+
+/* ボーダーに黒を使ってるものもターコイズに */
+[data-theme="turquoise"] [style*="border-color:rgba(0,0,0"],
+[data-theme="turquoise"] [style*="border:1px solid rgba(0,0,0"] {
+  border-color: rgba(13,148,136,0.12) !important;
+}
+
+/* --- Fear&Greed ゲージ SVG: fill/stroke 白色オーバーライド --- */
+[data-theme="turquoise"] svg text[fill*="rgba(255,255,255"] {
+  fill: #5eada6 !important;
+}
+[data-theme="turquoise"] svg line[stroke*="rgba(255,255,255"] {
+  stroke: rgba(13,148,136,0.3) !important;
+}
+[data-theme="turquoise"] svg path[stroke*="rgba(255,255,255"] {
+  stroke: rgba(13,148,136,0.08) !important;
+}
+[data-theme="turquoise"] svg circle[fill="#0a1628"] {
+  fill: #f0f4f4 !important;
+}
+
+/* --- 市場画面: 白背景カード → ターコイズに差し替え --- */
+[data-theme="turquoise"] .market [style*="background:rgba(255,255,255,0.03)"] {
+  background: rgba(13,148,136,0.04) !important;
+  border-color: rgba(13,148,136,0.12) !important;
+}
+[data-theme="turquoise"] .market [style*="border:1px solid rgba(255,255,255"] {
+  border-color: rgba(13,148,136,0.12) !important;
+}
+[data-theme="turquoise"] .market [style*="border-bottom:1px solid rgba(255,255,255"] {
+  border-color: rgba(13,148,136,0.1) !important;
+}
+
+/* --- 市場セクター バー背景 --- */
+[data-theme="turquoise"] .market [style*="background:rgba(255,255,255,0.1)"] {
+  background: rgba(13,148,136,0.1) !important;
+}
+
+/* --- rgba(255,255,255,0.9) テキスト（ヒートマップ等） --- */
+[data-theme="turquoise"] [style*="color:rgba(255,255,255,0.9)"] {
+  color: #0f766e !important;
 }
 
 /* ===== 共通CSS変数 ===== */
@@ -9905,6 +9987,33 @@ button.moonshot-btn.moonshot-btn--active {
   color: rgba(255, 255, 255, 0.4);
 }
 
+/* ローディング */
+.moonshot-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 16px;
+}
+
+.moonshot-loading__spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #fbbf24;
+  border-radius: 50%;
+  animation: moonshot-spin 0.8s linear infinite;
+}
+
+@keyframes moonshot-spin {
+  to { transform: rotate(360deg); }
+}
+
+.moonshot-loading__text {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
 /* コインカード */
 .moonshot-coins {
   display: flex;
@@ -9919,6 +10028,7 @@ button.moonshot-btn.moonshot-btn--active {
   cursor: pointer;
   transition: all 0.2s ease;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: slideUp 0.3s ease-out both;
 }
 
 .moonshot-coin:active {
@@ -9930,18 +10040,45 @@ button.moonshot-btn.moonshot-btn--active {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+}
+
+.moonshot-coin__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.moonshot-coin__info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
 }
 
 .moonshot-coin__symbol {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: #fbbf24;
 }
 
 .moonshot-coin__name {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.moonshot-coin__rank {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
 }
 
 .moonshot-coin__badge {
@@ -9954,10 +10091,23 @@ button.moonshot-btn.moonshot-btn--active {
   margin-left: auto;
 }
 
+.moonshot-coin__price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.moonshot-coin__price {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
 .moonshot-coin__metrics {
   display: flex;
   gap: 16px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .moonshot-metric {
@@ -9975,6 +10125,14 @@ button.moonshot-btn.moonshot-btn--active {
 .moonshot-metric__value {
   font-size: 18px;
   font-weight: 700;
+}
+
+.moonshot-coin__sentiment {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .moonshot-coin__footer {
@@ -10243,6 +10401,11 @@ button.moonshot-btn.moonshot-btn--active {
   font-size: 18px;
   font-weight: 600;
   color: #fbbf24;
+}
+
+/* Moonshot詳細モーダル */
+.moonshot-detail-modal {
+  max-width: 440px;
 }
 
 /* ===== トレーディングシグナルカード ===== */

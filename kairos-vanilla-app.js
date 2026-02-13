@@ -1100,6 +1100,25 @@
           .then(resolve)
           .catch(reject);
       });
+    },
+
+    getMoonshotData: function() {
+      var self = this;
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) {
+            reject(new Error('Backend not available'));
+            return;
+          }
+          fetch(self.baseUrl + '/api/moonshot')
+            .then(function(response) {
+              if (!response.ok) throw new Error('API error');
+              return response.json();
+            })
+            .then(resolve)
+            .catch(reject);
+        });
+      });
     }
   };
 
@@ -1196,7 +1215,7 @@
     // 価格表示通貨（USD/JPY切り替え）
     priceCurrency: localStorage.getItem('kairosPriceCurrency') || 'JPY',
     // Moonshot（ミームコイン枠）
-    moonshotEnabled: localStorage.getItem('kairosMoonshotEnabled') === 'true',
+    moonshotEnabled: true,
     moonshotBudget: parseInt(localStorage.getItem('kairosMoonshotBudget')) || 10000,
     moonshotSpent: parseInt(localStorage.getItem('kairosMoonshotSpent')) || 0,
     // ポートフォリオ詳細（ホーム画面内インプレース展開）
@@ -1212,6 +1231,46 @@
     timestamp: 0,
     TTL: 5 * 60 * 1000 // 5分キャッシュ
   };
+
+  // Moonshotキャッシュ
+  var moonshotCache = {
+    data: null,
+    timestamp: 0,
+    TTL: 5 * 60 * 1000 // 5分キャッシュ
+  };
+
+  function loadMoonshotCoins() {
+    var container = document.getElementById('moonshot-coins');
+    if (!container) return;
+
+    var now = Date.now();
+    if (moonshotCache.data && (now - moonshotCache.timestamp) < moonshotCache.TTL) {
+      renderMoonshotCoinsIntoDOM(moonshotCache.data);
+      return;
+    }
+
+    // ローディング表示
+    container.innerHTML = '<div class="moonshot-loading">' +
+      '<div class="moonshot-loading__spinner"></div>' +
+      '<div class="moonshot-loading__text">トレンドコインを検索中...</div>' +
+    '</div>';
+
+    fetch(BACKEND_URL + '/api/moonshot')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        moonshotCache.data = data.coins || [];
+        moonshotCache.timestamp = Date.now();
+        renderMoonshotCoinsIntoDOM(moonshotCache.data);
+      })
+      .catch(function(err) {
+        console.error('Moonshot fetch error:', err);
+        container.innerHTML = '<div class="moonshot-empty">' +
+          '<div class="moonshot-empty__icon">⚠️</div>' +
+          '<div class="moonshot-empty__text">データ取得に失敗しました</div>' +
+          '<div class="moonshot-empty__hint">バックエンドが起動しているか確認してください</div>' +
+        '</div>';
+      });
+  }
 
   // 通貨切り替え関数
   function togglePriceCurrency() {
@@ -2337,14 +2396,12 @@
 
     html += '</nav>';
 
-    // 右：Moonshotボタン（有効時のみ）
-    if (appState.moonshotEnabled) {
-      var isMoonshotActive = appState.currentScreen === 'moonshot';
-      html += '<button class="moonshot-btn' + (isMoonshotActive ? ' moonshot-btn--active' : '') + '" onclick="window.KairosApp.showMoonshot()">' +
-        '<span class="moonshot-btn__icon">🎰</span>' +
-        '<span class="moonshot-btn__label">Moon</span>' +
-      '</button>';
-    }
+    // 右：Moonshotボタン
+    var isMoonshotActive = appState.currentScreen === 'moonshot';
+    html += '<button class="moonshot-btn' + (isMoonshotActive ? ' moonshot-btn--active' : '') + '" onclick="window.KairosApp.showMoonshot()">' +
+      '<span class="moonshot-btn__icon">🎰</span>' +
+      '<span class="moonshot-btn__label">Moon</span>' +
+    '</button>';
 
     html += '</div>';
 
@@ -3209,6 +3266,27 @@
     var totalVolume = market.total_volume || 0;
     var allResults = kairosData.all_results || [];
 
+    // テーマ対応カラー
+    var _lt = document.documentElement.getAttribute('data-theme') === 'turquoise';
+    var mc = {
+      cardBg: _lt ? 'rgba(13,148,136,0.04)' : 'rgba(255,255,255,0.03)',
+      cardBorder: _lt ? 'rgba(13,148,136,0.12)' : 'rgba(255,255,255,0.08)',
+      subtle: _lt ? '#5eada6' : 'rgba(255,255,255,0.5)',
+      medium: _lt ? '#0d9488' : 'rgba(255,255,255,0.6)',
+      bright: _lt ? '#0f766e' : 'rgba(255,255,255,0.8)',
+      dim: _lt ? '#5eada6' : 'rgba(255,255,255,0.4)',
+      dimBright: _lt ? '#0d9488' : 'rgba(255,255,255,0.7)',
+      barBg: _lt ? 'rgba(13,148,136,0.1)' : 'rgba(255,255,255,0.1)',
+      divider: _lt ? 'rgba(13,148,136,0.08)' : 'rgba(255,255,255,0.05)',
+      ring: _lt ? 'rgba(13,148,136,0.08)' : 'rgba(255,255,255,0.04)',
+      tickS: _lt ? 'rgba(13,148,136,0.4)' : 'rgba(255,255,255,0.4)',
+      tickW: _lt ? 'rgba(13,148,136,0.2)' : 'rgba(255,255,255,0.15)',
+      label: _lt ? '#5eada6' : 'rgba(255,255,255,0.35)',
+      center: _lt ? '#f0f4f4' : '#0a1628',
+      heatText: _lt ? '#0f766e' : '#fff',
+      heatTextDim: _lt ? '#0d9488' : 'rgba(255,255,255,0.9)'
+    };
+
     // F&G履歴の非同期取得（次回レンダリングで反映）
     if (!FearGreedAPI._historyCache) {
       FearGreedAPI.fetchHistory(30);
@@ -3273,7 +3351,7 @@
       var tr1 = 86, tr2 = 92;
       tickLines += '<line x1="' + (100 + tr1 * Math.cos(ta)) + '" y1="' + (105 + tr1 * Math.sin(ta)) + '" ' +
         'x2="' + (100 + tr2 * Math.cos(ta)) + '" y2="' + (105 + tr2 * Math.sin(ta)) + '" ' +
-        'stroke="rgba(255,255,255,' + (t % 5 === 0 ? '0.4' : '0.15') + ')" stroke-width="' + (t % 5 === 0 ? '2' : '1') + '"/>';
+        'stroke="' + (t % 5 === 0 ? mc.tickS : mc.tickW) + '" stroke-width="' + (t % 5 === 0 ? '2' : '1') + '"/>';
     }
     var fgGaugeSvg = '<svg viewBox="0 0 200 125" style="width:100%;max-width:240px">' +
       '<defs>' +
@@ -3286,24 +3364,24 @@
           '<feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
       '</defs>' +
       // 外側の薄いリング
-      '<path d="M 12 105 A 88 88 0 0 1 188 105" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="16"/>' +
+      '<path d="M 12 105 A 88 88 0 0 1 188 105" fill="none" stroke="' + mc.ring + '" stroke-width="16"/>' +
       // セグメント
       segmentPaths +
       // 目盛り
       tickLines +
       // ラベル
-      '<text x="18" y="118" text-anchor="middle" fill="rgba(255,255,255,0.35)" font-size="8">0</text>' +
-      '<text x="100" y="22" text-anchor="middle" fill="rgba(255,255,255,0.35)" font-size="8">50</text>' +
-      '<text x="182" y="118" text-anchor="middle" fill="rgba(255,255,255,0.35)" font-size="8">100</text>' +
+      '<text x="18" y="118" text-anchor="middle" fill="' + mc.label + '" font-size="8">0</text>' +
+      '<text x="100" y="22" text-anchor="middle" fill="' + mc.label + '" font-size="8">50</text>' +
+      '<text x="182" y="118" text-anchor="middle" fill="' + mc.label + '" font-size="8">100</text>' +
       // 針（グロー付き・スイープアニメーション）
       (function() { var sw = 0.5 + Math.random() * 0.5; return '<g class="fg-needle-animated" style="--fg-sweep-from:' + (-(fgRatio * 180)) + 'deg;--fg-sweep-max:' + (sw * (1 - fgRatio) * 180) + 'deg;--fg-duration:' + (2 + (1 - sw) * 2) + 's">'; })() +
         '<line x1="100" y1="105" x2="' + needleX + '" y2="' + needleY + '" stroke="' + fgColor + '" stroke-width="2.5" stroke-linecap="round" filter="url(#fgGlow)"/>' +
         '<circle cx="100" cy="105" r="5" fill="' + fgColor + '" filter="url(#fgGlow)"/>' +
-        '<circle cx="100" cy="105" r="2.5" fill="#0a1628"/>' +
+        '<circle cx="100" cy="105" r="2.5" fill="' + mc.center + '"/>' +
       '</g>' +
       // 中央の数値
       '<text x="100" y="82" text-anchor="middle" fill="' + fgColor + '" font-size="36" font-weight="800" font-family="system-ui,sans-serif">' + fearGreed + '</text>' +
-      '<text x="100" y="98" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="11" font-weight="500">' + getFearGreedLabel(fearGreed) + '</text>' +
+      '<text x="100" y="98" text-anchor="middle" fill="' + mc.medium + '" font-size="11" font-weight="500">' + getFearGreedLabel(fearGreed) + '</text>' +
     '</svg>';
 
     // 過去30日ミニチャート（リアルデータ or フォールバック）
@@ -3326,7 +3404,7 @@
 
     var heatmapHtml = heatmapCoins.map(function(coin) {
       var color = coin.change >= 0 ? 'rgba(34,197,94,' + Math.min(0.2 + Math.abs(coin.change) / 20, 1) + ')' : 'rgba(239,68,68,' + Math.min(0.2 + Math.abs(coin.change) / 20, 1) + ')';
-      var textColor = Math.abs(coin.change) > 5 ? '#fff' : 'rgba(255,255,255,0.9)';
+      var textColor = Math.abs(coin.change) > 5 ? mc.heatText : mc.heatTextDim;
       var changeText = (coin.change >= 0 ? '+' : '') + coin.change.toFixed(1) + '%';
       return '<div style="background:' + color + ';border-radius:8px;padding:10px 6px;text-align:center;min-width:0">' +
         '<div style="font-size:11px;font-weight:600;color:' + textColor + '">' + coin.ticker + '</div>' +
@@ -3360,8 +3438,8 @@
       var barWidth = Math.min(Math.abs(s.change) * 8, 100);
       var changeText = (s.change >= 0 ? '+' : '') + s.change.toFixed(1) + '%';
       return '<div style="display:flex;align-items:center;gap:12px;padding:8px 0">' +
-        '<span style="width:60px;font-size:13px;color:rgba(255,255,255,0.8)">' + s.name + '</span>' +
-        '<div style="flex:1;height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden">' +
+        '<span style="width:60px;font-size:13px;color:' + mc.bright + '">' + s.name + '</span>' +
+        '<div style="flex:1;height:8px;background:' + mc.barBg + ';border-radius:4px;overflow:hidden">' +
           '<div style="height:100%;width:' + barWidth + '%;background:' + s.color + ';border-radius:4px;transition:width 0.5s"></div>' +
         '</div>' +
         '<span style="width:50px;text-align:right;font-size:12px;color:' + s.color + ';font-weight:600">' + changeText + '</span>' +
@@ -3375,8 +3453,8 @@
 
     var gainersHtml = topGainers.map(function(coin, idx) {
       var change = coin.price_change_24h || 0;
-      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)">' +
-        '<span style="width:20px;color:rgba(255,255,255,0.5);font-size:12px">' + (idx + 1) + '</span>' +
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid ' + mc.divider + '">' +
+        '<span style="width:20px;color:' + mc.subtle + ';font-size:12px">' + (idx + 1) + '</span>' +
         '<span style="flex:1;font-size:13px;font-weight:500">' + coin.ticker + '</span>' +
         '<span style="color:#22c55e;font-size:13px;font-weight:600">+' + Math.abs(change).toFixed(1) + '%</span>' +
       '</div>';
@@ -3384,8 +3462,8 @@
 
     var losersHtml = topLosers.map(function(coin, idx) {
       var change = coin.price_change_24h || 0;
-      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)">' +
-        '<span style="width:20px;color:rgba(255,255,255,0.5);font-size:12px">' + (idx + 1) + '</span>' +
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid ' + mc.divider + '">' +
+        '<span style="width:20px;color:' + mc.subtle + ';font-size:12px">' + (idx + 1) + '</span>' +
         '<span style="flex:1;font-size:13px;font-weight:500">' + coin.ticker + '</span>' +
         '<span style="color:#ef4444;font-size:13px;font-weight:600">' + change.toFixed(1) + '%</span>' +
       '</div>';
@@ -3401,7 +3479,7 @@
       '<div class="market__content">' +
 
         // 市場サマリー（Fear & Greed）
-        '<div style="background:rgba(255,255,255,0.03);border-radius:16px;padding:20px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.08);cursor:pointer" onclick="window.openIndicatorHelp(\'fg\')">' +
+        '<div style="background:' + mc.cardBg + ';border-radius:16px;padding:20px;margin-bottom:16px;border:1px solid ' + mc.cardBorder + ';cursor:pointer" onclick="window.openIndicatorHelp(\'fg\')">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
             '<div style="display:flex;align-items:center;gap:8px">' +
               '<span style="font-size:18px">📊</span>' +
@@ -3409,9 +3487,9 @@
             '</div>' +
             '<span style="font-size:12px;color:' + getFearGreedColor(fearGreed) + ';font-weight:600">' + fgStatus + '</span>' +
           '</div>' +
-          '<p style="margin:0 0 16px 0;font-size:13px;color:rgba(255,255,255,0.6);line-height:1.5">' + fgAdvice + '</p>' +
+          '<p style="margin:0 0 16px 0;font-size:13px;color:' + mc.medium + ';line-height:1.5">' + fgAdvice + '</p>' +
           '<div style="display:flex;justify-content:center;margin-bottom:16px">' + fgGaugeSvg + '</div>' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:rgba(255,255,255,0.5)">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:' + mc.subtle + '">' +
             '<span>過去30日の推移</span>' +
             '<span>' + chartMin + ' - ' + chartMax + '</span>' +
           '</div>' +
@@ -3431,28 +3509,28 @@
 
         // 3つの指標カード
         '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">' +
-          '<div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:12px;text-align:center;border:1px solid rgba(255,255,255,0.08);cursor:pointer" onclick="window.openIndicatorHelp(\'dominance\')">' +
-            '<div style="font-size:10px;color:rgba(255,255,255,0.5);margin-bottom:4px">BTCドミナンス</div>' +
+          '<div style="background:' + mc.cardBg + ';border-radius:12px;padding:12px;text-align:center;border:1px solid ' + mc.cardBorder + ';cursor:pointer" onclick="window.openIndicatorHelp(\'dominance\')">' +
+            '<div style="font-size:10px;color:' + mc.subtle + ';margin-bottom:4px">BTCドミナンス</div>' +
             '<div style="font-size:16px;font-weight:700">' + btcDom.toFixed(1) + '%</div>' +
           '</div>' +
-          '<div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:12px;text-align:center;border:1px solid rgba(255,255,255,0.08);cursor:pointer" onclick="window.openIndicatorHelp(\'marketcap\')">' +
-            '<div style="font-size:10px;color:rgba(255,255,255,0.5);margin-bottom:4px">総時価総額</div>' +
+          '<div style="background:' + mc.cardBg + ';border-radius:12px;padding:12px;text-align:center;border:1px solid ' + mc.cardBorder + ';cursor:pointer" onclick="window.openIndicatorHelp(\'marketcap\')">' +
+            '<div style="font-size:10px;color:' + mc.subtle + ';margin-bottom:4px">総時価総額</div>' +
             '<div style="font-size:16px;font-weight:700">' + formatMarketCapJP(totalMarketCap) + '</div>' +
           '</div>' +
-          '<div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:12px;text-align:center;border:1px solid rgba(255,255,255,0.08);cursor:pointer" onclick="window.openIndicatorHelp(\'volume24h\')">' +
-            '<div style="font-size:10px;color:rgba(255,255,255,0.5);margin-bottom:4px">24h取引量</div>' +
+          '<div style="background:' + mc.cardBg + ';border-radius:12px;padding:12px;text-align:center;border:1px solid ' + mc.cardBorder + ';cursor:pointer" onclick="window.openIndicatorHelp(\'volume24h\')">' +
+            '<div style="font-size:10px;color:' + mc.subtle + ';margin-bottom:4px">24h取引量</div>' +
             '<div style="font-size:16px;font-weight:700">' + formatMarketCapJP(totalVolume) + '</div>' +
           '</div>' +
         '</div>' +
 
         // 主要通貨ヒートマップ
-        '<div style="background:rgba(255,255,255,0.03);border-radius:16px;padding:16px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.08)">' +
+        '<div style="background:' + mc.cardBg + ';border-radius:16px;padding:16px;margin-bottom:16px;border:1px solid ' + mc.cardBorder + '">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
             '<span style="font-size:14px;font-weight:600">主要通貨ヒートマップ</span>' +
-            '<span style="font-size:11px;color:rgba(255,255,255,0.5)">24h変動</span>' +
+            '<span style="font-size:11px;color:' + mc.subtle + '">24h変動</span>' +
           '</div>' +
           '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">' + heatmapHtml + '</div>' +
-          '<div style="display:flex;justify-content:center;gap:16px;margin-top:12px;font-size:10px;color:rgba(255,255,255,0.5)">' +
+          '<div style="display:flex;justify-content:center;gap:16px;margin-top:12px;font-size:10px;color:' + mc.subtle + '">' +
             '<span>🟢 上昇</span>' +
             '<span>🔴 下落</span>' +
             '<span>色が濃い＝変動大</span>' +
@@ -3460,12 +3538,12 @@
         '</div>' +
 
         // セクター別
-        '<div style="background:rgba(255,255,255,0.03);border-radius:16px;padding:16px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.08)">' +
+        '<div style="background:' + mc.cardBg + ';border-radius:16px;padding:16px;margin-bottom:16px;border:1px solid ' + mc.cardBorder + '">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
             '<span style="font-size:14px;font-weight:600">セクター別</span>' +
             '<div style="display:flex;gap:8px">' +
-              '<span style="font-size:10px;padding:4px 8px;background:rgba(255,255,255,0.1);border-radius:4px;color:rgba(255,255,255,0.7)">24h</span>' +
-              '<span style="font-size:10px;padding:4px 8px;border-radius:4px;color:rgba(255,255,255,0.4)">7d</span>' +
+              '<span style="font-size:10px;padding:4px 8px;background:' + mc.barBg + ';border-radius:4px;color:' + mc.dimBright + '">24h</span>' +
+              '<span style="font-size:10px;padding:4px 8px;border-radius:4px;color:' + mc.dim + '">7d</span>' +
             '</div>' +
           '</div>' +
           sectorsHtml +
@@ -3473,14 +3551,14 @@
 
         // 上昇Top / 下落Top
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">' +
-          '<div style="background:rgba(255,255,255,0.03);border-radius:16px;padding:14px;border:1px solid rgba(255,255,255,0.08)">' +
+          '<div style="background:' + mc.cardBg + ';border-radius:16px;padding:14px;border:1px solid ' + mc.cardBorder + '">' +
             '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">' +
               '<span style="font-size:12px">📈</span>' +
               '<span style="font-size:13px;font-weight:600;color:#22c55e">上昇Top</span>' +
             '</div>' +
             gainersHtml +
           '</div>' +
-          '<div style="background:rgba(255,255,255,0.03);border-radius:16px;padding:14px;border:1px solid rgba(255,255,255,0.08)">' +
+          '<div style="background:' + mc.cardBg + ';border-radius:16px;padding:14px;border:1px solid ' + mc.cardBorder + '">' +
             '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">' +
               '<span style="font-size:12px">📉</span>' +
               '<span style="font-size:13px;font-weight:600;color:#ef4444">下落Top</span>' +
@@ -4386,21 +4464,18 @@
     return '#ef4444';
   }
 
-  // ===== Moonshot画面（ミームコイン専用枠） =====
+  // ===== Moonshot画面（トレンドコイン枠） =====
   function renderMoonshotScreen() {
     var budgetUsed = appState.moonshotSpent;
     var budgetTotal = appState.moonshotBudget;
     var budgetPercent = Math.min((budgetUsed / budgetTotal) * 100, 100);
     var budgetRemaining = Math.max(budgetTotal - budgetUsed, 0);
 
-    // サンプルのミームコイン検出データ（将来的にはAPI連携）
-    var detectedCoins = getMoonshotDetectedCoins();
-
     var html = '<div class="moonshot-screen">' +
       // ヘッダー
       '<header class="moonshot-header">' +
         '<h1 class="moonshot-header__title">🎰 Moonshot</h1>' +
-        '<div class="moonshot-header__subtitle">ミームコイン専用枠</div>' +
+        '<div class="moonshot-header__subtitle">トレンドコイン・ミーム枠</div>' +
       '</header>' +
 
       // 警告バナー
@@ -4428,75 +4503,36 @@
         '</div>' +
       '</div>' +
 
-      // 検出されたコイン
+      // トレンドコインセクション（非同期読み込み）
       '<div class="moonshot-section">' +
-        '<div class="moonshot-section__title">🔍 検出されたコイン</div>' +
-        '<div class="moonshot-section__desc">Phase 2（初期拡散期）のコインを監視中</div>' +
-        '<div class="moonshot-coins">';
-
-    if (detectedCoins.length === 0) {
-      html += '<div class="moonshot-empty">' +
-        '<div class="moonshot-empty__icon">🔭</div>' +
-        '<div class="moonshot-empty__text">現在監視中のコインはありません</div>' +
-        '<div class="moonshot-empty__hint">新しいミームコインが検出されると通知されます</div>' +
-      '</div>';
-    } else {
-      detectedCoins.forEach(function(coin) {
-        var safetyColor = coin.safety >= 70 ? '#22c55e' : coin.safety >= 50 ? '#f59e0b' : '#ef4444';
-        var hypeColor = coin.hype >= 70 ? '#a855f7' : coin.hype >= 50 ? '#818cf8' : '#6b7280';
-        var momentumColor = coin.momentum >= 60 ? '#22c55e' : coin.momentum >= 40 ? '#f59e0b' : '#ef4444';
-
-        html += '<div class="moonshot-coin" onclick="openMoonshotCoinDetail(\'' + coin.symbol + '\')">' +
-          '<div class="moonshot-coin__header">' +
-            '<span class="moonshot-coin__symbol">' + coin.symbol + '</span>' +
-            '<span class="moonshot-coin__name">' + coin.name + '</span>' +
-            (coin.isNew ? '<span class="moonshot-coin__badge">NEW</span>' : '') +
+        '<div class="moonshot-section__title">🔥 トレンドコイン</div>' +
+        '<div class="moonshot-section__desc">CoinGecko Trending + センチメント分析</div>' +
+        '<div id="moonshot-coins" class="moonshot-coins">' +
+          '<div class="moonshot-loading">' +
+            '<div class="moonshot-loading__spinner"></div>' +
+            '<div class="moonshot-loading__text">トレンドコインを検索中...</div>' +
           '</div>' +
-          '<div class="moonshot-coin__metrics">' +
-            '<div class="moonshot-metric">' +
-              '<span class="moonshot-metric__label">Hype</span>' +
-              '<span class="moonshot-metric__value" style="color:' + hypeColor + '">' + coin.hype + '</span>' +
-            '</div>' +
-            '<div class="moonshot-metric">' +
-              '<span class="moonshot-metric__label">Safety</span>' +
-              '<span class="moonshot-metric__value" style="color:' + safetyColor + '">' + coin.safety + '</span>' +
-            '</div>' +
-            '<div class="moonshot-metric">' +
-              '<span class="moonshot-metric__label">Momentum</span>' +
-              '<span class="moonshot-metric__value" style="color:' + momentumColor + '">' + coin.momentum + '</span>' +
-            '</div>' +
-          '</div>' +
-          '<div class="moonshot-coin__footer">' +
-            '<span class="moonshot-coin__change ' + (coin.change24h >= 0 ? 'positive' : 'negative') + '">' +
-              (coin.change24h >= 0 ? '+' : '') + coin.change24h.toFixed(1) + '%' +
-            '</span>' +
-            '<span class="moonshot-coin__volume">Vol: $' + formatCompactNumber(coin.volume) + '</span>' +
-          '</div>' +
-        '</div>';
-      });
-    }
-
-    html += '</div>' +
+        '</div>' +
       '</div>' +
 
-      // フィルター条件の説明
+      // データソース説明
       '<div class="moonshot-filters">' +
-        '<div class="moonshot-filters__title">🎯 検出条件</div>' +
+        '<div class="moonshot-filters__title">📊 データソース</div>' +
         '<div class="moonshot-filters__list">' +
           '<div class="moonshot-filter">' +
             '<span class="moonshot-filter__name">Hype</span>' +
-            '<span class="moonshot-filter__condition">≧ 70</span>' +
-            '<span class="moonshot-filter__desc">SNS話題度</span>' +
+            '<span class="moonshot-filter__condition">0-100</span>' +
+            '<span class="moonshot-filter__desc">CoinGeckoトレンド順位</span>' +
           '</div>' +
           '<div class="moonshot-filter">' +
             '<span class="moonshot-filter__name">Safety</span>' +
-            '<span class="moonshot-filter__condition">≧ 50</span>' +
-            '<span class="moonshot-filter__desc">詐欺フィルター通過</span>' +
+            '<span class="moonshot-filter__condition">0-100</span>' +
+            '<span class="moonshot-filter__desc">時価総額ランクベース</span>' +
           '</div>' +
           '<div class="moonshot-filter">' +
             '<span class="moonshot-filter__name">Momentum</span>' +
-            '<span class="moonshot-filter__condition">≧ 60</span>' +
-            '<span class="moonshot-filter__desc">価格・出来高の勢い</span>' +
+            '<span class="moonshot-filter__condition">0-100</span>' +
+            '<span class="moonshot-filter__desc">価格変動 + ニュースセンチメント</span>' +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -4527,15 +4563,75 @@
     return html;
   }
 
-  // Moonshot検出コイン取得（ダミーデータ、将来的にはAPI連携）
-  function getMoonshotDetectedCoins() {
-    // 実際のAPIができるまでのサンプルデータ
-    // 条件: Hype >= 70 AND Safety >= 50 AND Momentum >= 60
-    return [
-      // サンプル: 条件を満たすコインがある場合
-      // { symbol: 'PEPE', name: 'Pepe', hype: 85, safety: 55, momentum: 72, change24h: 15.3, volume: 125000000, isNew: false },
-      // { symbol: 'BONK', name: 'Bonk', hype: 78, safety: 52, momentum: 65, change24h: -3.2, volume: 45000000, isNew: true },
-    ];
+  function renderMoonshotCoinsIntoDOM(coins) {
+    var container = document.getElementById('moonshot-coins');
+    if (!container) return;
+
+    if (!coins || coins.length === 0) {
+      container.innerHTML = '<div class="moonshot-empty">' +
+        '<div class="moonshot-empty__icon">🔭</div>' +
+        '<div class="moonshot-empty__text">トレンドコインが見つかりません</div>' +
+        '<div class="moonshot-empty__hint">しばらくしてからもう一度お試しください</div>' +
+      '</div>';
+      return;
+    }
+
+    // Save to global for detail modal
+    window._moonshotCoins = coins;
+
+    var html = '';
+    coins.forEach(function(coin, idx) {
+      var safetyColor = coin.safety >= 70 ? '#22c55e' : coin.safety >= 50 ? '#f59e0b' : '#ef4444';
+      var hypeColor = coin.hype >= 70 ? '#a855f7' : coin.hype >= 50 ? '#818cf8' : '#6b7280';
+      var momentumColor = coin.momentum >= 60 ? '#22c55e' : coin.momentum >= 40 ? '#f59e0b' : '#ef4444';
+      var change = coin.price_change_24h || 0;
+
+      var priceStr = '';
+      if (coin.price_usd !== undefined && coin.price_usd !== null) {
+        if (coin.price_usd >= 1000) priceStr = '$' + coin.price_usd.toLocaleString('en-US', {maximumFractionDigits: 0});
+        else if (coin.price_usd >= 1) priceStr = '$' + coin.price_usd.toFixed(2);
+        else if (coin.price_usd >= 0.001) priceStr = '$' + coin.price_usd.toFixed(4);
+        else priceStr = '$' + coin.price_usd.toFixed(8);
+      }
+
+      html += '<div class="moonshot-coin" onclick="openMoonshotCoinDetail(' + idx + ')" style="animation-delay:' + (idx * 0.05) + 's">' +
+        '<div class="moonshot-coin__header">' +
+          (coin.thumb ? '<img class="moonshot-coin__icon" src="' + coin.thumb + '" alt="">' : '') +
+          '<div class="moonshot-coin__info">' +
+            '<span class="moonshot-coin__symbol">' + coin.symbol + '</span>' +
+            '<span class="moonshot-coin__name">' + coin.name + '</span>' +
+          '</div>' +
+          (coin.market_cap_rank ? '<span class="moonshot-coin__rank">#' + coin.market_cap_rank + '</span>' : '') +
+        '</div>' +
+        '<div class="moonshot-coin__price-row">' +
+          '<span class="moonshot-coin__price">' + priceStr + '</span>' +
+          '<span class="moonshot-coin__change ' + (change >= 0 ? 'positive' : 'negative') + '">' +
+            (change >= 0 ? '+' : '') + change.toFixed(1) + '%' +
+          '</span>' +
+        '</div>' +
+        '<div class="moonshot-coin__metrics">' +
+          '<div class="moonshot-metric">' +
+            '<span class="moonshot-metric__label">Hype</span>' +
+            '<span class="moonshot-metric__value" style="color:' + hypeColor + '">' + coin.hype + '</span>' +
+          '</div>' +
+          '<div class="moonshot-metric">' +
+            '<span class="moonshot-metric__label">Safety</span>' +
+            '<span class="moonshot-metric__value" style="color:' + safetyColor + '">' + coin.safety + '</span>' +
+          '</div>' +
+          '<div class="moonshot-metric">' +
+            '<span class="moonshot-metric__label">Momentum</span>' +
+            '<span class="moonshot-metric__value" style="color:' + momentumColor + '">' + coin.momentum + '</span>' +
+          '</div>' +
+        '</div>' +
+        (coin.sentiment_bullish > 0 || coin.sentiment_bearish > 0 ?
+          '<div class="moonshot-coin__sentiment">' +
+            '<span class="positive">📈 ' + coin.sentiment_bullish + '</span>' +
+            '<span class="negative">📉 ' + coin.sentiment_bearish + '</span>' +
+          '</div>' : '') +
+      '</div>';
+    });
+
+    container.innerHTML = html;
   }
 
   // 数字をコンパクト表記
@@ -4605,10 +4701,125 @@
     }
   }
 
-  // Moonshotコイン詳細（将来実装）
-  function openMoonshotCoinDetail(symbol) {
-    alert('🎰 ' + symbol + '\n\n詳細機能は今後実装予定です。\n\n※ KAIROSスコアは適用されません。\n外部サイト（DexScreener等）で確認してください。');
+  function openMoonshotCoinDetail(idx) {
+    var coins = window._moonshotCoins || [];
+    var coin = coins[idx];
+    if (!coin) return;
+
+    var change = coin.price_change_24h || 0;
+    var changeClass = change >= 0 ? 'positive' : 'negative';
+    var changeStr = (change >= 0 ? '+' : '') + change.toFixed(1) + '%';
+
+    var priceStr = '';
+    if (coin.price_usd !== undefined && coin.price_usd !== null) {
+      if (coin.price_usd >= 1000) priceStr = '$' + coin.price_usd.toLocaleString('en-US', {maximumFractionDigits: 2});
+      else if (coin.price_usd >= 1) priceStr = '$' + coin.price_usd.toFixed(4);
+      else priceStr = '$' + coin.price_usd.toFixed(8);
+    }
+
+    var volumeStr = coin.total_volume ? '$' + formatCompactNumber(coin.total_volume) : '-';
+    var mcapStr = coin.market_cap ? '$' + formatCompactNumber(coin.market_cap) : '-';
+
+    var safetyColor = coin.safety >= 70 ? '#22c55e' : coin.safety >= 50 ? '#f59e0b' : '#ef4444';
+    var hypeColor = coin.hype >= 70 ? '#a855f7' : coin.hype >= 50 ? '#818cf8' : '#6b7280';
+    var momentumColor = coin.momentum >= 60 ? '#22c55e' : coin.momentum >= 40 ? '#f59e0b' : '#ef4444';
+
+    var modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'moonshot-detail-modal';
+    modal.innerHTML = '<div class="modal moonshot-detail-modal">' +
+      '<div class="modal-header">' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+          (coin.thumb ? '<img src="' + coin.thumb + '" style="width:28px;height:28px;border-radius:50%">' : '') +
+          '<h3>🎰 ' + coin.symbol + '</h3>' +
+          '<span style="color:#94a3b8;font-size:13px">' + coin.name + '</span>' +
+        '</div>' +
+        '<button class="modal-close" onclick="closeMoonshotDetailModal()">×</button>' +
+      '</div>' +
+      '<div class="modal-body" style="padding:16px">' +
+        // 価格セクション
+        '<div style="text-align:center;margin-bottom:16px">' +
+          '<div style="font-size:24px;font-weight:700">' + priceStr + '</div>' +
+          '<div class="' + changeClass + '" style="font-size:16px">' + changeStr + ' (24h)</div>' +
+        '</div>' +
+
+        // メトリクス
+        '<div style="display:flex;justify-content:space-around;margin-bottom:16px;padding:12px;background:rgba(255,255,255,0.05);border-radius:12px">' +
+          '<div style="text-align:center">' +
+            '<div style="font-size:10px;color:#94a3b8">Hype</div>' +
+            '<div style="font-size:22px;font-weight:700;color:' + hypeColor + '">' + coin.hype + '</div>' +
+          '</div>' +
+          '<div style="text-align:center">' +
+            '<div style="font-size:10px;color:#94a3b8">Safety</div>' +
+            '<div style="font-size:22px;font-weight:700;color:' + safetyColor + '">' + coin.safety + '</div>' +
+          '</div>' +
+          '<div style="text-align:center">' +
+            '<div style="font-size:10px;color:#94a3b8">Momentum</div>' +
+            '<div style="font-size:22px;font-weight:700;color:' + momentumColor + '">' + coin.momentum + '</div>' +
+          '</div>' +
+        '</div>' +
+
+        // マーケットデータ
+        '<div style="display:flex;gap:8px;margin-bottom:16px">' +
+          '<div style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px">' +
+            '<div style="font-size:10px;color:#94a3b8">出来高 (24h)</div>' +
+            '<div style="font-size:14px;font-weight:600">' + volumeStr + '</div>' +
+          '</div>' +
+          '<div style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px">' +
+            '<div style="font-size:10px;color:#94a3b8">時価総額</div>' +
+            '<div style="font-size:14px;font-weight:600">' + mcapStr + '</div>' +
+          '</div>' +
+          (coin.market_cap_rank ? '<div style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px">' +
+            '<div style="font-size:10px;color:#94a3b8">MCランク</div>' +
+            '<div style="font-size:14px;font-weight:600">#' + coin.market_cap_rank + '</div>' +
+          '</div>' : '') +
+        '</div>' +
+
+        // センチメント
+        (coin.sentiment_score ?
+        '<div style="padding:12px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:16px">' +
+          '<div style="font-size:12px;color:#94a3b8;margin-bottom:8px">📰 ニュースセンチメント</div>' +
+          '<div style="display:flex;align-items:center;gap:12px">' +
+            '<div style="flex:1;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden">' +
+              '<div style="height:100%;width:' + coin.sentiment_score + '%;background:' + (coin.sentiment_score > 60 ? '#22c55e' : coin.sentiment_score < 40 ? '#ef4444' : '#f59e0b') + ';border-radius:3px"></div>' +
+            '</div>' +
+            '<span style="font-size:13px;font-weight:600">' + coin.sentiment_score + '/100</span>' +
+          '</div>' +
+          '<div style="display:flex;gap:12px;margin-top:6px;font-size:12px">' +
+            '<span class="positive">📈 強気 ' + (coin.sentiment_bullish || 0) + '</span>' +
+            '<span class="negative">📉 弱気 ' + (coin.sentiment_bearish || 0) + '</span>' +
+          '</div>' +
+        '</div>' : '') +
+
+        // 外部リンク
+        '<div style="display:flex;gap:8px">' +
+          '<a href="https://www.coingecko.com/en/coins/' + (coin.id || coin.symbol.toLowerCase()) + '" target="_blank" style="flex:1;display:block;text-align:center;padding:10px;background:rgba(255,255,255,0.08);border-radius:8px;color:#d4a853;text-decoration:none;font-size:13px">' +
+            '🦎 CoinGecko' +
+          '</a>' +
+          '<a href="https://dexscreener.com/search?q=' + coin.symbol + '" target="_blank" style="flex:1;display:block;text-align:center;padding:10px;background:rgba(255,255,255,0.08);border-radius:8px;color:#d4a853;text-decoration:none;font-size:13px">' +
+            '📊 DexScreener' +
+          '</a>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+    document.body.appendChild(modal);
+    requestAnimationFrame(function() { modal.classList.add('active'); });
+
+    modal.onclick = function(e) {
+      if (e.target === modal) closeMoonshotDetailModal();
+    };
   }
+  window.openMoonshotCoinDetail = openMoonshotCoinDetail;
+
+  function closeMoonshotDetailModal() {
+    var modal = document.getElementById('moonshot-detail-modal');
+    if (modal) {
+      modal.classList.remove('active');
+      setTimeout(function() { modal.remove(); }, 300);
+    }
+  }
+  window.closeMoonshotDetailModal = closeMoonshotDetailModal;
 
   // ===== 詳細画面 =====
   function renderDetailScreen() {
@@ -5091,6 +5302,11 @@
       loadTradingSignal(appState.selectedCurrency);
       // サマリーバーをスライド表示
       showSummaryBarTemporarily();
+    }
+
+    // Moonshot: load trending coins data
+    if (appState.currentScreen === 'moonshot') {
+      loadMoonshotCoins();
     }
   }
 
@@ -6577,11 +6793,6 @@
         navigateTo('moonshot');
       }
     },
-    toggleMoonshotEnabled: function(enabled) {
-      appState.moonshotEnabled = enabled;
-      localStorage.setItem('kairosMoonshotEnabled', enabled ? 'true' : 'false');
-      renderApp();
-    },
     setMoonshotBudget: function(budget) {
       appState.moonshotBudget = budget;
       localStorage.setItem('kairosMoonshotBudget', budget.toString());
@@ -7247,7 +7458,7 @@
       '</div>' +
       '<div class="quick-buy-modal__price" id="quick-buy-price-display">現在価格: ' + priceDisplay + '</div>' +
       '<div class="quick-buy-modal__form">' +
-        '<div class="quick-buy-modal__field">' +
+        '<div class="quick-buy-modal__field" id="quick-buy-date-field" style="display:none;">' +
           '<label>購入日時</label>' +
           '<div class="quick-buy-modal__input-group">' +
             '<input type="datetime-local" id="quick-buy-date" value="' + nowLocal + '" ' +
@@ -7809,20 +8020,13 @@
 
       '<div class="kairos-side-menu-section">' +
         '<div class="kairos-side-menu-section-title">🎰 Moonshot</div>' +
-        '<div class="kairos-side-menu-toggle-item">' +
-          '<div class="kairos-side-menu-toggle-info">' +
-            '<span class="kairos-side-menu-toggle-label">ミームコイン枠</span>' +
-            '<span class="kairos-side-menu-toggle-desc">宝くじ感覚の投機枠</span>' +
-          '</div>' +
-          '<label class="kairos-toggle">' +
-            '<input type="checkbox" id="moonshot-toggle" ' + (appState.moonshotEnabled ? 'checked' : '') + ' onchange="toggleMoonshotFromMenu(this.checked)">' +
-            '<span class="kairos-toggle-slider"></span>' +
-          '</label>' +
+        '<button class="kairos-side-menu-btn" onclick="window.KairosApp.showMoonshot(); closeSideMenu();">' +
+          '<span class="kairos-side-menu-btn-icon">🎰</span>' +
+          '<span>トレンドコイン</span>' +
+        '</button>' +
+        '<div class="kairos-side-menu-moonshot-status">' +
+          '<span>予算: ' + formatYen(appState.moonshotSpent) + ' / ' + formatYen(appState.moonshotBudget) + '</span>' +
         '</div>' +
-        (appState.moonshotEnabled ?
-          '<div class="kairos-side-menu-moonshot-status">' +
-            '<span>予算: ' + formatYen(appState.moonshotSpent) + ' / ' + formatYen(appState.moonshotBudget) + '</span>' +
-          '</div>' : '') +
       '</div>' +
 
       '<div class="kairos-side-menu-section">' +
@@ -7960,25 +8164,6 @@
     var overlay = document.getElementById('kairos-side-menu-overlay');
     if (menu) menu.classList.remove('open');
     if (overlay) overlay.classList.remove('open');
-  };
-
-  // Moonshot ON/OFF切替（サイドメニューから）
-  window.toggleMoonshotFromMenu = function(enabled) {
-    window.KairosApp.toggleMoonshotEnabled(enabled);
-    closeSideMenu();
-    // サイドメニューを再作成（状態反映のため）
-    var menu = document.getElementById('kairos-side-menu');
-    if (menu) menu.remove();
-    var overlay = document.getElementById('kairos-side-menu-overlay');
-    if (overlay) overlay.remove();
-
-    if (window.KAIROS && window.KAIROS.Features && window.KAIROS.Features.showToast) {
-      if (enabled) {
-        window.KAIROS.Features.showToast('🎰 Moonshotが有効になりました', 'success');
-      } else {
-        window.KAIROS.Features.showToast('Moonshotが無効になりました', 'info');
-      }
-    }
   };
 
   // サイドメニューのポートフォリオ表示を更新
