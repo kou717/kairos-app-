@@ -1,7 +1,7 @@
-// KAIROS Service Worker v19.9 - Moonshot real data
-const CACHE_NAME = 'kairos-v19-9';
-const STATIC_CACHE = 'kairos-static-v19-9';
-const DYNAMIC_CACHE = 'kairos-dynamic-v19-9';
+// KAIROS Service Worker v19.10 - JPY/USD price toggle
+const CACHE_NAME = 'kairos-v19-10';
+const STATIC_CACHE = 'kairos-static-v19-10';
+const DYNAMIC_CACHE = 'kairos-dynamic-v19-10';
 
 // 静的アセット（必ずキャッシュ）
 const STATIC_ASSETS = [
