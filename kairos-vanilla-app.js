@@ -1274,6 +1274,86 @@
     history: [] // [timestamp, ...]
   };
 
+  // Cloudflare Worker アラート
+  var workerAlertState = {
+    url: localStorage.getItem('kairosWorkerUrl') || '',
+    lastChecked: 0,
+    lastAlertIds: JSON.parse(localStorage.getItem('kairosWorkerSeenAlerts') || '[]'),
+    checkInterval: 10 * 60 * 1000, // 10分
+    _timer: null
+  };
+
+  function setWorkerUrl(url) {
+    url = (url || '').trim().replace(/\/+$/, '');
+    workerAlertState.url = url;
+    localStorage.setItem('kairosWorkerUrl', url);
+    if (url) {
+      checkWorkerAlerts();
+      startWorkerAlertPolling();
+    } else {
+      stopWorkerAlertPolling();
+    }
+  }
+  window.setWorkerUrl = setWorkerUrl;
+
+  function startWorkerAlertPolling() {
+    stopWorkerAlertPolling();
+    if (!workerAlertState.url) return;
+    workerAlertState._timer = setInterval(checkWorkerAlerts, workerAlertState.checkInterval);
+  }
+
+  function stopWorkerAlertPolling() {
+    if (workerAlertState._timer) {
+      clearInterval(workerAlertState._timer);
+      workerAlertState._timer = null;
+    }
+  }
+
+  function checkWorkerAlerts() {
+    if (!workerAlertState.url) return;
+
+    var url = workerAlertState.url + '/alerts';
+    fetch(url, { mode: 'cors' })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (!data.alerts || data.alerts.length === 0) return;
+
+        workerAlertState.lastChecked = Date.now();
+
+        // 新しいアラートを検出（まだ見ていないもの）
+        var seen = workerAlertState.lastAlertIds;
+        var newAlerts = data.alerts.filter(function(a) {
+          var id = a.tokenAddress + ':' + a.detectedAt;
+          return seen.indexOf(id) === -1;
+        });
+
+        if (newAlerts.length > 0) {
+          // 既読リスト更新（最大50件保持）
+          newAlerts.forEach(function(a) {
+            var id = a.tokenAddress + ':' + a.detectedAt;
+            seen.push(id);
+          });
+          workerAlertState.lastAlertIds = seen.slice(-50);
+          localStorage.setItem('kairosWorkerSeenAlerts', JSON.stringify(workerAlertState.lastAlertIds));
+
+          // 緊急通知モーダル表示
+          showUrgentMoonshotAlert(newAlerts);
+        }
+      })
+      .catch(function(err) {
+        console.log('[WORKER] Alert check failed:', err.message);
+      });
+  }
+  window.checkWorkerAlerts = checkWorkerAlerts;
+
+  // アプリ起動時にWorkerポーリング開始
+  if (workerAlertState.url) {
+    setTimeout(function() {
+      checkWorkerAlerts();
+      startWorkerAlertPolling();
+    }, 3000); // 起動3秒後に初回チェック
+  }
+
   function loadMoonshotCoins() {
     var container = document.getElementById('moonshot-coins');
     if (!container) return;
@@ -4780,7 +4860,7 @@
 
       var priceStr = formatPriceCompact(coin.price_usd);
 
-      html += '<div class="moonshot-coin" onclick="openMoonshotCoinDetail(' + idx + ')" style="animation-delay:' + (idx * 0.05) + 's">' +
+      html += '<div class="moonshot-coin" style="animation-delay:' + (idx * 0.05) + 's">' +
         '<div class="moonshot-coin__header">' +
           (coin.thumb ? '<img class="moonshot-coin__icon" src="' + coin.thumb + '" alt="">' : '') +
           '<div class="moonshot-coin__info">' +
@@ -4814,6 +4894,10 @@
             '<span class="positive">📈 ' + coin.sentiment_bullish + '</span>' +
             '<span class="negative">📉 ' + coin.sentiment_bearish + '</span>' +
           '</div>' : '') +
+        '<div class="early-mover__card-actions">' +
+          '<button class="early-mover__card-btn" onclick="openMoonshotCoinDetail(' + idx + ')">📋 詳細</button>' +
+          '<button class="early-mover__card-btn early-mover__card-btn--chart" onclick="window.KairosApp.viewCurrency(\'' + coin.symbol + '\')">📊 チャート</button>' +
+        '</div>' +
       '</div>';
     });
 
@@ -4971,6 +5055,9 @@
             '<span class="negative">📉 弱気 ' + (coin.sentiment_bearish || 0) + '</span>' +
           '</div>' +
         '</div>' : '') +
+
+        // KAIROSで分析ボタン
+        '<button onclick="closeMoonshotDetailModal(); window.KairosApp.viewCurrency(\'' + coin.symbol + '\');" style="width:100%;padding:12px;margin-bottom:12px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:600;border:none;border-radius:8px;font-size:14px;cursor:pointer">✨ KAIROSで分析する</button>' +
 
         // 外部リンク
         '<div style="display:flex;gap:8px">' +
@@ -5130,7 +5217,7 @@
       else if (coin.risk_level === 'medium') riskBadge = '<span class="early-mover__risk early-mover__risk--medium">MID RISK</span>';
       else if (coin.risk_level === 'low') riskBadge = '<span class="early-mover__risk early-mover__risk--low">LOW RISK</span>';
 
-      html += '<div class="early-mover-coin' + (isTop3 ? ' early-mover-coin--top' : '') + '" onclick="openEarlyMoverDetail(' + idx + ')" style="animation-delay:' + (idx * 0.05) + 's">' +
+      html += '<div class="early-mover-coin' + (isTop3 ? ' early-mover-coin--top' : '') + '" style="animation-delay:' + (idx * 0.05) + 's">' +
         '<div class="early-mover__header">' +
           (coin.image_url ? '<img class="moonshot-coin__icon" src="' + coin.image_url + '" alt="">' : '<div class="moonshot-coin__icon-placeholder">🪙</div>') +
           '<div class="moonshot-coin__info">' +
@@ -5173,10 +5260,27 @@
           (coin.ai_potential ? '<span class="early-mover__potential">🎯 ' + coin.ai_potential + '</span>' : '') +
           '<span class="early-mover__sources">' + (coin.sources || []).join(' + ') + '</span>' +
         '</div>' +
+        '<div class="early-mover__card-actions">' +
+          '<button class="early-mover__card-btn" onclick="event.stopPropagation(); openEarlyMoverDetail(' + idx + ')">📋 詳細</button>' +
+          '<button class="early-mover__card-btn early-mover__card-btn--chart" onclick="event.stopPropagation(); window.KairosApp.viewCurrency(\'' + coin.symbol + '\')">📊 チャート</button>' +
+          (coin.dex_url ? '<button class="early-mover__card-btn early-mover__card-btn--dex" onclick="event.stopPropagation(); window.open(\'' + (coin.dex_url || '').replace(/'/g, "\\'") + '\', \'_blank\')">🔗 DEX</button>' : '') +
+        '</div>' +
       '</div>';
     });
 
     container.innerHTML = html;
+
+    // 通知からの自動オープン対応
+    if (window._pendingEarlyMoverOpen) {
+      var targetAddr = window._pendingEarlyMoverOpen;
+      delete window._pendingEarlyMoverOpen;
+      for (var i = 0; i < coins.length; i++) {
+        if (coins[i].token_address === targetAddr || coins[i].symbol === targetAddr) {
+          setTimeout(function() { openEarlyMoverDetail(i); }, 300);
+          break;
+        }
+      }
+    }
   }
   window.renderEarlyMoversIntoDOM = renderEarlyMoversIntoDOM;
 
@@ -5287,6 +5391,49 @@
             '<div style="font-size:11px;color:#64748b">ソーシャルデータなし（LunarCrush APIキーを設定すると利用可能）</div>' +
           '</div>') +
 
+        // SNS投稿一覧（LunarCrush posts）
+        (function() {
+          var posts = coin.social_posts_data || [];
+          if (posts.length === 0) return '';
+          var postsHtml = '<div class="early-mover__posts-section">' +
+            '<div class="early-mover__posts-title">🐦 SNS投稿 <span style="font-size:10px;color:#64748b">(' + posts.length + '件)</span></div>';
+          posts.slice(0, 5).forEach(function(p) {
+            var sentColor = p.sentiment >= 4 ? '#10b981' : p.sentiment <= 2 ? '#ef4444' : '#94a3b8';
+            var sentLabel = p.sentiment >= 4 ? '強気' : p.sentiment <= 2 ? '弱気' : '中立';
+            var followers = p.creator_followers || 0;
+            var followersStr = followers >= 1e6 ? (followers / 1e6).toFixed(1) + 'M' : followers >= 1e3 ? (followers / 1e3).toFixed(1) + 'K' : followers.toString();
+            var interactions = p.interactions_24h || p.interactions_total || 0;
+            var interStr = interactions >= 1e6 ? (interactions / 1e6).toFixed(1) + 'M' : interactions >= 1e3 ? (interactions / 1e3).toFixed(1) + 'K' : interactions.toString();
+            var timeStr = '';
+            if (p.created_at) {
+              var diff = Math.floor((Date.now() / 1000 - p.created_at));
+              if (diff < 3600) timeStr = Math.floor(diff / 60) + '分前';
+              else if (diff < 86400) timeStr = Math.floor(diff / 3600) + '時間前';
+              else timeStr = Math.floor(diff / 86400) + '日前';
+            }
+            postsHtml += '<div class="early-mover__post" onclick="if(\'' + (p.link || '').replace(/'/g, "\\'") + '\')window.open(\'' + (p.link || '').replace(/'/g, "\\'") + '\',\'_blank\')">' +
+              '<div class="early-mover__post-header">' +
+                (p.creator_avatar ? '<img class="early-mover__post-avatar" src="' + p.creator_avatar + '" alt="">' : '<div class="early-mover__post-avatar-placeholder">' + (p.type_icon || '📱') + '</div>') +
+                '<div class="early-mover__post-creator">' +
+                  '<span class="early-mover__post-name">' + (p.creator_display_name || p.creator_name || '匿名') + '</span>' +
+                  '<span class="early-mover__post-handle">' +
+                    '<span class="early-mover__post-platform">' + (p.type_icon || '') + ' ' + (p.post_type || '') + '</span>' +
+                    (followers > 0 ? ' · ' + followersStr + ' followers' : '') +
+                  '</span>' +
+                '</div>' +
+                (timeStr ? '<span class="early-mover__post-time">' + timeStr + '</span>' : '') +
+              '</div>' +
+              (p.text ? '<div class="early-mover__post-text">' + p.text.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>' : '') +
+              '<div class="early-mover__post-stats">' +
+                (interactions > 0 ? '<span class="early-mover__post-stat">💬 ' + interStr + '</span>' : '') +
+                '<span class="early-mover__post-stat" style="color:' + sentColor + '">' + sentLabel + '</span>' +
+              '</div>' +
+            '</div>';
+          });
+          postsHtml += '</div>';
+          return postsHtml;
+        })() +
+
         // AI分析 — 判断理由を詳しく
         (coin.ai_summary_ja ? '<div class="early-mover__ai-section">' +
           '<div class="early-mover__ai-section-title">🤖 AI分析</div>' +
@@ -5375,6 +5522,9 @@
         (addr ? '<div style="padding:8px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:12px;font-size:11px;color:#94a3b8;text-align:center">' +
           'CA: ' + shortAddr +
         '</div>' : '') +
+
+        // KAIROSで分析ボタン
+        '<button onclick="closeEarlyMoverDetailModal(); window.KairosApp.viewCurrency(\'' + coin.symbol + '\');" style="width:100%;padding:12px;margin-bottom:12px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:600;border:none;border-radius:8px;font-size:14px;cursor:pointer">✨ KAIROSで分析する</button>' +
 
         // 外部リンク
         '<div style="display:flex;gap:8px">' +
@@ -8651,6 +8801,11 @@
           '<span class="kairos-side-menu-btn-icon">💾</span>' +
           '<span>バックアップ</span>' +
         '</button>' +
+        '<button class="kairos-side-menu-btn" onclick="openWorkerUrlModal(); closeSideMenu();">' +
+          '<span class="kairos-side-menu-btn-icon">🛰️</span>' +
+          '<span>Worker 監視設定</span>' +
+          (workerAlertState.url ? '<span class="kairos-side-menu-btn-toggle" style="color:#10b981">稼働中</span>' : '<span class="kairos-side-menu-btn-toggle" style="color:#64748b">未設定</span>') +
+        '</button>' +
       '</div>';
 
     document.body.appendChild(menu);
@@ -11269,6 +11424,332 @@
     document.body.appendChild(toast);
     setTimeout(function() { toast.remove(); }, 2500);
   }
+
+  // ===== 緊急 Moonshot アラートモーダル =====
+  function showUrgentMoonshotAlert(alerts) {
+    if (!alerts || alerts.length === 0) return;
+    if (document.getElementById('kairos-urgent-alert')) return;
+
+    // グローバルに保存（詳細モーダル用）
+    window._urgentAlerts = alerts;
+
+    var overlay = document.createElement('div');
+    overlay.id = 'kairos-urgent-alert';
+    overlay.className = 'urgent-alert-overlay';
+
+    var coinsHtml = alerts.slice(0, 5).map(function(coin, idx) {
+      var score = coin.score ? coin.score.total : 0;
+      var scoreClass = score >= 80 ? 'urgent-alert__score--fire' : score >= 65 ? 'urgent-alert__score--hot' : 'urgent-alert__score--warm';
+      var change = coin.change1h || 0;
+      var changeSign = change >= 0 ? '+' : '';
+      var changeClass = change >= 0 ? 'positive' : 'negative';
+      var vol = formatCompactUSD(coin.volume24h || 0);
+      var liq = formatCompactUSD(coin.liquidity || 0);
+
+      var socialHtml = '';
+      if (coin.social && coin.social.interactions > 0) {
+        socialHtml = '<div class="urgent-alert__social">' +
+          '<span>SNS ' + formatCompactNum(coin.social.interactions) + '件</span>' +
+          (coin.social.trend === 'up' ? '<span class="urgent-alert__trend-up">急上昇</span>' : '') +
+        '</div>';
+      }
+
+      var ageText = '';
+      if (coin.ageHours != null) {
+        if (coin.ageHours < 1) ageText = Math.round(coin.ageHours * 60) + '分前';
+        else if (coin.ageHours < 24) ageText = Math.round(coin.ageHours) + '時間前';
+        else ageText = Math.round(coin.ageHours / 24) + '日前';
+      }
+
+      return '<div class="urgent-alert__coin' + (idx === 0 ? ' urgent-alert__coin--top' : '') + '">' +
+        '<div class="urgent-alert__coin-header">' +
+          '<div class="urgent-alert__coin-info">' +
+            '<span class="urgent-alert__symbol">' + coin.symbol + '</span>' +
+            (ageText ? '<span class="urgent-alert__age">' + ageText + '</span>' : '') +
+          '</div>' +
+          '<div class="urgent-alert__score ' + scoreClass + '">' + score + '</div>' +
+        '</div>' +
+        '<div class="urgent-alert__coin-data">' +
+          '<span class="urgent-alert__change ' + changeClass + '">' + changeSign + change.toFixed(1) + '% (1h)</span>' +
+          '<span class="urgent-alert__vol">Vol $' + vol + '</span>' +
+          '<span class="urgent-alert__liq">Liq $' + liq + '</span>' +
+        '</div>' +
+        (coin.score ? '<div class="urgent-alert__breakdown">' +
+          '<span>Vol ' + coin.score.volume + '</span>' +
+          '<span>Vel ' + coin.score.velocity + '</span>' +
+          '<span>Buy ' + coin.score.buyPressure + '</span>' +
+          '<span>SNS ' + coin.score.socialBuzz + '</span>' +
+        '</div>' : '') +
+        socialHtml +
+        '<div class="urgent-alert__coin-actions">' +
+          '<button class="urgent-alert__coin-btn" onclick="event.stopPropagation(); openUrgentCoinDetail(' + idx + ')">📊 詳細を見る</button>' +
+          (coin.dexUrl ? '<button class="urgent-alert__coin-btn urgent-alert__coin-btn--dex" onclick="event.stopPropagation(); openUrgentAlertDex(\'' + (coin.dexUrl || '').replace(/'/g, "\\'") + '\')">🔗 DEX</button>' : '') +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    var timeStr = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+
+    overlay.innerHTML =
+      '<div class="urgent-alert-modal">' +
+        '<div class="urgent-alert__pulse-ring"></div>' +
+        '<div class="urgent-alert__header">' +
+          '<div class="urgent-alert__icon-wrap">' +
+            '<span class="urgent-alert__icon">🚨</span>' +
+          '</div>' +
+          '<div class="urgent-alert__title">HOT COIN 検出</div>' +
+          '<div class="urgent-alert__subtitle">' + alerts.length + '件のコインがスコア閾値を突破 (' + timeStr + ')</div>' +
+        '</div>' +
+        '<div class="urgent-alert__coins">' +
+          coinsHtml +
+        '</div>' +
+        '<div class="urgent-alert__actions">' +
+          '<button class="urgent-alert__btn urgent-alert__btn--primary" onclick="dismissUrgentAlert(); window.KairosApp.showMoonshot();">Early検出を見る</button>' +
+          '<button class="urgent-alert__btn urgent-alert__btn--secondary" onclick="dismissUrgentAlert();">閉じる</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+
+    // 背景クリックで閉じない（緊急なので意図的に操作必須）
+  }
+  window.showUrgentMoonshotAlert = showUrgentMoonshotAlert;
+
+  function dismissUrgentAlert() {
+    var el = document.getElementById('kairos-urgent-alert');
+    if (el) {
+      el.classList.add('urgent-alert--closing');
+      setTimeout(function() { el.remove(); }, 300);
+    }
+  }
+  window.dismissUrgentAlert = dismissUrgentAlert;
+
+  function openUrgentAlertDex(url) {
+    if (url) window.open(url, '_blank');
+  }
+  window.openUrgentAlertDex = openUrgentAlertDex;
+
+  // 緊急アラートコインの詳細モーダル
+  function openUrgentCoinDetail(idx) {
+    var alerts = window._urgentAlerts || [];
+    var coin = alerts[idx];
+    if (!coin) return;
+
+    dismissUrgentAlert();
+
+    var score = coin.score ? coin.score.total : 0;
+    var scoreColor = score >= 80 ? '#ef4444' : score >= 65 ? '#f59e0b' : '#22c55e';
+    var change = coin.change1h || 0;
+    var vol = formatCompactUSD(coin.volume24h || 0);
+    var liq = formatCompactUSD(coin.liquidity || 0);
+    var addr = coin.tokenAddress || '';
+    var shortAddr = addr.length > 12 ? addr.substring(0, 6) + '...' + addr.substring(addr.length - 4) : addr;
+
+    var ageText = '不明';
+    if (coin.ageHours != null) {
+      if (coin.ageHours < 1) ageText = Math.round(coin.ageHours * 60) + '分';
+      else if (coin.ageHours < 24) ageText = Math.round(coin.ageHours) + '時間';
+      else ageText = Math.round(coin.ageHours / 24) + '日';
+    }
+
+    // スコアバー生成
+    var bd = coin.score || {};
+    var barsHtml = '';
+    var barData = [
+      { label: 'Volume', value: bd.volume || 0, max: 25 },
+      { label: 'Velocity', value: bd.velocity || 0, max: 25 },
+      { label: 'Buy圧', value: bd.buyPressure || 0, max: 25 },
+      { label: 'SNS', value: bd.socialBuzz || 0, max: 25 }
+    ];
+    barData.forEach(function(b) {
+      var pct = Math.min(100, (b.value / b.max) * 100);
+      var color = pct >= 70 ? '#22c55e' : pct >= 40 ? '#f59e0b' : '#ef4444';
+      barsHtml += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
+        '<span style="font-size:11px;color:#94a3b8;width:55px">' + b.label + '</span>' +
+        '<div style="flex:1;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden">' +
+          '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:3px"></div>' +
+        '</div>' +
+        '<span style="font-size:11px;color:#e2e8f0;width:35px;text-align:right">' + Math.round(b.value) + '/' + b.max + '</span>' +
+      '</div>';
+    });
+
+    var modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'urgent-coin-detail-modal';
+    modal.innerHTML = '<div class="modal moonshot-detail-modal">' +
+      '<div class="modal-header">' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+          '<h3>🚨 ' + coin.symbol + '</h3>' +
+        '</div>' +
+        '<button class="modal-close" onclick="closeUrgentCoinDetailModal()">×</button>' +
+      '</div>' +
+      '<div class="modal-body" style="padding:16px">' +
+        // スコア
+        '<div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:16px">' +
+          '<div style="text-align:center">' +
+            '<div style="font-size:36px;font-weight:700;color:' + scoreColor + '">' + score + '</div>' +
+            '<div style="font-size:10px;color:#94a3b8">HOT Score</div>' +
+          '</div>' +
+          '<div style="text-align:center;padding:8px 16px;border-radius:8px;background:rgba(255,255,255,0.05)">' +
+            '<div class="' + (change >= 0 ? 'positive' : 'negative') + '" style="font-size:18px;font-weight:600">' + (change >= 0 ? '+' : '') + change.toFixed(1) + '%</div>' +
+            '<div style="font-size:10px;color:#94a3b8">1h変動</div>' +
+          '</div>' +
+        '</div>' +
+
+        // スコア内訳
+        '<div style="padding:12px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:12px">' +
+          '<div style="font-size:12px;color:#94a3b8;margin-bottom:8px">📊 スコア内訳</div>' +
+          barsHtml +
+        '</div>' +
+
+        // マーケットデータ
+        '<div style="display:flex;gap:8px;margin-bottom:12px">' +
+          '<div style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px">' +
+            '<div style="font-size:10px;color:#94a3b8">出来高 (24h)</div>' +
+            '<div style="font-size:14px;font-weight:600">$' + vol + '</div>' +
+          '</div>' +
+          '<div style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px">' +
+            '<div style="font-size:10px;color:#94a3b8">流動性</div>' +
+            '<div style="font-size:14px;font-weight:600">$' + liq + '</div>' +
+          '</div>' +
+          '<div style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px">' +
+            '<div style="font-size:10px;color:#94a3b8">Age</div>' +
+            '<div style="font-size:14px;font-weight:600">' + ageText + '</div>' +
+          '</div>' +
+        '</div>' +
+
+        // SNS
+        (coin.social && coin.social.interactions > 0 ?
+          '<div style="padding:10px;background:rgba(168,85,247,0.08);border-radius:8px;margin-bottom:12px;font-size:13px">' +
+            '📱 SNS反応 ' + formatCompactNum(coin.social.interactions) + '件' +
+            (coin.social.trend === 'up' ? ' <span style="color:#ef4444">🔥 急上昇</span>' : '') +
+          '</div>' : '') +
+
+        // アドレス
+        (addr ? '<div style="padding:8px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:12px;font-size:11px;color:#94a3b8;text-align:center">' +
+          'CA: ' + shortAddr +
+        '</div>' : '') +
+
+        // 外部リンク
+        '<div style="display:flex;gap:8px;margin-bottom:12px">' +
+          (coin.dexUrl ?
+            '<a href="' + coin.dexUrl + '" target="_blank" style="flex:1;display:block;text-align:center;padding:10px;background:rgba(255,255,255,0.08);border-radius:8px;color:#d4a853;text-decoration:none;font-size:13px">' +
+              '📊 DexScreener' +
+            '</a>' : '') +
+          (addr ?
+            '<a href="https://birdeye.so/token/' + addr + '?chain=solana" target="_blank" style="flex:1;display:block;text-align:center;padding:10px;background:rgba(255,255,255,0.08);border-radius:8px;color:#d4a853;text-decoration:none;font-size:13px">' +
+              '🦅 Birdeye' +
+            '</a>' : '') +
+          (addr ?
+            '<a href="https://solscan.io/token/' + addr + '" target="_blank" style="flex:1;display:block;text-align:center;padding:10px;background:rgba(255,255,255,0.08);border-radius:8px;color:#d4a853;text-decoration:none;font-size:13px">' +
+              '🔍 Solscan' +
+            '</a>' : '') +
+        '</div>' +
+
+        // Moonshot画面へ
+        '<button onclick="closeUrgentCoinDetailModal(); window.KairosApp.showMoonshot();" style="width:100%;padding:12px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:600;border:none;border-radius:8px;font-size:14px;cursor:pointer">🎰 Moonshot画面で詳しく見る</button>' +
+      '</div>' +
+    '</div>';
+
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(function() { modal.classList.add('active'); });
+
+    modal.onclick = function(e) {
+      if (e.target === modal) closeUrgentCoinDetailModal();
+    };
+  }
+  window.openUrgentCoinDetail = openUrgentCoinDetail;
+
+  function closeUrgentCoinDetailModal() {
+    var modal = document.getElementById('urgent-coin-detail-modal');
+    if (modal) {
+      modal.classList.remove('active');
+      document.body.style.overflow = '';
+      setTimeout(function() { modal.remove(); }, 300);
+    }
+  }
+  window.closeUrgentCoinDetailModal = closeUrgentCoinDetailModal;
+
+  function formatCompactUSD(num) {
+    if (num >= 1e9) return (num / 1e9).toFixed(1) + 'B';
+    if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
+    if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
+    return Math.round(num).toString();
+  }
+  function formatCompactNum(num) {
+    if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
+    if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
+    return Math.round(num).toString();
+  }
+
+  // ===== Worker URL 設定モーダル =====
+  function openWorkerUrlModal() {
+    if (document.getElementById('kairos-worker-url-modal')) return;
+
+    var currentUrl = (typeof workerAlertState !== 'undefined') ? workerAlertState.url : (localStorage.getItem('kairosWorkerUrl') || '');
+
+    var overlay = document.createElement('div');
+    overlay.id = 'kairos-worker-url-modal';
+    overlay.className = 'quick-buy-overlay';
+    overlay.innerHTML = '<div class="quick-buy-modal" style="max-width:400px">' +
+      '<div class="quick-buy-modal__header">' +
+        '<span class="quick-buy-modal__title">🛰️ Worker 監視設定</span>' +
+        '<button class="quick-buy-modal__close" onclick="document.getElementById(\'kairos-worker-url-modal\').remove()">×</button>' +
+      '</div>' +
+      '<div style="padding:16px">' +
+        '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;line-height:1.6">' +
+          'Cloudflare Worker の URL を設定すると、<br>アプリ起動時に自動で加熱コインを確認します。' +
+        '</div>' +
+        '<div class="quick-buy-modal__field">' +
+          '<label>Worker URL</label>' +
+          '<input type="url" id="worker-url-input" placeholder="https://kairos-moonshot-monitor.xxx.workers.dev" value="' + currentUrl + '" style="width:100%;padding:10px 12px;background:var(--surface-elevated);border:1px solid var(--border-primary);border-radius:10px;color:var(--text-primary);font-size:14px;outline:none">' +
+        '</div>' +
+        '<div style="margin-top:12px;display:flex;gap:8px">' +
+          '<button class="quick-buy-modal__submit" id="worker-url-test" style="background:rgba(255,255,255,0.1);flex:1">接続テスト</button>' +
+          '<button class="quick-buy-modal__submit" id="worker-url-save" style="flex:1">保存</button>' +
+        '</div>' +
+        '<div id="worker-url-status" style="margin-top:12px;font-size:12px;text-align:center;min-height:20px"></div>' +
+      '</div>' +
+    '</div>';
+
+    document.body.appendChild(overlay);
+    overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+
+    document.getElementById('worker-url-test').onclick = function() {
+      var url = document.getElementById('worker-url-input').value.trim().replace(/\/+$/, '');
+      var statusEl = document.getElementById('worker-url-status');
+      if (!url) {
+        statusEl.innerHTML = '<span style="color:#f59e0b">URLを入力してください</span>';
+        return;
+      }
+      statusEl.innerHTML = '<span style="color:var(--text-secondary)">接続中...</span>';
+      fetch(url + '/status', { mode: 'cors' })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (data.status === 'ok') {
+            statusEl.innerHTML = '<span style="color:#10b981">✅ 接続成功！Worker稼働中</span>';
+          } else {
+            statusEl.innerHTML = '<span style="color:#f59e0b">⚠️ 応答はありましたが形式が異なります</span>';
+          }
+        })
+        .catch(function() {
+          statusEl.innerHTML = '<span style="color:#ef4444">❌ 接続失敗。URLを確認してください</span>';
+        });
+    };
+
+    document.getElementById('worker-url-save').onclick = function() {
+      var url = document.getElementById('worker-url-input').value.trim().replace(/\/+$/, '');
+      if (typeof setWorkerUrl === 'function') {
+        setWorkerUrl(url);
+      } else {
+        localStorage.setItem('kairosWorkerUrl', url);
+      }
+      document.getElementById('kairos-worker-url-modal').remove();
+      showToast(url ? 'Worker URLを保存しました' : 'Worker URLをクリアしました', 'success');
+    };
+  }
+  window.openWorkerUrlModal = openWorkerUrlModal;
 
   // サイドメニュー初期化
   function initSideMenu() {
@@ -14013,15 +14494,23 @@
 
       var addr = coin.token_address || coin.symbol;
 
-      // ブラウザ通知
+      // ブラウザ通知（クリックでコイン詳細へ）
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
         try {
-          new Notification('🚀 Moonshot検出: ' + coin.symbol, {
+          var n = new Notification('🚀 Moonshot検出: ' + coin.symbol, {
             body: (coin.ai_summary_ja || 'Score: ' + coin.moonshot_score) + '\n' +
               (coin.ai_potential ? 'Potential: ' + coin.ai_potential : ''),
             icon: coin.image_url || undefined,
             tag: 'early-mover-' + addr,
           });
+          // クリックでMoonshot画面→コイン詳細を自動オープン
+          (function(coinAddr) {
+            n.onclick = function() {
+              window.focus();
+              window._pendingEarlyMoverOpen = coinAddr;
+              if (window.KairosApp) window.KairosApp.showMoonshot();
+            };
+          })(coin.token_address || coin.symbol);
         } catch(e) {
           console.warn('Notification error:', e);
         }

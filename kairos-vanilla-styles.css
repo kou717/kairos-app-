@@ -11158,6 +11158,51 @@ body.has-ticker-bar {
   margin-left: auto;
 }
 
+/* カード内アクションボタン */
+.early-mover__card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.early-mover__card-btn {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.05);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.early-mover__card-btn:active {
+  transform: scale(0.96);
+  background: rgba(255,255,255,0.12);
+}
+
+.early-mover__card-btn--chart {
+  background: rgba(212,168,83,0.1);
+  border-color: rgba(212,168,83,0.25);
+  color: #d4a853;
+}
+
+.early-mover__card-btn--chart:active {
+  background: rgba(212,168,83,0.2);
+}
+
+.early-mover__card-btn--dex {
+  flex: 0 0 auto;
+  background: rgba(168,85,247,0.08);
+  border-color: rgba(168,85,247,0.2);
+  color: #a78bfa;
+}
+
 /* スコアバー（詳細モーダル用） */
 .early-mover__score-bar {
   display: flex;
@@ -11578,6 +11623,441 @@ body.has-ticker-bar {
   font-size: 10px;
   color: #64748b;
   text-align: center;
+}
+
+/* ============================================
+   緊急 Moonshot アラートモーダル
+   ============================================ */
+
+/* ============================================
+   SNS投稿一覧 (LunarCrush Posts)
+   ============================================ */
+
+.early-mover__posts-section {
+  background: rgba(167, 139, 250, 0.06);
+  border: 1px solid rgba(167, 139, 250, 0.12);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.early-mover__posts-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #a78bfa;
+  margin-bottom: 10px;
+}
+
+.early-mover__post {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.early-mover__post:last-child {
+  margin-bottom: 0;
+}
+
+.early-mover__post:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.early-mover__post-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.early-mover__post-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.early-mover__post-avatar-placeholder {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(167, 139, 250, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.early-mover__post-creator {
+  flex: 1;
+  min-width: 0;
+}
+
+.early-mover__post-name {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.early-mover__post-handle {
+  display: block;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.early-mover__post-platform {
+  color: #a78bfa;
+}
+
+.early-mover__post-time {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.early-mover__post-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 6px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+
+.early-mover__post-stats {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.early-mover__post-stat {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* ============================================
+   緊急 Moonshot アラートモーダル
+   ============================================ */
+
+.urgent-alert-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 10100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: urgentFadeIn 0.4s ease;
+}
+
+@keyframes urgentFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.urgent-alert--closing {
+  animation: urgentFadeOut 0.3s ease forwards;
+}
+
+@keyframes urgentFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.urgent-alert-modal {
+  position: relative;
+  background: var(--surface-card);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 420px;
+  max-height: 85vh;
+  overflow-y: auto;
+  border: 2px solid rgba(239, 68, 68, 0.5);
+  box-shadow:
+    0 0 40px rgba(239, 68, 68, 0.25),
+    0 0 80px rgba(239, 68, 68, 0.1),
+    0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: urgentSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes urgentSlideUp {
+  from { transform: translateY(40px) scale(0.95); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.urgent-alert__pulse-ring {
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border-radius: 26px;
+  border: 2px solid rgba(239, 68, 68, 0.6);
+  animation: urgentPulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes urgentPulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.01); }
+}
+
+.urgent-alert__header {
+  text-align: center;
+  padding: 28px 24px 16px;
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.12) 0%, transparent 100%);
+}
+
+.urgent-alert__icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.15);
+  margin-bottom: 12px;
+  animation: urgentIconBounce 1.5s ease infinite;
+}
+
+@keyframes urgentIconBounce {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.15); }
+  30% { transform: scale(1); }
+}
+
+.urgent-alert__icon {
+  font-size: 32px;
+}
+
+.urgent-alert__title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ef4444;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.urgent-alert__subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.urgent-alert__coins {
+  padding: 8px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.urgent-alert__coin {
+  background: var(--surface-elevated);
+  border-radius: 14px;
+  padding: 14px;
+  border: 1px solid var(--border-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.urgent-alert__coin:active {
+  transform: scale(0.98);
+}
+
+.urgent-alert__coin--top {
+  border-color: rgba(212, 168, 83, 0.5);
+  background: linear-gradient(135deg, rgba(212, 168, 83, 0.08), var(--surface-elevated));
+  box-shadow: 0 0 20px rgba(212, 168, 83, 0.1);
+}
+
+.urgent-alert__coin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.urgent-alert__coin-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.urgent-alert__symbol {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.urgent-alert__age {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  background: rgba(255,255,255,0.05);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.urgent-alert__score {
+  font-size: 22px;
+  font-weight: 800;
+  min-width: 44px;
+  text-align: center;
+}
+
+.urgent-alert__score--fire {
+  color: #ef4444;
+  text-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+}
+
+.urgent-alert__score--hot {
+  color: #f59e0b;
+  text-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+}
+
+.urgent-alert__score--warm {
+  color: #10b981;
+}
+
+.urgent-alert__coin-data {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.urgent-alert__change {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.urgent-alert__change.positive { color: #10b981; }
+.urgent-alert__change.negative { color: #ef4444; }
+
+.urgent-alert__vol,
+.urgent-alert__liq {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.urgent-alert__breakdown {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+
+.urgent-alert__breakdown span {
+  background: rgba(255,255,255,0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.urgent-alert__social {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #a78bfa;
+}
+
+.urgent-alert__trend-up {
+  color: #ef4444;
+  font-weight: 600;
+  animation: urgentBlink 1s ease infinite;
+}
+
+.urgent-alert__coin-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.urgent-alert__coin-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.08);
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.urgent-alert__coin-btn:active {
+  transform: scale(0.96);
+  background: rgba(255,255,255,0.15);
+}
+
+.urgent-alert__coin-btn--dex {
+  flex: 0 0 auto;
+  background: rgba(212,168,83,0.12);
+  border-color: rgba(212,168,83,0.3);
+  color: #d4a853;
+}
+
+@keyframes urgentBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.urgent-alert__actions {
+  padding: 0 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.urgent-alert__btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.urgent-alert__btn:active {
+  transform: scale(0.98);
+}
+
+.urgent-alert__btn--primary {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
+}
+
+.urgent-alert__btn--secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
 }
 /* ============================================
    通貨別ストラテジーUI（長期/短期の2択）
