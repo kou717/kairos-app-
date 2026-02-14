@@ -2219,6 +2219,7 @@
     for (var j = 0; j < simpleModalIds.length; j++) {
       var modal = document.getElementById(simpleModalIds[j]);
       if (modal) {
+        document.body.style.overflow = '';
         modal.remove();
         return true;
       }
@@ -4982,6 +4983,7 @@
     '</div>';
 
     document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
     requestAnimationFrame(function() { modal.classList.add('active'); });
 
     modal.onclick = function(e) {
@@ -4993,6 +4995,7 @@
   function closeMoonshotDetailModal() {
     var modal = document.getElementById('moonshot-detail-modal');
     if (modal) {
+      document.body.style.overflow = '';
       modal.classList.remove('active');
       setTimeout(function() { modal.remove(); }, 300);
     }
@@ -5352,6 +5355,7 @@
     '</div>';
 
     document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
     requestAnimationFrame(function() { modal.classList.add('active'); });
 
     modal.onclick = function(e) {
@@ -5364,6 +5368,7 @@
     var modal = document.getElementById('early-mover-detail-modal');
     if (modal) {
       modal.classList.remove('active');
+      document.body.style.overflow = '';
       setTimeout(function() { modal.remove(); }, 300);
     }
   }

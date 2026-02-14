@@ -3237,6 +3237,8 @@ body {
   justify-content: center;
   background: rgba(0,0,0,0.8);
   backdrop-filter: blur(4px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .modal-content {
@@ -10425,9 +10427,22 @@ button.moonshot-btn.moonshot-btn--active {
   max-width: 440px;
   width: 90%;
   max-height: 85vh;
-  overflow-y: auto;
   background: var(--bg-secondary, #1a1a2e);
   border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.moonshot-detail-modal > .modal-header {
+  flex-shrink: 0;
+}
+
+.moonshot-detail-modal > .modal-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 /* ===== トレーディングシグナルカード ===== */
