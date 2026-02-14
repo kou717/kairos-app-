@@ -5143,8 +5143,8 @@
           '</div>' +
         '</div>' +
         '<div class="early-mover__meta">' +
-          '<span>Vol: ' + formatCompactNumber(coin.volume_24h || 0) + '</span>' +
-          '<span>Liq: ' + formatCompactNumber(coin.liquidity_usd || 0) + '</span>' +
+          '<span>Vol: ' + formatValueCompact(coin.volume_24h || 0) + '</span>' +
+          '<span>Liq: ' + formatValueCompact(coin.liquidity_usd || 0) + '</span>' +
           '<span>Age: ' + formatAgeHours(coin.age_hours) + '</span>' +
           '<span class="' + (change1h >= 0 ? 'positive' : 'negative') + '">' +
             (change1h >= 0 ? '+' : '') + change1h.toFixed(1) + '% (1h)' +
@@ -5182,7 +5182,7 @@
     var change24h = coin.price_change_24h || 0;
     var change5m = coin.price_change_5m || 0;
 
-    var priceStr = coin.price_usd < 0.001 ? '$' + coin.price_usd.toFixed(8) : '$' + coin.price_usd.toFixed(4);
+    var priceStr = formatPriceCompact(coin.price_usd);
 
     // リスクバッジ
     var riskColor = coin.risk_level === 'high' ? '#ef4444' : coin.risk_level === 'medium' ? '#f59e0b' : coin.risk_level === 'low' ? '#22c55e' : '#6b7280';
@@ -5299,11 +5299,11 @@
         '<div style="display:flex;gap:8px;margin-bottom:12px">' +
           '<div style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px">' +
             '<div style="font-size:10px;color:#94a3b8">出来高 (24h)</div>' +
-            '<div style="font-size:14px;font-weight:600">$' + formatCompactNumber(coin.volume_24h || 0) + '</div>' +
+            '<div style="font-size:14px;font-weight:600">' + formatValueCompact(coin.volume_24h || 0) + '</div>' +
           '</div>' +
           '<div style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px">' +
             '<div style="font-size:10px;color:#94a3b8">流動性</div>' +
-            '<div style="font-size:14px;font-weight:600">$' + formatCompactNumber(coin.liquidity_usd || 0) + '</div>' +
+            '<div style="font-size:14px;font-weight:600">' + formatValueCompact(coin.liquidity_usd || 0) + '</div>' +
           '</div>' +
           '<div style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px">' +
             '<div style="font-size:10px;color:#94a3b8">Age</div>' +
