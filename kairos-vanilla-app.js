@@ -4459,7 +4459,9 @@
           change24h: cached.change24h,
           score: stratScore.score,
           grade: stratScore.grade,
-          pricePosition: cached.pricePosition || 50
+          pricePosition: (appState.currenciesViewMode === 'longterm' && cached.pricePositionLongterm !== undefined)
+            ? cached.pricePositionLongterm
+            : (cached.pricePositionSwing !== undefined ? cached.pricePositionSwing : (cached.pricePosition || 50))
         });
       }
     });
@@ -5405,8 +5407,18 @@
     var summaryColor = getSummaryColor(summary);
     var summaryBgColor = getSummaryBgColor(summary);
     var proxyUsed = cachedScore.proxyUsed || [];
-    var pricePosition = cachedScore.pricePosition || 50;
-    var pricePositionDisplay = cachedScore.pricePositionDisplay || '50%';
+    // 価格ポジション: モードに応じてswing/longtermを切り替え
+    var pricePosition, pricePositionDisplay;
+    if (appState.currenciesViewMode === 'longterm' && cachedScore.pricePositionLongterm !== undefined) {
+      pricePosition = cachedScore.pricePositionLongterm;
+      pricePositionDisplay = cachedScore.pricePositionDisplayLongterm || '50%';
+    } else if (appState.currenciesViewMode === 'swing' && cachedScore.pricePositionSwing !== undefined) {
+      pricePosition = cachedScore.pricePositionSwing;
+      pricePositionDisplay = cachedScore.pricePositionDisplaySwing || '50%';
+    } else {
+      pricePosition = cachedScore.pricePosition || 50;
+      pricePositionDisplay = cachedScore.pricePositionDisplay || '50%';
+    }
     var changeClass = change >= 0 ? 'positive' : 'negative';
     var changeSign = change >= 0 ? '+' : '';
 
@@ -11843,6 +11855,15 @@
           }
           if (coin.summary_longterm !== undefined) {
             entry.summaryLongterm = coin.summary_longterm;
+          }
+          // dual対応: 価格ポジションも両方保存
+          if (coin.price_position_swing !== undefined) {
+            entry.pricePositionSwing = coin.price_position_swing;
+            entry.pricePositionDisplaySwing = coin.price_position_display_swing || '50%';
+          }
+          if (coin.price_position_longterm !== undefined) {
+            entry.pricePositionLongterm = coin.price_position_longterm;
+            entry.pricePositionDisplayLongterm = coin.price_position_display_longterm || '50%';
           }
 
           scoreCache.data[coin.ticker] = entry;
