@@ -4670,11 +4670,11 @@
   function renderEarlyDetectionContent() {
     return '<div class="moonshot-section">' +
       '<div class="moonshot-section__title">🚀 DEX初動検出</div>' +
-      '<div class="moonshot-section__desc">DexScreener + GeckoTerminal → AI評価（Solana DEX）</div>' +
+      '<div class="moonshot-section__desc">DexScreener + GeckoTerminal + LunarCrush SNS → AI評価</div>' +
       '<div id="early-mover-coins" class="moonshot-coins">' +
         '<div class="moonshot-loading">' +
           '<div class="moonshot-loading__spinner"></div>' +
-          '<div class="moonshot-loading__text">DEX初動を検索中...</div>' +
+          '<div class="moonshot-loading__text">DEX初動 + SNS話題度を検索中...</div>' +
         '</div>' +
       '</div>' +
     '</div>' +
@@ -4684,17 +4684,17 @@
       '<div class="moonshot-filters__list">' +
         '<div class="moonshot-filter">' +
           '<span class="moonshot-filter__name">Volume</span>' +
-          '<span class="moonshot-filter__condition">0-25</span>' +
+          '<span class="moonshot-filter__condition">0-20</span>' +
           '<span class="moonshot-filter__desc">24h出来高（対数スケール）</span>' +
         '</div>' +
         '<div class="moonshot-filter">' +
           '<span class="moonshot-filter__name">Velocity</span>' +
-          '<span class="moonshot-filter__condition">0-25</span>' +
+          '<span class="moonshot-filter__condition">0-20</span>' +
           '<span class="moonshot-filter__desc">5m/1h/24h価格変動</span>' +
         '</div>' +
         '<div class="moonshot-filter">' +
           '<span class="moonshot-filter__name">Buy圧</span>' +
-          '<span class="moonshot-filter__condition">0-25</span>' +
+          '<span class="moonshot-filter__condition">0-20</span>' +
           '<span class="moonshot-filter__desc">買い/売りトランザクション比率</span>' +
         '</div>' +
         '<div class="moonshot-filter">' +
@@ -4703,9 +4703,9 @@
           '<span class="moonshot-filter__desc">プール作成からの経過時間</span>' +
         '</div>' +
         '<div class="moonshot-filter">' +
-          '<span class="moonshot-filter__name">ソース</span>' +
-          '<span class="moonshot-filter__condition">0-10</span>' +
-          '<span class="moonshot-filter__desc">複数APIで検出 = 信頼性UP</span>' +
+          '<span class="moonshot-filter__name">📱 SNS</span>' +
+          '<span class="moonshot-filter__condition" style="color:#a78bfa">0-25</span>' +
+          '<span class="moonshot-filter__desc">X/Reddit/YouTube反応数+感情+トレンド</span>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -5019,21 +5019,21 @@
       desc: '24時間の取引量を対数スケールで評価します。取引量が多いほど、そのコインに注目が集まっていることを意味します。',
       good: '出来高が多い → 多くの人が売買している → 注目度が高い',
       bad: '出来高が少ない → まだ誰も気づいていないか、興味がない',
-      max: 25
+      max: 20
     },
     'Velocity': {
       title: '価格変動速度（Velocity）',
       desc: '直近5分・1時間・24時間の価格変動の大きさと方向を評価します。急上昇中のコインほど高スコアになります。',
       good: '急上昇中 → 買いが殺到している可能性。初動を捉えるチャンス',
       bad: '変動が小さい → まだ動き出していない、または停滞中',
-      max: 25
+      max: 20
     },
     'Buy圧': {
       title: '買い圧力（Buy Pressure）',
       desc: '買いトランザクション数と売りトランザクション数の比率です。買いが売りより多ければ、価格が上がりやすい状態です。',
       good: '買い > 売り → 需要が供給を上回っている → 価格上昇圧力',
       bad: '売り > 買い → 利確や損切りが多い → 下落リスク',
-      max: 25
+      max: 20
     },
     '鮮度': {
       title: 'プールの新しさ（Freshness）',
@@ -5042,12 +5042,12 @@
       bad: '24時間以上経過 → すでに初動は過ぎている可能性',
       max: 15
     },
-    'ソース': {
-      title: '検出ソース数（Multi Source）',
-      desc: 'DexScreenerとGeckoTerminalの両方で検出されたかを評価します。複数のサイトで話題になっていれば信頼性が上がります。',
-      good: '複数ソースで検出 → 本物のトレンドの可能性が高い',
-      bad: '1ソースのみ → まだ一部でしか注目されていない',
-      max: 10
+    'SNS': {
+      title: 'SNS話題度（Social Buzz）',
+      desc: 'X(Twitter)・Reddit・YouTubeでの言及数・いいね・リプライ・RT数をLunarCrushで計測。「ネットで急に話題になっているか」を数値化します。',
+      good: '反応数が急増+ポジティブ感情 → SNSで火がつき始めている → 爆発の前兆',
+      bad: 'SNSでの言及なし → まだ誰も知らない。もしくはAPIキー未設定',
+      max: 25
     }
   };
 
@@ -5152,8 +5152,16 @@
             (change1h >= 0 ? '+' : '') + change1h.toFixed(1) + '% (1h)' +
           '</span>' +
         '</div>' +
+        // SNS話題度
+        (coin.social_interactions > 0 ?
+          '<div class="early-mover__social-hint">' +
+            '<span class="early-mover__social-icon">📱</span>' +
+            '<span>' + formatCompactNumber(coin.social_interactions) + '件反応</span>' +
+            '<span class="early-mover__social-sep">·</span>' +
+            '<span>' + coin.social_contributors + '人</span>' +
+            (coin.social_trend === 'up' ? '<span class="early-mover__social-trend-up">🔥 急上昇</span>' : '') +
+          '</div>' : '') +
         (coin.ai_summary_ja ? '<div class="early-mover__ai-hint">🤖 ' + coin.ai_summary_ja + '</div>' : '') +
-        (coin.ai_reason_ja ? '<div class="early-mover__ai-reason-hint">💡 ' + (coin.ai_reason_ja.length > 40 ? coin.ai_reason_ja.substring(0, 38) + '...' : coin.ai_reason_ja) + '</div>' : '') +
         // 価格予想ミニ
         (coin.ai_price_prediction && coin.ai_price_prediction['1h'] ?
           '<div class="early-mover__prediction-mini">' +
@@ -5242,12 +5250,42 @@
         // スコア内訳バー（タップで説明表示）
         '<div style="padding:12px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:12px">' +
           '<div style="font-size:12px;color:#94a3b8;margin-bottom:8px">📊 スコア内訳 <span style="font-size:10px;color:#64748b">（タップで意味を確認）</span></div>' +
-          renderScoreBar('Volume', bd.volume || 0, 25) +
-          renderScoreBar('Velocity', bd.velocity || 0, 25) +
-          renderScoreBar('Buy圧', bd.buy_pressure || 0, 25) +
+          renderScoreBar('Volume', bd.volume || 0, 20) +
+          renderScoreBar('Velocity', bd.velocity || 0, 20) +
+          renderScoreBar('Buy圧', bd.buy_pressure || 0, 20) +
           renderScoreBar('鮮度', bd.freshness || 0, 15) +
-          renderScoreBar('ソース', bd.multi_source || 0, 10) +
+          renderScoreBar('SNS', bd.social_buzz || 0, 25) +
         '</div>' +
+
+        // SNSデータ詳細
+        (coin.social_interactions > 0 ?
+          '<div class="early-mover__social-section">' +
+            '<div style="font-size:12px;color:#94a3b8;margin-bottom:8px">📱 SNS話題度 <span style="font-size:10px;color:#a78bfa">(LunarCrush)</span></div>' +
+            '<div class="early-mover__social-grid">' +
+              '<div class="early-mover__social-stat">' +
+                '<div class="early-mover__social-stat-value">' + formatCompactNumber(coin.social_interactions) + '</div>' +
+                '<div class="early-mover__social-stat-label">反応数</div>' +
+              '</div>' +
+              '<div class="early-mover__social-stat">' +
+                '<div class="early-mover__social-stat-value">' + coin.social_contributors + '</div>' +
+                '<div class="early-mover__social-stat-label">言及者</div>' +
+              '</div>' +
+              '<div class="early-mover__social-stat">' +
+                '<div class="early-mover__social-stat-value">' + coin.social_posts + '</div>' +
+                '<div class="early-mover__social-stat-label">投稿数</div>' +
+              '</div>' +
+              '<div class="early-mover__social-stat">' +
+                '<div class="early-mover__social-stat-value' + (coin.social_sentiment >= 60 ? ' positive' : coin.social_sentiment <= 40 ? ' negative' : '') + '">' + coin.social_sentiment + '%</div>' +
+                '<div class="early-mover__social-stat-label">ポジティブ</div>' +
+              '</div>' +
+            '</div>' +
+            (coin.social_trend === 'up' ? '<div class="early-mover__social-trend">🔥 SNSでの話題が急上昇中</div>' : '') +
+            (coin.social_topic_rank && coin.social_topic_rank <= 100 ? '<div class="early-mover__social-rank">🏆 トピックランク #' + coin.social_topic_rank + '</div>' : '') +
+          '</div>'
+        : '<div class="early-mover__social-section early-mover__social-section--empty">' +
+            '<div style="font-size:12px;color:#94a3b8;margin-bottom:4px">📱 SNS話題度</div>' +
+            '<div style="font-size:11px;color:#64748b">ソーシャルデータなし（LunarCrush APIキーを設定すると利用可能）</div>' +
+          '</div>') +
 
         // AI分析 — 判断理由を詳しく
         (coin.ai_summary_ja ? '<div class="early-mover__ai-section">' +

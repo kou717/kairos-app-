@@ -1,7 +1,7 @@
-// KAIROS Service Worker v19.12 - Longterm Scoring Fix + Price Position
-const CACHE_NAME = 'kairos-v19-12';
-const STATIC_CACHE = 'kairos-static-v19-12';
-const DYNAMIC_CACHE = 'kairos-dynamic-v19-12';
+// KAIROS Service Worker v19.13 - LunarCrush Social Buzz Integration
+const CACHE_NAME = 'kairos-v19-13';
+const STATIC_CACHE = 'kairos-static-v19-13';
+const DYNAMIC_CACHE = 'kairos-dynamic-v19-13';
 
 // 静的アセット（必ずキャッシュ）
 const STATIC_ASSETS = [
