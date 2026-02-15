@@ -7249,13 +7249,38 @@
           // GeckoTerminalフォールバック（DEXコイン用）
           var coinData = scoreCache && scoreCache.data && scoreCache.data[ticker];
           var dexUrl = coinData && coinData._dexUrl;
-          if (dexUrl) {
-            fetchGeckoTerminalOHLCV(dexUrl, period).then(function(gtData) {
+          var tokenAddr = coinData && coinData._tokenAddress;
+
+          // dex_urlからchain/poolを抽出試行
+          var dexMatch = dexUrl ? dexUrl.match(/dexscreener\.com\/([^\/]+)\/([^\/\?#]+)/) : null;
+          var chain = dexMatch ? dexMatch[1] : 'solana';
+          var poolFromUrl = dexMatch ? dexMatch[2] : null;
+
+          var networkMap = {
+            'solana': 'solana', 'ethereum': 'eth', 'bsc': 'bsc',
+            'arbitrum': 'arbitrum', 'base': 'base', 'polygon': 'polygon_pos',
+            'avalanche': 'avax', 'optimism': 'optimism', 'fantom': 'ftm', 'sui': 'sui-network'
+          };
+          var network = networkMap[chain] || chain;
+
+          if (poolFromUrl) {
+            // Step 1: dex_urlのアドレスでOHLCV試行（ペアアドレスのはず）
+            fetchGeckoTerminalOHLCV(network, poolFromUrl, period).then(function(gtData) {
               if (gtData) {
                 resolve(gtData);
+              } else if (tokenAddr) {
+                // Step 2: 失敗 → tokenAddressでプール検索 → OHLCV
+                resolvePoolAndFetchOHLCV(network, tokenAddr, period).then(function(gtData2) {
+                  resolve(gtData2 || generateDummyChartData(period));
+                });
               } else {
                 resolve(generateDummyChartData(period));
               }
+            });
+          } else if (tokenAddr) {
+            // dex_urlなし → tokenAddressでプール検索 → OHLCV
+            resolvePoolAndFetchOHLCV(network, tokenAddr, period).then(function(gtData) {
+              resolve(gtData || generateDummyChartData(period));
             });
           } else {
             resolve(generateDummyChartData(period));
@@ -7264,34 +7289,40 @@
     });
   }
 
+  // GeckoTerminal: トークンアドレス → 最大出来高プールを検索 → OHLCV取得
+  function resolvePoolAndFetchOHLCV(network, tokenAddress, period) {
+    var url = 'https://api.geckoterminal.com/api/v2/networks/' + network +
+      '/tokens/' + tokenAddress + '/pools?page=1';
+    console.log('[Chart] GeckoTerminal pool lookup:', url);
+
+    return fetch(url)
+      .then(function(res) {
+        if (!res.ok) throw new Error('Pool lookup error: ' + res.status);
+        return res.json();
+      })
+      .then(function(json) {
+        var pools = json && json.data;
+        if (!pools || pools.length === 0) {
+          console.warn('[Chart] GeckoTerminal: no pools found for token', tokenAddress);
+          return null;
+        }
+        // 最初のプール（出来高順にソート済み）からアドレス取得
+        var poolAddr = pools[0].attributes && pools[0].attributes.address;
+        if (!poolAddr) {
+          console.warn('[Chart] GeckoTerminal: pool has no address');
+          return null;
+        }
+        console.log('[Chart] GeckoTerminal: resolved pool', poolAddr, 'from token', tokenAddress);
+        return fetchGeckoTerminalOHLCV(network, poolAddr, period);
+      })
+      .catch(function(err) {
+        console.error('[Chart] GeckoTerminal pool lookup error:', err);
+        return null;
+      });
+  }
+
   // GeckoTerminal OHLCVフォールバック（DEXコイン用）
-  function fetchGeckoTerminalOHLCV(dexUrl, period) {
-    // dexUrlからchain/poolを抽出 (例: https://dexscreener.com/solana/xxx → chain=solana, pool=xxx)
-    var match = dexUrl.match(/dexscreener\.com\/([^\/]+)\/([^\/\?#]+)/);
-    if (!match) {
-      console.warn('[Chart] Cannot parse dex_url:', dexUrl);
-      return Promise.resolve(null);
-    }
-
-    var dexChain = match[1];
-    var pool = match[2];
-
-    // DexScreener chain名 → GeckoTerminal network名マッピング
-    var networkMap = {
-      'solana': 'solana',
-      'ethereum': 'eth',
-      'bsc': 'bsc',
-      'arbitrum': 'arbitrum',
-      'base': 'base',
-      'polygon': 'polygon_pos',
-      'avalanche': 'avax',
-      'optimism': 'optimism',
-      'fantom': 'ftm',
-      'sui': 'sui-network'
-    };
-    var network = networkMap[dexChain] || dexChain;
-
-    // period → GeckoTerminal OHLCVパラメータ
+  function fetchGeckoTerminalOHLCV(network, poolAddress, period) {
     var gtParams = {
       '1H':  { timeframe: 'minute', aggregate: 5,  limit: 100 },
       '4H':  { timeframe: 'minute', aggregate: 15, limit: 100 },
@@ -7303,11 +7334,11 @@
     var cfg = gtParams[period] || gtParams['1D'];
 
     var url = 'https://api.geckoterminal.com/api/v2/networks/' + network +
-      '/pools/' + pool + '/ohlcv/' + cfg.timeframe +
+      '/pools/' + poolAddress + '/ohlcv/' + cfg.timeframe +
       '?aggregate=' + cfg.aggregate + '&limit=' + cfg.limit +
       '&currency=usd';
 
-    console.log('[Chart] GeckoTerminal fallback:', url);
+    console.log('[Chart] GeckoTerminal OHLCV:', url);
 
     return fetch(url)
       .then(function(res) {
@@ -7317,7 +7348,7 @@
       .then(function(json) {
         var ohlcvList = json && json.data && json.data.attributes && json.data.attributes.ohlcv_list;
         if (!ohlcvList || ohlcvList.length === 0) {
-          console.warn('[Chart] GeckoTerminal: no OHLCV data');
+          console.warn('[Chart] GeckoTerminal: no OHLCV data for pool', poolAddress);
           return null;
         }
 
@@ -7326,7 +7357,6 @@
         var jpyRate = appState.priceCurrency === 'JPY' ? 150 : 1;
         var jstOffset = 9 * 60 * 60;
 
-        // ohlcv_list: [[timestamp, open, high, low, close, volume], ...] — 降順の場合あり
         ohlcvList.sort(function(a, b) { return a[0] - b[0]; });
 
         ohlcvList.forEach(function(item) {
@@ -7345,11 +7375,11 @@
           });
         });
 
-        console.log('[Chart] GeckoTerminal: loaded', candles.length, 'candles');
+        console.log('[Chart] GeckoTerminal: loaded', candles.length, 'candles for pool', poolAddress);
         return { candles: candles, volumes: volumes, isLongTerm: false };
       })
       .catch(function(err) {
-        console.error('[Chart] GeckoTerminal fallback error:', err);
+        console.error('[Chart] GeckoTerminal OHLCV error:', err);
         return null;
       });
   }
