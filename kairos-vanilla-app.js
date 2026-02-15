@@ -4860,7 +4860,7 @@
 
       var priceStr = formatPriceCompact(coin.price_usd);
 
-      html += '<div class="moonshot-coin" onclick="window.KairosApp.viewCurrency(\'' + coin.symbol + '\')" style="animation-delay:' + (idx * 0.05) + 's;cursor:pointer">' +
+      html += '<div class="moonshot-coin" onclick="openMoonshotCoinDetail(' + idx + ')" style="animation-delay:' + (idx * 0.05) + 's;cursor:pointer">' +
         '<div class="moonshot-coin__header">' +
           (coin.thumb ? '<img class="moonshot-coin__icon" src="' + coin.thumb + '" alt="">' : '') +
           '<div class="moonshot-coin__info">' +
@@ -5213,7 +5213,7 @@
       else if (coin.risk_level === 'medium') riskBadge = '<span class="early-mover__risk early-mover__risk--medium">MID RISK</span>';
       else if (coin.risk_level === 'low') riskBadge = '<span class="early-mover__risk early-mover__risk--low">LOW RISK</span>';
 
-      html += '<div class="early-mover-coin' + (isTop3 ? ' early-mover-coin--top' : '') + '" onclick="window.KairosApp.viewCurrency(\'' + coin.symbol + '\')" style="animation-delay:' + (idx * 0.05) + 's;cursor:pointer">' +
+      html += '<div class="early-mover-coin' + (isTop3 ? ' early-mover-coin--top' : '') + '" onclick="openEarlyMoverDetail(' + idx + ')" style="animation-delay:' + (idx * 0.05) + 's;cursor:pointer">' +
         '<div class="early-mover__header">' +
           (coin.image_url ? '<img class="moonshot-coin__icon" src="' + coin.image_url + '" alt="">' : '<div class="moonshot-coin__icon-placeholder">🪙</div>') +
           '<div class="moonshot-coin__info">' +
