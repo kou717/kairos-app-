@@ -6495,9 +6495,17 @@
         localization: {
           priceFormatter: function(price) {
             if (appState.priceCurrency === 'JPY') {
-              return '¥' + Math.round(price).toLocaleString('ja-JP');
+              if (price >= 1) return '¥' + Math.round(price).toLocaleString('ja-JP');
+              if (price >= 0.01) return '¥' + price.toFixed(4);
+              if (price >= 0.0001) return '¥' + price.toFixed(6);
+              if (price > 0) return '¥' + price.toPrecision(2);
+              return '¥0';
             }
-            return '$' + price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            if (price >= 1) return '$' + price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            if (price >= 0.001) return '$' + price.toFixed(4);
+            if (price >= 0.0000001) return '$' + price.toFixed(8);
+            if (price > 0) return '$' + price.toPrecision(2);
+            return '$0.00';
           },
           timeFormatter: data.isLongTerm ? function(time) {
             var date = new Date(time * 1000);
@@ -6548,7 +6556,13 @@
           if (price) {
             var date = new Date(param.time * 1000);
             var dateStr = date.getFullYear() + '年' + (date.getMonth() + 1) + '月' + date.getDate() + '日';
-            var priceStr = appState.priceCurrency === 'JPY' ? '¥' + Math.round(price.value).toLocaleString('ja-JP') : '$' + formatNumber(price.value);
+            var priceStr;
+            if (appState.priceCurrency === 'JPY') {
+              var pv = price.value;
+              priceStr = pv >= 1 ? '¥' + Math.round(pv).toLocaleString('ja-JP') : pv >= 0.01 ? '¥' + pv.toFixed(4) : pv >= 0.0001 ? '¥' + pv.toFixed(6) : pv > 0 ? '¥' + pv.toPrecision(2) : '¥0';
+            } else {
+              priceStr = '$' + formatNumber(price.value);
+            }
             tooltip.innerHTML = '<div style="color:rgba(255,255,255,0.7);margin-bottom:4px">' + dateStr + '</div>' +
               '<div style="font-size:16px;font-weight:600;color:#d4a853">' + priceStr + '</div>';
             tooltip.style.display = 'block';
@@ -6560,8 +6574,14 @@
         if (statsContainer && data.stats) {
           var changeColor = data.stats.changePercent >= 0 ? '#22c55e' : '#ef4444';
           var changeSign = data.stats.changePercent >= 0 ? '+' : '';
-          var startPriceStr = appState.priceCurrency === 'JPY' ? '¥' + Math.round(data.stats.startPrice).toLocaleString('ja-JP') : '$' + formatNumber(data.stats.startPrice);
-          var endPriceStr = appState.priceCurrency === 'JPY' ? '¥' + Math.round(data.stats.endPrice).toLocaleString('ja-JP') : '$' + formatNumber(data.stats.endPrice);
+          var fmtStatPrice = function(v) {
+            if (appState.priceCurrency === 'JPY') {
+              return v >= 1 ? '¥' + Math.round(v).toLocaleString('ja-JP') : v >= 0.01 ? '¥' + v.toFixed(4) : v > 0 ? '¥' + v.toFixed(6) : '¥0';
+            }
+            return '$' + formatNumber(v);
+          };
+          var startPriceStr = fmtStatPrice(data.stats.startPrice);
+          var endPriceStr = fmtStatPrice(data.stats.endPrice);
           statsContainer.innerHTML =
             '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid rgba(255,255,255,0.1);margin-top:8px">' +
               '<div style="text-align:left">' +
@@ -6619,9 +6639,15 @@
             var dateStr = date.getFullYear() + '/' + (date.getMonth() + 1) + '/' + date.getDate() + ' ' +
               ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2);
             var changeColor = price.close >= price.open ? '#10b981' : '#ef4444';
-            var sym = appState.priceCurrency === 'JPY' ? '¥' : '$';
             var fmtPrice = function(v) {
-              return appState.priceCurrency === 'JPY' ? sym + Math.round(v).toLocaleString('ja-JP') : sym + formatNumber(v);
+              if (appState.priceCurrency === 'JPY') {
+                if (v >= 1) return '¥' + Math.round(v).toLocaleString('ja-JP');
+                if (v >= 0.01) return '¥' + v.toFixed(4);
+                if (v >= 0.0001) return '¥' + v.toFixed(6);
+                if (v > 0) return '¥' + v.toPrecision(2);
+                return '¥0';
+              }
+              return '$' + formatNumber(v);
             };
             tooltip.innerHTML = '<div style="color:rgba(255,255,255,0.7);margin-bottom:4px">' + dateStr + '</div>' +
               '<div style="display:grid;grid-template-columns:auto auto;gap:4px 12px;font-size:11px">' +
@@ -7271,19 +7297,19 @@
               } else if (tokenAddr) {
                 // Step 2: 失敗 → tokenAddressでプール検索 → OHLCV
                 resolvePoolAndFetchOHLCV(network, tokenAddr, period).then(function(gtData2) {
-                  resolve(gtData2 || generateDummyChartData(period));
+                  resolve(gtData2 || null);
                 });
               } else {
-                resolve(generateDummyChartData(period));
+                resolve(null);
               }
             });
           } else if (tokenAddr) {
             // dex_urlなし → tokenAddressでプール検索 → OHLCV
             resolvePoolAndFetchOHLCV(network, tokenAddr, period).then(function(gtData) {
-              resolve(gtData || generateDummyChartData(period));
+              resolve(gtData || null);
             });
           } else {
-            resolve(generateDummyChartData(period));
+            resolve(null);
           }
         });
     });
@@ -7400,7 +7426,7 @@
         })
         .then(function(data) {
           if (!data || data.length === 0) {
-            resolve(generateLongTermDummyData(period));
+            resolve(null);
             return;
           }
 
@@ -7433,7 +7459,7 @@
         })
         .catch(function(err) {
           console.error('[Chart] Binance long-term fetch error:', err);
-          resolve(generateLongTermDummyData(period));
+          resolve(null);
         });
     });
   }
