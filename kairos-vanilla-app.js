@@ -5053,7 +5053,7 @@
         '</div>' : '') +
 
         // KAIROSで分析ボタン
-        '<button onclick="closeMoonshotDetailModal(); window.KairosApp.viewCurrency(\'' + coin.symbol + '\');" style="width:100%;padding:12px;margin-bottom:12px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:600;border:none;border-radius:8px;font-size:14px;cursor:pointer">✨ KAIROSで分析する</button>' +
+        '<button onclick="if(window.injectCoinDataForDetail)window.injectCoinDataForDetail(\'' + coin.symbol + '\',{price:' + (coin.price_usd || 0) + ',change24h:' + (coin.price_change_24h || 0) + '}); closeMoonshotDetailModal(); window.KairosApp.viewCurrency(\'' + coin.symbol + '\');" style="width:100%;padding:12px;margin-bottom:12px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:600;border:none;border-radius:8px;font-size:14px;cursor:pointer">✨ KAIROSで分析する</button>' +
 
         // 外部リンク
         '<div style="display:flex;gap:8px">' +
@@ -5515,7 +5515,7 @@
         '</div>' : '') +
 
         // KAIROSで分析ボタン
-        '<button onclick="closeEarlyMoverDetailModal(); window.KairosApp.viewCurrency(\'' + coin.symbol + '\');" style="width:100%;padding:12px;margin-bottom:12px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:600;border:none;border-radius:8px;font-size:14px;cursor:pointer">✨ KAIROSで分析する</button>' +
+        '<button onclick="if(window.injectCoinDataForDetail)window.injectCoinDataForDetail(\'' + coin.symbol + '\',{price:' + (coin.price_usd || 0) + ',change24h:' + (coin.price_change_24h || 0) + '}); closeEarlyMoverDetailModal(); window.KairosApp.viewCurrency(\'' + coin.symbol + '\');" style="width:100%;padding:12px;margin-bottom:12px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:600;border:none;border-radius:8px;font-size:14px;cursor:pointer">✨ KAIROSで分析する</button>' +
 
         // 外部リンク
         '<div style="display:flex;gap:8px">' +
@@ -12286,6 +12286,17 @@
     var viewMode = appState.currenciesViewMode;
     if (viewMode === 'longterm') return scoreCache.longtermConfidence || 50;
     return scoreCache.swingConfidence || 50;
+  };
+
+  // Moonshot→詳細画面遷移用: 価格データをscoreCacheに注入
+  window.injectCoinDataForDetail = function(ticker, data) {
+    if (!scoreCache.data[ticker]) {
+      scoreCache.data[ticker] = {};
+    }
+    var d = scoreCache.data[ticker];
+    if (data.price) d.price = data.price;
+    if (data.change24h !== undefined) d.change24h = data.change24h;
+    if (data.name) d.name = data.name;
   };
 
   function fetchAndUpdateScores() {
