@@ -12288,15 +12288,14 @@
     return scoreCache.swingConfidence || 50;
   };
 
-  // Moonshot→詳細画面遷移用: 価格データをscoreCacheに注入
+  // Moonshot→個別画面遷移用: 価格データをscoreCacheに注入（既存データは上書きしない）
   window.injectCoinDataForDetail = function(ticker, data) {
     if (!scoreCache.data[ticker]) {
       scoreCache.data[ticker] = {};
     }
     var d = scoreCache.data[ticker];
-    if (data.price) d.price = data.price;
-    if (data.change24h !== undefined) d.change24h = data.change24h;
-    if (data.name) d.name = data.name;
+    if (!d.price && data.price) d.price = data.price;
+    if (d.change24h === undefined && data.change24h !== undefined) d.change24h = data.change24h;
   };
 
   function fetchAndUpdateScores() {
