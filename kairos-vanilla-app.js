@@ -5053,7 +5053,7 @@
         '</div>' : '') +
 
         // KAIROSで分析ボタン
-        '<button onclick="if(window.injectCoinDataForDetail)window.injectCoinDataForDetail(\'' + coin.symbol + '\',{price:' + (coin.price_usd || 0) + ',change24h:' + (coin.price_change_24h || 0) + '}); closeMoonshotDetailModal(); window.KairosApp.viewCurrency(\'' + coin.symbol + '\');" style="width:100%;padding:12px;margin-bottom:12px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:600;border:none;border-radius:8px;font-size:14px;cursor:pointer">✨ KAIROSで分析する</button>' +
+        '<button onclick="if(window.injectCoinDataForDetail)window.injectCoinDataForDetail(\'' + coin.symbol + '\',{price:' + (coin.price_usd || 0) + ',change24h:' + (coin.price_change_24h || 0) + (coin.dex_url ? ',dexUrl:\'' + coin.dex_url + '\'' : '') + (coin.token_address ? ',tokenAddress:\'' + coin.token_address + '\'' : '') + '}); closeMoonshotDetailModal(); window.KairosApp.viewCurrency(\'' + coin.symbol + '\');" style="width:100%;padding:12px;margin-bottom:12px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:600;border:none;border-radius:8px;font-size:14px;cursor:pointer">✨ KAIROSで分析する</button>' +
 
         // 外部リンク
         '<div style="display:flex;gap:8px">' +
@@ -5515,7 +5515,7 @@
         '</div>' : '') +
 
         // KAIROSで分析ボタン
-        '<button onclick="if(window.injectCoinDataForDetail)window.injectCoinDataForDetail(\'' + coin.symbol + '\',{price:' + (coin.price_usd || 0) + ',change24h:' + (coin.price_change_24h || 0) + '}); closeEarlyMoverDetailModal(); window.KairosApp.viewCurrency(\'' + coin.symbol + '\');" style="width:100%;padding:12px;margin-bottom:12px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:600;border:none;border-radius:8px;font-size:14px;cursor:pointer">✨ KAIROSで分析する</button>' +
+        '<button onclick="if(window.injectCoinDataForDetail)window.injectCoinDataForDetail(\'' + coin.symbol + '\',{price:' + (coin.price_usd || 0) + ',change24h:' + (coin.price_change_24h || 0) + (coin.dex_url ? ',dexUrl:\'' + coin.dex_url + '\'' : '') + (coin.token_address ? ',tokenAddress:\'' + coin.token_address + '\'' : '') + '}); closeEarlyMoverDetailModal(); window.KairosApp.viewCurrency(\'' + coin.symbol + '\');" style="width:100%;padding:12px;margin-bottom:12px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:600;border:none;border-radius:8px;font-size:14px;cursor:pointer">✨ KAIROSで分析する</button>' +
 
         // 外部リンク
         '<div style="display:flex;gap:8px">' +
@@ -5601,8 +5601,18 @@
     var changeClass = change >= 0 ? 'positive' : 'negative';
     var changeSign = change >= 0 ? '+' : '';
 
-    // 円建て価格
+    // 円建て価格（小額コイン対応）
     var priceJpy = priceUsd * JPY_RATE;
+    var fmtUsd = priceUsd < 0.01 ?
+      (priceUsd >= 0.001 ? '$' + priceUsd.toFixed(4) :
+       priceUsd >= 0.0000001 ? '$' + priceUsd.toFixed(8) :
+       priceUsd > 0 ? '$' + priceUsd.toPrecision(2) : '$0.00') :
+      formatUSD(priceUsd);
+    var fmtJpy = priceJpy < 1 ?
+      (priceJpy >= 0.01 ? '¥' + priceJpy.toFixed(4) :
+       priceJpy >= 0.0001 ? '¥' + priceJpy.toFixed(6) :
+       priceJpy > 0 ? '¥' + priceJpy.toPrecision(2) : '¥0') :
+      formatYen(priceJpy);
 
     // コイン名マッピング - CRYPTO_CATEGORIESからも取得
     var coinNames = {
@@ -5695,14 +5705,14 @@
         '<div class="detail__price-section">' +
           '<div class="detail__price-main">' +
             (appState.priceCurrency === 'JPY' ?
-              '<span class="detail__price-jpy">' + formatYen(priceJpy) + '</span>' :
-              '<span class="detail__price-usd" style="font-size:28px">' + formatUSD(priceUsd) + '</span>') +
+              '<span class="detail__price-jpy">' + fmtJpy + '</span>' :
+              '<span class="detail__price-usd" style="font-size:28px">' + fmtUsd + '</span>') +
             '<span class="detail__price-change ' + changeClass + '">' + changeSign + change.toFixed(1) + '% <small>24h</small></span>' +
           '</div>' +
           '<div class="detail__price-sub">' +
             (appState.priceCurrency === 'JPY' ?
-              '<span class="detail__price-usd">' + formatUSD(priceUsd) + '</span>' :
-              '<span class="detail__price-jpy" style="font-size:14px">' + formatYen(priceJpy) + '</span>') +
+              '<span class="detail__price-usd">' + fmtUsd + '</span>' :
+              '<span class="detail__price-jpy" style="font-size:14px">' + fmtJpy + '</span>') +
             '<button onclick="togglePriceCurrency()" class="detail__currency-toggle">' +
               (appState.priceCurrency === 'JPY' ? '$ USD' : '¥ JPY') +
             '</button>' +
@@ -7235,11 +7245,113 @@
           resolve({ candles: candles, volumes: volumes, isLongTerm: false });
         })
         .catch(function(err) {
-          console.error('[Chart] Fetch error:', err);
-          // フォールバック：ダミーデータ生成
-          resolve(generateDummyChartData(period));
+          console.error('[Chart] Binance fetch error:', err);
+          // GeckoTerminalフォールバック（DEXコイン用）
+          var coinData = scoreCache && scoreCache.data && scoreCache.data[ticker];
+          var dexUrl = coinData && coinData._dexUrl;
+          if (dexUrl) {
+            fetchGeckoTerminalOHLCV(dexUrl, period).then(function(gtData) {
+              if (gtData) {
+                resolve(gtData);
+              } else {
+                resolve(generateDummyChartData(period));
+              }
+            });
+          } else {
+            resolve(generateDummyChartData(period));
+          }
         });
     });
+  }
+
+  // GeckoTerminal OHLCVフォールバック（DEXコイン用）
+  function fetchGeckoTerminalOHLCV(dexUrl, period) {
+    // dexUrlからchain/poolを抽出 (例: https://dexscreener.com/solana/xxx → chain=solana, pool=xxx)
+    var match = dexUrl.match(/dexscreener\.com\/([^\/]+)\/([^\/\?#]+)/);
+    if (!match) {
+      console.warn('[Chart] Cannot parse dex_url:', dexUrl);
+      return Promise.resolve(null);
+    }
+
+    var dexChain = match[1];
+    var pool = match[2];
+
+    // DexScreener chain名 → GeckoTerminal network名マッピング
+    var networkMap = {
+      'solana': 'solana',
+      'ethereum': 'eth',
+      'bsc': 'bsc',
+      'arbitrum': 'arbitrum',
+      'base': 'base',
+      'polygon': 'polygon_pos',
+      'avalanche': 'avax',
+      'optimism': 'optimism',
+      'fantom': 'ftm',
+      'sui': 'sui-network'
+    };
+    var network = networkMap[dexChain] || dexChain;
+
+    // period → GeckoTerminal OHLCVパラメータ
+    var gtParams = {
+      '1H':  { timeframe: 'minute', aggregate: 5,  limit: 100 },
+      '4H':  { timeframe: 'minute', aggregate: 15, limit: 100 },
+      '1D':  { timeframe: 'hour',   aggregate: 1,  limit: 100 },
+      '1W':  { timeframe: 'hour',   aggregate: 4,  limit: 100 },
+      '1M':  { timeframe: 'day',    aggregate: 1,  limit: 100 },
+      '1Y':  { timeframe: 'day',    aggregate: 1,  limit: 365 }
+    };
+    var cfg = gtParams[period] || gtParams['1D'];
+
+    var url = 'https://api.geckoterminal.com/api/v2/networks/' + network +
+      '/pools/' + pool + '/ohlcv/' + cfg.timeframe +
+      '?aggregate=' + cfg.aggregate + '&limit=' + cfg.limit +
+      '&currency=usd';
+
+    console.log('[Chart] GeckoTerminal fallback:', url);
+
+    return fetch(url)
+      .then(function(res) {
+        if (!res.ok) throw new Error('GeckoTerminal API error: ' + res.status);
+        return res.json();
+      })
+      .then(function(json) {
+        var ohlcvList = json && json.data && json.data.attributes && json.data.attributes.ohlcv_list;
+        if (!ohlcvList || ohlcvList.length === 0) {
+          console.warn('[Chart] GeckoTerminal: no OHLCV data');
+          return null;
+        }
+
+        var candles = [];
+        var volumes = [];
+        var jpyRate = appState.priceCurrency === 'JPY' ? 150 : 1;
+        var jstOffset = 9 * 60 * 60;
+
+        // ohlcv_list: [[timestamp, open, high, low, close, volume], ...] — 降順の場合あり
+        ohlcvList.sort(function(a, b) { return a[0] - b[0]; });
+
+        ohlcvList.forEach(function(item) {
+          var time = item[0] + jstOffset;
+          candles.push({
+            time: time,
+            open: parseFloat(item[1]) * jpyRate,
+            high: parseFloat(item[2]) * jpyRate,
+            low: parseFloat(item[3]) * jpyRate,
+            close: parseFloat(item[4]) * jpyRate
+          });
+          volumes.push({
+            time: time,
+            value: parseFloat(item[5]),
+            color: parseFloat(item[4]) >= parseFloat(item[1]) ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.4)'
+          });
+        });
+
+        console.log('[Chart] GeckoTerminal: loaded', candles.length, 'candles');
+        return { candles: candles, volumes: volumes, isLongTerm: false };
+      })
+      .catch(function(err) {
+        console.error('[Chart] GeckoTerminal fallback error:', err);
+        return null;
+      });
   }
 
   // 長期チャートデータ取得（Binance API）
@@ -12296,6 +12408,8 @@
     var d = scoreCache.data[ticker];
     if (!d.price && data.price) d.price = data.price;
     if (d.change24h === undefined && data.change24h !== undefined) d.change24h = data.change24h;
+    if (data.dexUrl) d._dexUrl = data.dexUrl;
+    if (data.tokenAddress) d._tokenAddress = data.tokenAddress;
   };
 
   function fetchAndUpdateScores() {
