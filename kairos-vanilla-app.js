@@ -4860,7 +4860,7 @@
 
       var priceStr = formatPriceCompact(coin.price_usd);
 
-      html += '<div class="moonshot-coin" style="animation-delay:' + (idx * 0.05) + 's">' +
+      html += '<div class="moonshot-coin" onclick="window.KairosApp.viewCurrency(\'' + coin.symbol + '\')" style="animation-delay:' + (idx * 0.05) + 's;cursor:pointer">' +
         '<div class="moonshot-coin__header">' +
           (coin.thumb ? '<img class="moonshot-coin__icon" src="' + coin.thumb + '" alt="">' : '') +
           '<div class="moonshot-coin__info">' +
@@ -4894,10 +4894,6 @@
             '<span class="positive">📈 ' + coin.sentiment_bullish + '</span>' +
             '<span class="negative">📉 ' + coin.sentiment_bearish + '</span>' +
           '</div>' : '') +
-        '<div class="early-mover__card-actions">' +
-          '<button class="early-mover__card-btn" onclick="openMoonshotCoinDetail(' + idx + ')">📋 詳細</button>' +
-          '<button class="early-mover__card-btn early-mover__card-btn--chart" onclick="window.KairosApp.viewCurrency(\'' + coin.symbol + '\')">📊 チャート</button>' +
-        '</div>' +
       '</div>';
     });
 
@@ -5217,7 +5213,7 @@
       else if (coin.risk_level === 'medium') riskBadge = '<span class="early-mover__risk early-mover__risk--medium">MID RISK</span>';
       else if (coin.risk_level === 'low') riskBadge = '<span class="early-mover__risk early-mover__risk--low">LOW RISK</span>';
 
-      html += '<div class="early-mover-coin' + (isTop3 ? ' early-mover-coin--top' : '') + '" style="animation-delay:' + (idx * 0.05) + 's">' +
+      html += '<div class="early-mover-coin' + (isTop3 ? ' early-mover-coin--top' : '') + '" onclick="window.KairosApp.viewCurrency(\'' + coin.symbol + '\')" style="animation-delay:' + (idx * 0.05) + 's;cursor:pointer">' +
         '<div class="early-mover__header">' +
           (coin.image_url ? '<img class="moonshot-coin__icon" src="' + coin.image_url + '" alt="">' : '<div class="moonshot-coin__icon-placeholder">🪙</div>') +
           '<div class="moonshot-coin__info">' +
@@ -5259,11 +5255,6 @@
           riskBadge +
           (coin.ai_potential ? '<span class="early-mover__potential">🎯 ' + coin.ai_potential + '</span>' : '') +
           '<span class="early-mover__sources">' + (coin.sources || []).join(' + ') + '</span>' +
-        '</div>' +
-        '<div class="early-mover__card-actions">' +
-          '<button class="early-mover__card-btn" onclick="event.stopPropagation(); openEarlyMoverDetail(' + idx + ')">📋 詳細</button>' +
-          '<button class="early-mover__card-btn early-mover__card-btn--chart" onclick="event.stopPropagation(); window.KairosApp.viewCurrency(\'' + coin.symbol + '\')">📊 チャート</button>' +
-          (coin.dex_url ? '<button class="early-mover__card-btn early-mover__card-btn--dex" onclick="event.stopPropagation(); window.open(\'' + (coin.dex_url || '').replace(/'/g, "\\'") + '\', \'_blank\')">🔗 DEX</button>' : '') +
         '</div>' +
       '</div>';
     });
