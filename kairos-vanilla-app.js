@@ -5382,7 +5382,8 @@
           '</div>'
         : '<div class="early-mover__social-section early-mover__social-section--empty">' +
             '<div style="font-size:12px;color:#94a3b8;margin-bottom:4px">📱 SNS話題度</div>' +
-            '<div style="font-size:11px;color:#64748b">ソーシャルデータなし（LunarCrush APIキーを設定すると利用可能）</div>' +
+            '<div style="font-size:11px;color:#64748b">ソーシャルデータなし（代替指標で評価中）</div>' +
+            (coin.social_news_count > 0 ? '<div style="font-size:11px;color:#a78bfa;margin-top:4px">📰 ニュース ' + coin.social_news_count + '件' + (coin.social_bullish_pct > 0 ? ' / 強気 ' + coin.social_bullish_pct + '%' : '') + '</div>' : '') +
           '</div>') +
 
         // SNS投稿一覧（LunarCrush posts）
@@ -5625,7 +5626,8 @@
     if (!(coin.social_interactions > 0)) {
       return '<div class="early-mover__social-section early-mover__social-section--empty">' +
         '<div style="font-size:12px;color:#94a3b8;margin-bottom:4px">📱 SNS話題度</div>' +
-        '<div style="font-size:11px;color:#64748b">ソーシャルデータなし（LunarCrush APIキーを設定すると利用可能）</div>' +
+        '<div style="font-size:11px;color:#64748b">ソーシャルデータなし（代替指標で評価中）</div>' +
+        (coin.social_news_count > 0 ? '<div style="font-size:11px;color:#a78bfa;margin-top:4px">📰 ニュース ' + coin.social_news_count + '件' + (coin.social_bullish_pct > 0 ? ' / 強気 ' + coin.social_bullish_pct + '%' : '') + '</div>' : '') +
       '</div>';
     }
 
