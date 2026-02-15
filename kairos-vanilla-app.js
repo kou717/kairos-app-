@@ -2150,9 +2150,10 @@
       }
       return;
     }
-    // 詳細画面から離れる場合はチャート自動更新を停止
+    // 詳細画面から離れる場合はチャート自動更新を停止 + DEXコインデータをクリア
     if (appState.currentScreen === 'detail' && screenId !== 'detail') {
       stopChartAutoUpdate();
+      window._pendingMoonshotCoin = null;
     }
 
     // ポートフォリオ詳細が開いている場合
@@ -2464,15 +2465,16 @@
     if (appState.currentScreen === 'detail' && appState.selectedCurrency) {
       // 詳細画面：コイン名表示（タップでお気に入り切替）
       var ticker = appState.selectedCurrency;
-      var coinName = getCoinFullName(ticker);
+      var _isDex = isDexCoin();
+      var coinName = _isDex ? (window._pendingMoonshotCoin.name || ticker) : getCoinFullName(ticker);
       var isFav = isCoinFavorite(ticker);
       var favClass = isFav ? ' global-header__coin--favorite' : '';
       var favStar = isFav ? ' ★' : '';
       titleContent = '<div class="global-header__coin' + favClass + '" id="global-header-title" onclick="window.KairosApp.toggleFavorite(\'' + ticker + '\')">' +
-        '<span class="global-header__coin-icon">' + getCoinIcon(ticker) + '</span>' +
+        '<span class="global-header__coin-icon">' + (_isDex && window._pendingMoonshotCoin.image_url ? '<img src="' + window._pendingMoonshotCoin.image_url + '" style="width:20px;height:20px;border-radius:50%">' : getCoinIcon(ticker)) + '</span>' +
         '<div class="global-header__coin-text">' +
           '<span class="global-header__coin-symbol">' + ticker + favStar + '</span>' +
-          '<span class="global-header__coin-name">' + coinName + '</span>' +
+          '<span class="global-header__coin-name">' + coinName.substring(0, 20) + '</span>' +
         '</div>' +
       '</div>';
     } else {
@@ -2481,9 +2483,9 @@
       titleContent = '<span class="global-header__title slide-in" id="global-header-title">' + title + '</span>';
     }
 
-    // 詳細画面のみ: 通貨別ストラテジートグル（メタル風スライド）
+    // 詳細画面のみ: 通貨別ストラテジートグル（メタル風スライド）— DEXコインでは非表示
     var strategyBtn = '';
-    if (appState.currentScreen === 'detail' && appState.selectedCurrency && typeof StrategyManager !== 'undefined') {
+    if (appState.currentScreen === 'detail' && appState.selectedCurrency && !isDexCoin() && typeof StrategyManager !== 'undefined') {
       var strat = StrategyManager.getStrategy(appState.selectedCurrency);
       strategyBtn = '<div class="strategy-toggle strategy-toggle--' + strat + '" id="global-strategy-toggle">' +
         '<div class="strategy-toggle__slider"></div>' +
@@ -2522,15 +2524,16 @@
       var newContent = '';
       if (newScreen === 'detail' && appState.selectedCurrency) {
         var ticker = appState.selectedCurrency;
-        var coinName = getCoinFullName(ticker);
+        var _isDex2 = isDexCoin();
+        var coinName = _isDex2 ? (window._pendingMoonshotCoin.name || ticker) : getCoinFullName(ticker);
         var isFav = isCoinFavorite(ticker);
         var favClass = isFav ? ' global-header__coin--favorite' : '';
         var favStar = isFav ? ' ★' : '';
         newContent = '<div class="global-header__coin' + favClass + ' slide-in-from-left" id="global-header-title" onclick="window.KairosApp.toggleFavorite(\'' + ticker + '\')">' +
-          '<span class="global-header__coin-icon">' + getCoinIcon(ticker) + '</span>' +
+          '<span class="global-header__coin-icon">' + (_isDex2 && window._pendingMoonshotCoin.image_url ? '<img src="' + window._pendingMoonshotCoin.image_url + '" style="width:20px;height:20px;border-radius:50%">' : getCoinIcon(ticker)) + '</span>' +
           '<div class="global-header__coin-text">' +
             '<span class="global-header__coin-symbol">' + ticker + favStar + '</span>' +
-            '<span class="global-header__coin-name">' + coinName + '</span>' +
+            '<span class="global-header__coin-name">' + coinName.substring(0, 20) + '</span>' +
           '</div>' +
         '</div>';
       } else {
@@ -5515,7 +5518,7 @@
         '</div>' : '') +
 
         // KAIROSで分析ボタン
-        '<button onclick="if(window.injectCoinDataForDetail)window.injectCoinDataForDetail(\'' + coin.symbol + '\',{price:' + (coin.price_usd || 0) + ',change24h:' + (coin.price_change_24h || 0) + (coin.dex_url ? ',dexUrl:\'' + coin.dex_url + '\'' : '') + (coin.token_address ? ',tokenAddress:\'' + coin.token_address + '\'' : '') + '}); closeEarlyMoverDetailModal(); window.KairosApp.viewCurrency(\'' + coin.symbol + '\');" style="width:100%;padding:12px;margin-bottom:12px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:600;border:none;border-radius:8px;font-size:14px;cursor:pointer">✨ KAIROSで分析する</button>' +
+        '<button onclick="window._pendingMoonshotCoin=window._earlyMovers[' + idx + '];if(window.injectCoinDataForDetail)window.injectCoinDataForDetail(\'' + coin.symbol + '\',{price:' + (coin.price_usd || 0) + ',change24h:' + (coin.price_change_24h || 0) + (coin.dex_url ? ',dexUrl:\'' + coin.dex_url + '\'' : '') + (coin.token_address ? ',tokenAddress:\'' + coin.token_address + '\'' : '') + '}); closeEarlyMoverDetailModal(); window.KairosApp.viewCurrency(\'' + coin.symbol + '\');" style="width:100%;padding:12px;margin-bottom:12px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:600;border:none;border-radius:8px;font-size:14px;cursor:pointer">✨ KAIROSで分析する</button>' +
 
         // 外部リンク
         '<div style="display:flex;gap:8px">' +
@@ -5555,9 +5558,302 @@
   }
   window.closeEarlyMoverDetailModal = closeEarlyMoverDetailModal;
 
+  // ===== DEXコイン専用詳細画面 =====
+
+  function isDexCoin() {
+    var mc = window._pendingMoonshotCoin;
+    return mc && mc.symbol === appState.selectedCurrency;
+  }
+
+  function renderDexAIAnalysis(coin) {
+    var html = '';
+    if (!coin.ai_summary_ja && !coin.ai_reason_ja) return html;
+
+    html += '<div class="dex-detail__ai-section">';
+    if (coin.ai_summary_ja) {
+      html += '<div class="dex-detail__ai-desc">' +
+        '<div class="dex-detail__section-title">🤖 AI説明</div>' +
+        '<div class="dex-detail__ai-text">' + coin.ai_summary_ja + '</div>' +
+      '</div>';
+    }
+    if (coin.ai_reason_ja) {
+      html += '<div class="dex-detail__pump-reason">' +
+        '<div class="dex-detail__section-title">💡 上昇理由</div>' +
+        '<div class="dex-detail__ai-text">' + coin.ai_reason_ja + '</div>' +
+      '</div>';
+    }
+    if (coin.ai_potential) {
+      html += '<div class="dex-detail__ai-potential">🎯 ポテンシャル: ' + coin.ai_potential + '</div>';
+    }
+
+    // AI価格予想
+    var pred = coin.ai_price_prediction;
+    if (pred && pred['1h']) {
+      var confColor = pred.confidence === 'high' ? '#22c55e' : pred.confidence === 'medium' ? '#f59e0b' : '#ef4444';
+      var confLabel = pred.confidence === 'high' ? '自信あり' : pred.confidence === 'medium' ? 'やや自信' : '不確実';
+      html += '<div class="early-mover__prediction">' +
+        '<div class="early-mover__prediction-header">' +
+          '<span class="early-mover__prediction-title">🔮 AI価格予想</span>' +
+          '<span class="early-mover__prediction-conf" style="color:' + confColor + '">' + confLabel + '</span>' +
+        '</div>' +
+        '<div class="early-mover__prediction-grid">' +
+          '<div class="early-mover__prediction-item"><div class="early-mover__prediction-label">1時間後</div><div class="early-mover__prediction-value">' + (pred['1h'] || '-') + '</div></div>' +
+          '<div class="early-mover__prediction-item"><div class="early-mover__prediction-label">24時間後</div><div class="early-mover__prediction-value">' + (pred['24h'] || '-') + '</div></div>' +
+        '</div>' +
+        '<div class="early-mover__prediction-scenarios">' +
+          '<div class="early-mover__prediction-scenario early-mover__prediction-scenario--best"><span class="early-mover__prediction-scenario-label">✨ 最良</span><span>' + (pred.best_case || '-') + '</span></div>' +
+          '<div class="early-mover__prediction-scenario early-mover__prediction-scenario--worst"><span class="early-mover__prediction-scenario-label">💀 最悪</span><span>' + (pred.worst_case || '-') + '</span></div>' +
+        '</div>' +
+        '<div class="early-mover__prediction-disclaimer">※ AI予想は参考情報です。投資判断は自己責任で行ってください。</div>' +
+      '</div>';
+    }
+
+    // Red flags
+    if (coin.ai_red_flags && coin.ai_red_flags.length > 0) {
+      html += '<div class="dex-detail__red-flags">';
+      coin.ai_red_flags.forEach(function(flag) {
+        html += '<span class="dex-detail__red-flag">🚩 ' + flag + '</span>';
+      });
+      html += '</div>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  function renderDexSocialSection(coin) {
+    if (!(coin.social_interactions > 0)) {
+      return '<div class="early-mover__social-section early-mover__social-section--empty">' +
+        '<div style="font-size:12px;color:#94a3b8;margin-bottom:4px">📱 SNS話題度</div>' +
+        '<div style="font-size:11px;color:#64748b">ソーシャルデータなし（LunarCrush APIキーを設定すると利用可能）</div>' +
+      '</div>';
+    }
+
+    return '<div class="early-mover__social-section">' +
+      '<div style="font-size:12px;color:#94a3b8;margin-bottom:8px">📱 SNS話題度 <span style="font-size:10px;color:#a78bfa">(LunarCrush)</span></div>' +
+      '<div class="early-mover__social-grid">' +
+        '<div class="early-mover__social-stat">' +
+          '<div class="early-mover__social-stat-value">' + formatCompactNumber(coin.social_interactions) + '</div>' +
+          '<div class="early-mover__social-stat-label">反応数</div>' +
+        '</div>' +
+        '<div class="early-mover__social-stat">' +
+          '<div class="early-mover__social-stat-value">' + (coin.social_contributors || 0) + '</div>' +
+          '<div class="early-mover__social-stat-label">言及者</div>' +
+        '</div>' +
+        '<div class="early-mover__social-stat">' +
+          '<div class="early-mover__social-stat-value">' + (coin.social_posts || 0) + '</div>' +
+          '<div class="early-mover__social-stat-label">投稿数</div>' +
+        '</div>' +
+        '<div class="early-mover__social-stat">' +
+          '<div class="early-mover__social-stat-value' + (coin.social_sentiment >= 60 ? ' positive' : coin.social_sentiment <= 40 ? ' negative' : '') + '">' + (coin.social_sentiment || 0) + '%</div>' +
+          '<div class="early-mover__social-stat-label">ポジティブ</div>' +
+        '</div>' +
+      '</div>' +
+      (coin.social_trend === 'up' ? '<div class="early-mover__social-trend">🔥 SNSでの話題が急上昇中</div>' : '') +
+      (coin.social_topic_rank && coin.social_topic_rank <= 100 ? '<div class="early-mover__social-rank">🏆 トピックランク #' + coin.social_topic_rank + '</div>' : '') +
+    '</div>';
+  }
+
+  function renderDexPostsSection(coin) {
+    var posts = coin.social_posts_data || [];
+    if (posts.length === 0) return '';
+    var html = '<div class="early-mover__posts-section">' +
+      '<div class="early-mover__posts-title">🐦 SNS投稿 <span style="font-size:10px;color:#64748b">(' + posts.length + '件)</span></div>';
+    posts.slice(0, 5).forEach(function(p) {
+      var sentColor = p.sentiment >= 4 ? '#10b981' : p.sentiment <= 2 ? '#ef4444' : '#94a3b8';
+      var sentLabel = p.sentiment >= 4 ? '強気' : p.sentiment <= 2 ? '弱気' : '中立';
+      var followers = p.creator_followers || 0;
+      var followersStr = followers >= 1e6 ? (followers / 1e6).toFixed(1) + 'M' : followers >= 1e3 ? (followers / 1e3).toFixed(1) + 'K' : followers.toString();
+      var interactions = p.interactions_24h || p.interactions_total || 0;
+      var interStr = interactions >= 1e6 ? (interactions / 1e6).toFixed(1) + 'M' : interactions >= 1e3 ? (interactions / 1e3).toFixed(1) + 'K' : interactions.toString();
+      var timeStr = '';
+      if (p.created_at) {
+        var diff = Math.floor((Date.now() / 1000 - p.created_at));
+        if (diff < 3600) timeStr = Math.floor(diff / 60) + '分前';
+        else if (diff < 86400) timeStr = Math.floor(diff / 3600) + '時間前';
+        else timeStr = Math.floor(diff / 86400) + '日前';
+      }
+      html += '<div class="early-mover__post" onclick="if(\'' + (p.link || '').replace(/'/g, "\\'") + '\')window.open(\'' + (p.link || '').replace(/'/g, "\\'") + '\',\'_blank\')">' +
+        '<div class="early-mover__post-header">' +
+          (p.creator_avatar ? '<img class="early-mover__post-avatar" src="' + p.creator_avatar + '" alt="">' : '<div class="early-mover__post-avatar-placeholder">' + (p.type_icon || '📱') + '</div>') +
+          '<div class="early-mover__post-creator">' +
+            '<span class="early-mover__post-name">' + (p.creator_display_name || p.creator_name || '匿名') + '</span>' +
+            '<span class="early-mover__post-handle">' +
+              '<span class="early-mover__post-platform">' + (p.type_icon || '') + ' ' + (p.post_type || '') + '</span>' +
+              (followers > 0 ? ' · ' + followersStr + ' followers' : '') +
+            '</span>' +
+          '</div>' +
+          (timeStr ? '<span class="early-mover__post-time">' + timeStr + '</span>' : '') +
+        '</div>' +
+        (p.text ? '<div class="early-mover__post-text">' + p.text.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>' : '') +
+        '<div class="early-mover__post-stats">' +
+          (interactions > 0 ? '<span class="early-mover__post-stat">💬 ' + interStr + '</span>' : '') +
+          '<span class="early-mover__post-stat" style="color:' + sentColor + '">' + sentLabel + '</span>' +
+        '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function renderDexDetailScreen(coin) {
+    var mscore = coin.moonshot_score || 0;
+    var scoreColor = mscore >= 70 ? '#22c55e' : mscore >= 50 ? '#f59e0b' : mscore >= 30 ? '#ef4444' : '#6b7280';
+    var bd = coin.score_breakdown || {};
+    var change5m = coin.price_change_5m || 0;
+    var change1h = coin.price_change_1h || 0;
+    var change24h = coin.price_change_24h || 0;
+    var priceStr = formatPriceCompact(coin.price_usd);
+    var riskColor = coin.risk_level === 'high' ? '#ef4444' : coin.risk_level === 'medium' ? '#f59e0b' : coin.risk_level === 'low' ? '#22c55e' : '#6b7280';
+    var riskLabel = coin.risk_level === 'high' ? 'ハイリスク' : coin.risk_level === 'medium' ? 'ミドルリスク' : coin.risk_level === 'low' ? 'ローリスク' : '不明';
+    var addr = coin.token_address || '';
+    var shortAddr = addr.length > 12 ? addr.substring(0, 6) + '...' + addr.substring(addr.length - 4) : addr;
+
+    // 日本語名検出
+    var isJpMeme = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(coin.name || '');
+    var jpBadge = isJpMeme ? '<span class="dex-detail__jp-badge">日本ミーム</span>' : '';
+
+    // ソース表示
+    var sourceLabel = '';
+    if (coin.sources && coin.sources.length > 0) {
+      sourceLabel = coin.sources.join(' + ');
+    } else if (coin.source) {
+      sourceLabel = coin.source;
+    }
+
+    return '<div class="detail dex-detail">' +
+      // スティッキーヘッダー: Moonshotスコア + リスク
+      '<div class="dex-detail__sticky-header">' +
+        '<div class="dex-detail__score-hero">' +
+          '<div class="dex-detail__score-big" style="color:' + scoreColor + '">' + mscore + '</div>' +
+          '<div class="dex-detail__score-label">Moonshot Score</div>' +
+        '</div>' +
+        '<div class="dex-detail__risk-badge" style="border-color:' + riskColor + ';color:' + riskColor + '">' + riskLabel + '</div>' +
+      '</div>' +
+
+      '<div class="dex-detail__scroll-content">' +
+
+        // コインヘッダー
+        '<div class="dex-detail__coin-header">' +
+          (coin.image_url ? '<img class="dex-detail__coin-icon" src="' + coin.image_url + '">' : '<div class="dex-detail__coin-icon-placeholder">🚀</div>') +
+          '<div class="dex-detail__coin-info">' +
+            '<div class="dex-detail__coin-symbol">' + coin.symbol + jpBadge + '</div>' +
+            '<div class="dex-detail__coin-name">' + (coin.name || '').substring(0, 40) + '</div>' +
+          '</div>' +
+        '</div>' +
+
+        // 価格セクション
+        '<div class="dex-detail__price-section">' +
+          '<div class="dex-detail__price-main">' + priceStr + '</div>' +
+          '<div class="dex-detail__price-changes">' +
+            '<span class="dex-detail__price-change ' + (change5m >= 0 ? 'positive' : 'negative') + '">' + (change5m >= 0 ? '+' : '') + change5m.toFixed(1) + '% <small>5m</small></span>' +
+            '<span class="dex-detail__price-change ' + (change1h >= 0 ? 'positive' : 'negative') + '">' + (change1h >= 0 ? '+' : '') + change1h.toFixed(1) + '% <small>1h</small></span>' +
+            '<span class="dex-detail__price-change ' + (change24h >= 0 ? 'positive' : 'negative') + '">' + (change24h >= 0 ? '+' : '') + change24h.toFixed(1) + '% <small>24h</small></span>' +
+          '</div>' +
+        '</div>' +
+
+        // AI説明 + 上昇理由
+        renderDexAIAnalysis(coin) +
+
+        // チャート（短期のみ: 1H/4H/1D/1W/1M）
+        '<div class="detail__chart-section">' +
+          '<div class="detail__chart-header">' +
+            '<span class="detail__chart-title">📈 価格チャート</span>' +
+            '<div class="detail__chart-periods">' +
+              ['1H', '4H', '1D', '1W', '1M'].map(function(p) {
+                var labels = { '1H': '1時間', '4H': '4時間', '1D': '1日', '1W': '1週', '1M': '1月' };
+                return '<button class="detail__chart-period' + (appState.chartPeriod === p ? ' active' : '') + '" data-period="' + p + '">' + (labels[p] || p) + '</button>';
+              }).join('') +
+            '</div>' +
+          '</div>' +
+          '<div class="detail__chart-area" id="detail-chart"></div>' +
+          '<div class="detail__chart-stats" id="detail-chart-stats"></div>' +
+        '</div>' +
+
+        // スコア内訳バー
+        '<div class="dex-detail__score-section">' +
+          '<div class="dex-detail__section-title">📊 スコア内訳 <span style="font-size:10px;color:#64748b">（タップで意味を確認）</span></div>' +
+          renderScoreBar('Volume', bd.volume || 0, 20) +
+          renderScoreBar('Velocity', bd.velocity || 0, 20) +
+          renderScoreBar('Buy圧', bd.buy_pressure || 0, 20) +
+          renderScoreBar('鮮度', bd.freshness || 0, 15) +
+          renderScoreBar('SNS', bd.social_buzz || 0, 25) +
+        '</div>' +
+
+        // DEX情報グリッド
+        '<div class="dex-detail__info-grid">' +
+          '<div class="dex-detail__info-item">' +
+            '<div class="dex-detail__info-label">流動性</div>' +
+            '<div class="dex-detail__info-value">' + formatValueCompact(coin.liquidity_usd || 0) + '</div>' +
+          '</div>' +
+          '<div class="dex-detail__info-item">' +
+            '<div class="dex-detail__info-label">出来高 (24h)</div>' +
+            '<div class="dex-detail__info-value">' + formatValueCompact(coin.volume_24h || 0) + '</div>' +
+          '</div>' +
+          '<div class="dex-detail__info-item">' +
+            '<div class="dex-detail__info-label">経過時間</div>' +
+            '<div class="dex-detail__info-value">' + formatAgeHours(coin.age_hours) + '</div>' +
+          '</div>' +
+          '<div class="dex-detail__info-item">' +
+            '<div class="dex-detail__info-label">ソース</div>' +
+            '<div class="dex-detail__info-value">' + (sourceLabel || '不明') + '</div>' +
+          '</div>' +
+        '</div>' +
+
+        // Buy/Sell比
+        '<div class="dex-detail__buysell">' +
+          '<div class="dex-detail__buysell-item dex-detail__buysell-item--buy">' +
+            '<div class="dex-detail__buysell-label">Buy (24h)</div>' +
+            '<div class="dex-detail__buysell-value">' + (coin.txns_buy_24h || 0) + '</div>' +
+          '</div>' +
+          '<div class="dex-detail__buysell-item dex-detail__buysell-item--sell">' +
+            '<div class="dex-detail__buysell-label">Sell (24h)</div>' +
+            '<div class="dex-detail__buysell-value">' + (coin.txns_sell_24h || 0) + '</div>' +
+          '</div>' +
+          '<div class="dex-detail__buysell-item dex-detail__buysell-item--buy">' +
+            '<div class="dex-detail__buysell-label">Buy (1h)</div>' +
+            '<div class="dex-detail__buysell-value">' + (coin.txns_buy_1h || 0) + '</div>' +
+          '</div>' +
+          '<div class="dex-detail__buysell-item dex-detail__buysell-item--sell">' +
+            '<div class="dex-detail__buysell-label">Sell (1h)</div>' +
+            '<div class="dex-detail__buysell-value">' + (coin.txns_sell_1h || 0) + '</div>' +
+          '</div>' +
+        '</div>' +
+
+        // SNS統計
+        renderDexSocialSection(coin) +
+
+        // SNS投稿一覧
+        renderDexPostsSection(coin) +
+
+        // トークンアドレス
+        (addr ? '<div class="dex-detail__address">' +
+          '<span class="dex-detail__address-label">CA:</span>' +
+          '<span class="dex-detail__address-value">' + shortAddr + '</span>' +
+          '<button class="dex-detail__copy-btn" onclick="navigator.clipboard.writeText(\'' + addr + '\');this.textContent=\'Copied!\';var b=this;setTimeout(function(){b.textContent=\'Copy\'},1500)">Copy</button>' +
+        '</div>' : '') +
+
+        // 外部リンク
+        '<div class="dex-detail__links">' +
+          (coin.dex_url ? '<a href="' + coin.dex_url + '" target="_blank" class="dex-detail__link">📊 DexScreener</a>' : '') +
+          (addr ? '<a href="https://birdeye.so/token/' + addr + '?chain=solana" target="_blank" class="dex-detail__link">🦅 Birdeye</a>' : '') +
+          (addr ? '<a href="https://solscan.io/token/' + addr + '" target="_blank" class="dex-detail__link">🔍 Solscan</a>' : '') +
+        '</div>' +
+
+      '</div>' +
+    '</div>';
+  }
+
   // ===== 詳細画面 =====
   function renderDetailScreen() {
     var ticker = appState.selectedCurrency;
+
+    // DEXコイン分岐: Moonshot Early Detectionからの遷移時
+    var moonshotCoin = window._pendingMoonshotCoin;
+    if (moonshotCoin && moonshotCoin.symbol === ticker) {
+      return renderDexDetailScreen(moonshotCoin);
+    }
+
     var allResults = kairosData.all_results || [];
     var coinData = allResults.find(function(r) { return r.ticker === ticker; }) || {};
 
@@ -6047,14 +6343,13 @@
     // TradingViewチャート初期化
     if (appState.currentScreen === 'detail' && !appState.isLoading) {
       initDetailChart();
-      // ウォッチリスト外の通貨の場合、価格データを取得
-      fetchPriceForNonWatchlistCoin();
-      // ニュースを動的に読み込み
-      updateNewsSection(appState.selectedCurrency);
-      // トレーディングシグナルを読み込み
-      loadTradingSignal(appState.selectedCurrency);
-      // サマリーバーをスライド表示
-      showSummaryBarTemporarily();
+      // DEXコインでは通常の詳細画面用機能をスキップ
+      if (!isDexCoin()) {
+        fetchPriceForNonWatchlistCoin();
+        updateNewsSection(appState.selectedCurrency);
+        loadTradingSignal(appState.selectedCurrency);
+        showSummaryBarTemporarily();
+      }
     }
 
     // Moonshot: load data based on active tab
@@ -6070,7 +6365,7 @@
   // トレードバー（購入/売却ボタン）をフッター上に固定表示
   function updateTradeBar() {
     var existing = document.getElementById('detail-trade-bar');
-    if (appState.currentScreen === 'detail' && !appState.isLoading) {
+    if (appState.currentScreen === 'detail' && !appState.isLoading && !isDexCoin()) {
       var ticker = appState.selectedCurrency;
       if (!existing) {
         // 新規作成 → body直下に追加（スライドインアニメーション付き）
@@ -7687,8 +7982,13 @@
     viewCurrency: function(ticker) {
       appState.selectedCurrency = ticker;
 
-      // ストラテジーからモードブリッジ: 通貨のストラテジーに応じてappState.modeを設定
-      if (typeof StrategyManager !== 'undefined') {
+      // DEXコイン検出: Moonshotから遷移した場合
+      var _isDexNav = window._pendingMoonshotCoin && window._pendingMoonshotCoin.symbol === ticker;
+      if (_isDexNav) {
+        // DEXコインは短期チャート1D固定、StrategyManagerスキップ
+        appState.chartPeriod = '1D';
+      } else if (typeof StrategyManager !== 'undefined') {
+        // ストラテジーからモードブリッジ: 通貨のストラテジーに応じてappState.modeを設定
         var config = StrategyManager.getConfig(ticker);
         appState.mode = config.apiMode === 'swing' ? 'satellite' : 'core';
         // チャート期間をストラテジーのデフォルトに設定

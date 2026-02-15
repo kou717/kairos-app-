@@ -12059,6 +12059,334 @@ body.has-ticker-bar {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-secondary);
 }
+
+/* ============================================
+   DEXコイン専用詳細画面
+   ============================================ */
+
+.dex-detail__sticky-header {
+  position: sticky;
+  top: 60px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.dex-detail__score-hero {
+  text-align: center;
+}
+
+.dex-detail__score-big {
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.dex-detail__score-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.dex-detail__risk-badge {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.dex-detail__scroll-content {
+  padding: 16px;
+  padding-top: 8px;
+  padding-bottom: 120px;
+}
+
+.dex-detail__coin-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.dex-detail__coin-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.dex-detail__coin-icon-placeholder {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.dex-detail__coin-info {
+  flex: 1;
+}
+
+.dex-detail__coin-symbol {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dex-detail__coin-name {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.dex-detail__jp-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  animation: dex-jp-pulse 2s ease-in-out infinite;
+}
+
+@keyframes dex-jp-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px rgba(239, 68, 68, 0.3); }
+  50% { opacity: 0.85; box-shadow: 0 0 12px rgba(239, 68, 68, 0.6); }
+}
+
+.dex-detail__price-section {
+  text-align: center;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+}
+
+.dex-detail__price-main {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.dex-detail__price-changes {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.dex-detail__price-change {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.dex-detail__price-change small {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.dex-detail__ai-section {
+  margin-bottom: 16px;
+}
+
+.dex-detail__ai-desc,
+.dex-detail__pump-reason {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.dex-detail__section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.dex-detail__ai-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.dex-detail__ai-potential {
+  padding: 8px 12px;
+  background: rgba(34, 197, 94, 0.08);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #22c55e;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.dex-detail__red-flags {
+  margin-top: 8px;
+}
+
+.dex-detail__red-flag {
+  display: inline-block;
+  padding: 3px 8px;
+  margin: 2px;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  font-size: 11px;
+}
+
+.dex-detail__score-section {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.dex-detail__info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.dex-detail__info-item {
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.dex-detail__info-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-bottom: 4px;
+}
+
+.dex-detail__info-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dex-detail__buysell {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.dex-detail__buysell-item {
+  padding: 10px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.dex-detail__buysell-item--buy {
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.dex-detail__buysell-item--sell {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.dex-detail__buysell-label {
+  font-size: 10px;
+}
+
+.dex-detail__buysell-item--buy .dex-detail__buysell-label {
+  color: #22c55e;
+}
+
+.dex-detail__buysell-item--sell .dex-detail__buysell-label {
+  color: #ef4444;
+}
+
+.dex-detail__buysell-value {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.dex-detail__buysell-item--buy .dex-detail__buysell-value {
+  color: #22c55e;
+}
+
+.dex-detail__buysell-item--sell .dex-detail__buysell-value {
+  color: #ef4444;
+}
+
+.dex-detail__address {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.dex-detail__address-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.dex-detail__address-value {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+
+.dex-detail__copy-btn {
+  padding: 4px 10px;
+  background: rgba(212, 168, 83, 0.15);
+  border: 1px solid rgba(212, 168, 83, 0.3);
+  border-radius: 6px;
+  color: #d4a853;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.dex-detail__copy-btn:active {
+  transform: scale(0.95);
+  background: rgba(212, 168, 83, 0.3);
+}
+
+.dex-detail__links {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.dex-detail__link {
+  flex: 1;
+  display: block;
+  text-align: center;
+  padding: 12px 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #d4a853;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+
+.dex-detail__link:active {
+  background: rgba(255, 255, 255, 0.15);
+}
 /* ============================================
    通貨別ストラテジーUI（長期/短期の2択）
    ============================================ */
