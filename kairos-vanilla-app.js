@@ -5371,281 +5371,39 @@
 
     var mscore = coin.moonshot_score || 0;
     var scoreColor = mscore >= 70 ? '#22c55e' : mscore >= 50 ? '#f59e0b' : mscore >= 30 ? '#ef4444' : '#6b7280';
-    var bd = coin.score_breakdown || {};
-    var change1h = coin.price_change_1h || 0;
-    var change24h = coin.price_change_24h || 0;
-    var change5m = coin.price_change_5m || 0;
-
     var priceStr = formatPriceCompact(coin.price_usd);
-
-    // リスクバッジ
     var riskColor = coin.risk_level === 'high' ? '#ef4444' : coin.risk_level === 'medium' ? '#f59e0b' : coin.risk_level === 'low' ? '#22c55e' : '#6b7280';
-    var riskLabel = coin.risk_level === 'high' ? 'ハイリスク' : coin.risk_level === 'medium' ? 'ミドルリスク' : coin.risk_level === 'low' ? 'ローリスク' : '不明';
-
-    // Red flags
-    var redFlagsHtml = '';
-    if (coin.ai_red_flags && coin.ai_red_flags.length > 0) {
-      redFlagsHtml = '<div style="margin-top:8px">';
-      coin.ai_red_flags.forEach(function(flag) {
-        redFlagsHtml += '<span style="display:inline-block;padding:2px 8px;margin:2px;border-radius:4px;background:rgba(239,68,68,0.15);color:#ef4444;font-size:11px">🚩 ' + flag + '</span>';
-      });
-      redFlagsHtml += '</div>';
-    }
-
-    // トークンアドレス短縮
-    var addr = coin.token_address || '';
-    var shortAddr = addr.length > 12 ? addr.substring(0, 6) + '...' + addr.substring(addr.length - 4) : addr;
+    var riskLabel = coin.risk_level === 'high' ? 'HIGH' : coin.risk_level === 'medium' ? 'MID' : coin.risk_level === 'low' ? 'LOW' : '?';
 
     var modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.id = 'early-mover-detail-modal';
-    modal.innerHTML = '<div class="modal moonshot-detail-modal">' +
-      '<div class="modal-header">' +
-        '<div style="display:flex;align-items:center;gap:8px">' +
-          (coin.image_url ? '<img src="' + coin.image_url + '" style="width:28px;height:28px;border-radius:50%">' : '') +
-          '<h3>🚀 ' + coin.symbol + '</h3>' +
-          '<span style="color:#94a3b8;font-size:13px">' + (coin.name || '').substring(0, 25) + '</span>' +
-        '</div>' +
-        '<button class="modal-close" onclick="closeEarlyMoverDetailModal()">×</button>' +
-      '</div>' +
-      '<div class="modal-body" style="padding:16px">' +
-        // スコア + リスク
-        '<div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:16px">' +
-          '<div onclick="showMetricGuide(\'moonshot_score\',event)" style="text-align:center;cursor:pointer">' +
-            '<div style="font-size:36px;font-weight:700;color:' + scoreColor + '">' + mscore + '</div>' +
-            '<div style="font-size:10px;color:#94a3b8">Moonshot Score <span style="font-size:9px;color:#64748b">?</span></div>' +
+    modal.innerHTML = '<div class="modal" style="max-width:400px;border-radius:16px;overflow:hidden">' +
+      '<div style="padding:20px">' +
+        // ヘッダー: アイコン+名前+閉じる
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">' +
+          (coin.image_url ? '<img src="' + coin.image_url + '" style="width:32px;height:32px;border-radius:50%">' : '<div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:16px">🪙</div>') +
+          '<div style="flex:1">' +
+            '<div style="font-size:16px;font-weight:700;color:#fff">' + coin.symbol + '</div>' +
+            '<div style="font-size:11px;color:#94a3b8">' + (coin.name || '').substring(0, 30) + '</div>' +
           '</div>' +
-          '<div style="text-align:center;padding:8px 16px;border-radius:8px;background:rgba(255,255,255,0.05)">' +
-            '<div style="font-size:14px;font-weight:600;color:' + riskColor + '">' + riskLabel + '</div>' +
-            '<div style="font-size:10px;color:#94a3b8">リスクレベル</div>' +
-          '</div>' +
+          '<button onclick="closeEarlyMoverDetailModal()" style="background:none;border:none;color:#64748b;font-size:22px;cursor:pointer;padding:4px">×</button>' +
         '</div>' +
 
-        // 価格 + 変動
-        '<div onclick="showMetricGuide(\'price_change\',event)" style="text-align:center;margin-bottom:12px;cursor:pointer">' +
-          '<div style="font-size:20px;font-weight:700">' + priceStr + '</div>' +
-          '<div style="display:flex;justify-content:center;gap:12px;margin-top:4px;font-size:12px">' +
-            '<span class="' + (change5m >= 0 ? 'positive' : 'negative') + '">' + (change5m >= 0 ? '+' : '') + change5m.toFixed(1) + '% (5m)</span>' +
-            '<span class="' + (change1h >= 0 ? 'positive' : 'negative') + '">' + (change1h >= 0 ? '+' : '') + change1h.toFixed(1) + '% (1h)</span>' +
-            '<span class="' + (change24h >= 0 ? 'positive' : 'negative') + '">' + (change24h >= 0 ? '+' : '') + change24h.toFixed(1) + '% (24h)</span>' +
+        // スコア + リスク + 価格（1行）
+        '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">' +
+          '<div style="font-size:32px;font-weight:700;color:' + scoreColor + '">' + mscore + '</div>' +
+          '<div style="padding:3px 10px;border-radius:6px;border:1px solid ' + riskColor + ';color:' + riskColor + ';font-size:11px;font-weight:600">' + riskLabel + '</div>' +
+          '<div style="margin-left:auto;text-align:right">' +
+            '<div style="font-size:18px;font-weight:700;color:#fff">' + priceStr + '</div>' +
           '</div>' +
         '</div>' +
 
-        // スコア内訳バー（タップで説明表示）
-        '<div style="padding:12px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:12px">' +
-          '<div style="font-size:12px;color:#94a3b8;margin-bottom:8px">📊 スコア内訳 <span style="font-size:10px;color:#64748b">（タップで意味を確認）</span></div>' +
-          renderScoreBar('Volume', bd.volume || 0, 20) +
-          renderScoreBar('Velocity', bd.velocity || 0, 20) +
-          renderScoreBar('Buy圧', bd.buy_pressure || 0, 20) +
-          renderScoreBar('鮮度', bd.freshness || 0, 15) +
-          renderScoreBar('SNS', bd.social_buzz || 0, 25) +
-          (bd.safety != null && bd.safety !== 0 ? '<div style="font-size:11px;color:' + (bd.safety > 0 ? '#22c55e' : '#ef4444') + ';margin-top:4px">🛡️ Safety: ' + (bd.safety > 0 ? '+' : '') + bd.safety + '</div>' : '') +
-        '</div>' +
+        // AI一言
+        (coin.ai_summary_ja ? '<div style="padding:10px 12px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:10px;margin-bottom:16px;font-size:13px;color:#c4b5fd;line-height:1.5">' + coin.ai_summary_ja + '</div>' : '') +
 
-        // SNSデータ詳細
-        (coin.social_interactions > 0 ?
-          '<div class="early-mover__social-section">' +
-            '<div onclick="showMetricGuide(\'social\',event)" style="font-size:12px;color:#94a3b8;margin-bottom:8px;cursor:pointer">📱 SNS話題度 <span style="font-size:10px;color:#a78bfa">(LunarCrush)</span> <span style="font-size:9px;color:#64748b">?</span></div>' +
-            '<div class="early-mover__social-grid">' +
-              '<div class="early-mover__social-stat">' +
-                '<div class="early-mover__social-stat-value">' + formatCompactNumber(coin.social_interactions) + '</div>' +
-                '<div class="early-mover__social-stat-label">反応数</div>' +
-              '</div>' +
-              '<div class="early-mover__social-stat">' +
-                '<div class="early-mover__social-stat-value">' + coin.social_contributors + '</div>' +
-                '<div class="early-mover__social-stat-label">言及者</div>' +
-              '</div>' +
-              '<div class="early-mover__social-stat">' +
-                '<div class="early-mover__social-stat-value">' + coin.social_posts + '</div>' +
-                '<div class="early-mover__social-stat-label">投稿数</div>' +
-              '</div>' +
-              '<div class="early-mover__social-stat">' +
-                '<div class="early-mover__social-stat-value' + (coin.social_sentiment >= 60 ? ' positive' : coin.social_sentiment <= 40 ? ' negative' : '') + '">' + coin.social_sentiment + '%</div>' +
-                '<div class="early-mover__social-stat-label">ポジティブ</div>' +
-              '</div>' +
-            '</div>' +
-            (coin.social_trend === 'up' ? '<div class="early-mover__social-trend">🔥 SNSでの話題が急上昇中</div>' : '') +
-            (coin.social_topic_rank && coin.social_topic_rank <= 100 ? '<div class="early-mover__social-rank">🏆 トピックランク #' + coin.social_topic_rank + '</div>' : '') +
-          '</div>'
-        : '<div class="early-mover__social-section early-mover__social-section--empty" onclick="showMetricGuide(\'social\',event)" style="cursor:pointer">' +
-            '<div style="font-size:12px;color:#94a3b8;margin-bottom:4px">📱 SNS話題度 <span style="font-size:9px;color:#64748b">?</span></div>' +
-            '<div style="font-size:11px;color:#64748b">ソーシャルデータなし（代替指標で評価中）</div>' +
-            (coin.social_news_count > 0 ? '<div style="font-size:11px;color:#a78bfa;margin-top:4px">📰 ニュース ' + coin.social_news_count + '件' + (coin.social_bullish_pct > 0 ? ' / 強気 ' + coin.social_bullish_pct + '%' : '') + '</div>' : '') +
-          '</div>') +
-
-        // SNS投稿一覧（LunarCrush posts）
-        (function() {
-          var posts = coin.social_posts_data || [];
-          if (posts.length === 0) return '';
-          var postsHtml = '<div class="early-mover__posts-section">' +
-            '<div class="early-mover__posts-title">🐦 SNS投稿 <span style="font-size:10px;color:#64748b">(' + posts.length + '件)</span></div>';
-          posts.slice(0, 5).forEach(function(p) {
-            var sentColor = p.sentiment >= 4 ? '#10b981' : p.sentiment <= 2 ? '#ef4444' : '#94a3b8';
-            var sentLabel = p.sentiment >= 4 ? '強気' : p.sentiment <= 2 ? '弱気' : '中立';
-            var followers = p.creator_followers || 0;
-            var followersStr = followers >= 1e6 ? (followers / 1e6).toFixed(1) + 'M' : followers >= 1e3 ? (followers / 1e3).toFixed(1) + 'K' : followers.toString();
-            var interactions = p.interactions_24h || p.interactions_total || 0;
-            var interStr = interactions >= 1e6 ? (interactions / 1e6).toFixed(1) + 'M' : interactions >= 1e3 ? (interactions / 1e3).toFixed(1) + 'K' : interactions.toString();
-            var timeStr = '';
-            if (p.created_at) {
-              var diff = Math.floor((Date.now() / 1000 - p.created_at));
-              if (diff < 3600) timeStr = Math.floor(diff / 60) + '分前';
-              else if (diff < 86400) timeStr = Math.floor(diff / 3600) + '時間前';
-              else timeStr = Math.floor(diff / 86400) + '日前';
-            }
-            postsHtml += '<div class="early-mover__post" onclick="if(\'' + (p.link || '').replace(/'/g, "\\'") + '\')window.open(\'' + (p.link || '').replace(/'/g, "\\'") + '\',\'_blank\')">' +
-              '<div class="early-mover__post-header">' +
-                (p.creator_avatar ? '<img class="early-mover__post-avatar" src="' + p.creator_avatar + '" alt="">' : '<div class="early-mover__post-avatar-placeholder">' + (p.type_icon || '📱') + '</div>') +
-                '<div class="early-mover__post-creator">' +
-                  '<span class="early-mover__post-name">' + (p.creator_display_name || p.creator_name || '匿名') + '</span>' +
-                  '<span class="early-mover__post-handle">' +
-                    '<span class="early-mover__post-platform">' + (p.type_icon || '') + ' ' + (p.post_type || '') + '</span>' +
-                    (followers > 0 ? ' · ' + followersStr + ' followers' : '') +
-                  '</span>' +
-                '</div>' +
-                (timeStr ? '<span class="early-mover__post-time">' + timeStr + '</span>' : '') +
-              '</div>' +
-              (p.text ? '<div class="early-mover__post-text">' + p.text.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>' : '') +
-              '<div class="early-mover__post-stats">' +
-                (interactions > 0 ? '<span class="early-mover__post-stat">💬 ' + interStr + '</span>' : '') +
-                '<span class="early-mover__post-stat" style="color:' + sentColor + '">' + sentLabel + '</span>' +
-              '</div>' +
-            '</div>';
-          });
-          postsHtml += '</div>';
-          return postsHtml;
-        })() +
-
-        // AI分析 — 判断理由を詳しく
-        (coin.ai_summary_ja ? '<div class="early-mover__ai-section">' +
-          '<div class="early-mover__ai-section-title">🤖 AI分析</div>' +
-          '<div class="early-mover__ai-summary">' + coin.ai_summary_ja + '</div>' +
-          (coin.ai_reason_ja ? '<div class="early-mover__ai-reason">' +
-            '<div class="early-mover__ai-reason-label">💡 判断理由</div>' +
-            '<div class="early-mover__ai-reason-text">' + coin.ai_reason_ja + '</div>' +
-          '</div>' : '') +
-          (coin.ai_potential ? '<div class="early-mover__ai-potential">🎯 ポテンシャル: ' + coin.ai_potential + '</div>' : '') +
-          redFlagsHtml +
-        '</div>' : '') +
-
-        // AI価格予想
-        (coin.ai_price_prediction && coin.ai_price_prediction['1h'] ?
-          (function() {
-            var pred = coin.ai_price_prediction;
-            var confColor = pred.confidence === 'high' ? '#22c55e' : pred.confidence === 'medium' ? '#f59e0b' : '#ef4444';
-            var confLabel = pred.confidence === 'high' ? '自信あり' : pred.confidence === 'medium' ? 'やや自信' : '不確実';
-            return '<div class="early-mover__prediction">' +
-              '<div class="early-mover__prediction-header">' +
-                '<span class="early-mover__prediction-title">🔮 AI価格予想</span>' +
-                '<span class="early-mover__prediction-conf" style="color:' + confColor + '">' + confLabel + '</span>' +
-              '</div>' +
-              '<div class="early-mover__prediction-grid">' +
-                '<div class="early-mover__prediction-item">' +
-                  '<div class="early-mover__prediction-label">1時間後</div>' +
-                  '<div class="early-mover__prediction-value">' + (pred['1h'] || '-') + '</div>' +
-                '</div>' +
-                '<div class="early-mover__prediction-item">' +
-                  '<div class="early-mover__prediction-label">24時間後</div>' +
-                  '<div class="early-mover__prediction-value">' + (pred['24h'] || '-') + '</div>' +
-                '</div>' +
-              '</div>' +
-              '<div class="early-mover__prediction-scenarios">' +
-                '<div class="early-mover__prediction-scenario early-mover__prediction-scenario--best">' +
-                  '<span class="early-mover__prediction-scenario-label">✨ 最良</span>' +
-                  '<span>' + (pred.best_case || '-') + '</span>' +
-                '</div>' +
-                '<div class="early-mover__prediction-scenario early-mover__prediction-scenario--worst">' +
-                  '<span class="early-mover__prediction-scenario-label">💀 最悪</span>' +
-                  '<span>' + (pred.worst_case || '-') + '</span>' +
-                '</div>' +
-              '</div>' +
-              '<div class="early-mover__prediction-disclaimer">※ AI予想は参考情報です。投資判断は自己責任で行ってください。</div>' +
-            '</div>';
-          })()
-        : '') +
-
-        // マーケットデータ
-        '<div style="display:flex;gap:8px;margin-bottom:12px">' +
-          '<div onclick="showMetricGuide(\'volume\',event)" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px;cursor:pointer">' +
-            '<div style="font-size:10px;color:#94a3b8">出来高 (24h) <span style="font-size:9px;color:#64748b">?</span></div>' +
-            '<div style="font-size:14px;font-weight:600">' + formatValueCompact(coin.volume_24h || 0) + '</div>' +
-          '</div>' +
-          '<div onclick="showMetricGuide(\'liquidity\',event)" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px;cursor:pointer">' +
-            '<div style="font-size:10px;color:#94a3b8">流動性 <span style="font-size:9px;color:#64748b">?</span></div>' +
-            '<div style="font-size:14px;font-weight:600">' + formatValueCompact(coin.liquidity_usd || 0) + '</div>' +
-          '</div>' +
-          '<div onclick="showMetricGuide(\'age\',event)" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px;cursor:pointer">' +
-            '<div style="font-size:10px;color:#94a3b8">Age <span style="font-size:9px;color:#64748b">?</span></div>' +
-            '<div style="font-size:14px;font-weight:600">' + formatAgeHours(coin.age_hours) + '</div>' +
-          '</div>' +
-        '</div>' +
-
-        // Buy/Sell
-        '<div onclick="showMetricGuide(\'buysell\',event)" style="display:flex;gap:8px;margin-bottom:12px;cursor:pointer">' +
-          '<div style="flex:1;padding:10px;background:rgba(34,197,94,0.08);border-radius:8px;text-align:center">' +
-            '<div style="font-size:10px;color:#22c55e">Buy (24h)</div>' +
-            '<div style="font-size:16px;font-weight:600;color:#22c55e">' + (coin.txns_buy_24h || 0) + '</div>' +
-          '</div>' +
-          '<div style="flex:1;padding:10px;background:rgba(239,68,68,0.08);border-radius:8px;text-align:center">' +
-            '<div style="font-size:10px;color:#ef4444">Sell (24h)</div>' +
-            '<div style="font-size:16px;font-weight:600;color:#ef4444">' + (coin.txns_sell_24h || 0) + '</div>' +
-          '</div>' +
-          '<div style="flex:1;padding:10px;background:rgba(34,197,94,0.08);border-radius:8px;text-align:center">' +
-            '<div style="font-size:10px;color:#22c55e">Buy (1h)</div>' +
-            '<div style="font-size:16px;font-weight:600;color:#22c55e">' + (coin.txns_buy_1h || 0) + '</div>' +
-          '</div>' +
-          '<div style="flex:1;padding:10px;background:rgba(239,68,68,0.08);border-radius:8px;text-align:center">' +
-            '<div style="font-size:10px;color:#ef4444">Sell (1h)</div>' +
-            '<div style="font-size:16px;font-weight:600;color:#ef4444">' + (coin.txns_sell_1h || 0) + '</div>' +
-          '</div>' +
-        '</div>' +
-
-        // Rugcheckセキュリティ簡易表示
-        (function() {
-          var rcScore = coin.rugcheck_score;
-          if (rcScore === undefined || rcScore === null || rcScore < 0) {
-            return '<div onclick="window.openSecurityGuidePopup(null)" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:12px;font-size:12px;cursor:pointer">' +
-              '<span style="color:#64748b">🛡️ セキュリティ: データなし</span>' +
-              '<span style="color:#475569;font-size:10px">(Solanaのみ対応) タップで詳細</span>' +
-            '</div>';
-          }
-          var safe = 100 - rcScore;
-          var sc = safe >= 70 ? '#22c55e' : safe >= 40 ? '#f59e0b' : '#ef4444';
-          var lbl = safe >= 70 ? 'Safe' : safe >= 40 ? 'Caution' : 'Danger';
-          var lp = (coin.lp_locked_pct != null && coin.lp_locked_pct >= 0) ? coin.lp_locked_pct.toFixed(0) + '%' : '?';
-          return '<div onclick="window.openSecurityGuidePopup(' + JSON.stringify({s:safe,lbl:lbl,lp:coin.lp_locked_pct,top10:coin.holder_top10_pct,mint:coin.has_mint_authority,freeze:coin.has_freeze_authority,risks:coin.rugcheck_risks}).replace(/"/g,'&quot;') + ')" style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:12px;font-size:12px;cursor:pointer">' +
-            '<span style="color:' + sc + ';font-weight:600">🛡️ ' + safe + ' ' + lbl + '</span>' +
-            '<span style="color:#64748b">|</span>' +
-            '<span style="color:#94a3b8">LP Lock ' + lp + '</span>' +
-            (coin.has_mint_authority ? '<span style="color:#ef4444"> ⚠Mint</span>' : '') +
-            (coin.has_freeze_authority ? '<span style="color:#ef4444"> ⚠Freeze</span>' : '') +
-            '<span style="color:#475569;font-size:10px;margin-left:auto">タップで詳細 ›</span>' +
-          '</div>';
-        })() +
-
-        // アドレス
-        (addr ? '<div style="padding:8px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:12px;font-size:11px;color:#94a3b8;text-align:center">' +
-          'CA: ' + shortAddr +
-        '</div>' : '') +
-
-        // KAIROSで分析ボタン
-        '<button onclick="window._pendingMoonshotCoin=window._earlyMovers[' + idx + '];if(window.injectCoinDataForDetail)window.injectCoinDataForDetail(\'' + coin.symbol + '\',{price:' + (coin.price_usd || 0) + ',change24h:' + (coin.price_change_24h || 0) + (coin.dex_url ? ',dexUrl:\'' + coin.dex_url + '\'' : '') + (coin.token_address ? ',tokenAddress:\'' + coin.token_address + '\'' : '') + '}); closeEarlyMoverDetailModal(); window.KairosApp.viewCurrency(\'' + coin.symbol + '\');" style="width:100%;padding:12px;margin-bottom:12px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:600;border:none;border-radius:8px;font-size:14px;cursor:pointer">✨ KAIROSで分析する</button>' +
-
-        // 外部リンク
-        '<div style="display:flex;gap:8px">' +
-          (coin.dex_url ?
-            '<a href="' + coin.dex_url + '" target="_blank" style="flex:1;display:block;text-align:center;padding:10px;background:rgba(255,255,255,0.08);border-radius:8px;color:#d4a853;text-decoration:none;font-size:13px">' +
-              '📊 DexScreener' +
-            '</a>' : '') +
-          (addr ?
-            '<a href="https://birdeye.so/token/' + addr + '?chain=solana" target="_blank" style="flex:1;display:block;text-align:center;padding:10px;background:rgba(255,255,255,0.08);border-radius:8px;color:#d4a853;text-decoration:none;font-size:13px">' +
-              '🦅 Birdeye' +
-            '</a>' : '') +
-          (addr ?
-            '<a href="https://solscan.io/token/' + addr + '" target="_blank" style="flex:1;display:block;text-align:center;padding:10px;background:rgba(255,255,255,0.08);border-radius:8px;color:#d4a853;text-decoration:none;font-size:13px">' +
-              '🔍 Solscan' +
-            '</a>' : '') +
-        '</div>' +
+        // 詳細を見るボタン
+        '<button onclick="window._pendingMoonshotCoin=window._earlyMovers[' + idx + '];if(window.injectCoinDataForDetail)window.injectCoinDataForDetail(\'' + coin.symbol + '\',{price:' + (coin.price_usd || 0) + ',change24h:' + (coin.price_change_24h || 0) + (coin.dex_url ? ',dexUrl:\'' + coin.dex_url + '\'' : '') + (coin.token_address ? ',tokenAddress:\'' + coin.token_address + '\'' : '') + '}); closeEarlyMoverDetailModal(); window.KairosApp.viewCurrency(\'' + coin.symbol + '\');" style="width:100%;padding:14px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:700;border:none;border-radius:10px;font-size:15px;cursor:pointer">詳細を見る</button>' +
       '</div>' +
     '</div>';
 
