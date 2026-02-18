@@ -5518,20 +5518,22 @@
         (function() {
           var rcScore = coin.rugcheck_score;
           if (rcScore === undefined || rcScore === null || rcScore < 0) {
-            return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:12px;font-size:12px">' +
-              '<span style="color:#64748b">🛡️ セキュリティ: データ取得中...</span>' +
+            return '<div onclick="window.openSecurityGuidePopup(null)" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:12px;font-size:12px;cursor:pointer">' +
+              '<span style="color:#64748b">🛡️ セキュリティ: データなし</span>' +
+              '<span style="color:#475569;font-size:10px">(Solanaのみ対応) タップで詳細</span>' +
             '</div>';
           }
           var safe = 100 - rcScore;
           var sc = safe >= 70 ? '#22c55e' : safe >= 40 ? '#f59e0b' : '#ef4444';
           var lbl = safe >= 70 ? 'Safe' : safe >= 40 ? 'Caution' : 'Danger';
           var lp = (coin.lp_locked_pct != null && coin.lp_locked_pct >= 0) ? coin.lp_locked_pct.toFixed(0) + '%' : '?';
-          return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:12px;font-size:12px">' +
+          return '<div onclick="window.openSecurityGuidePopup(' + JSON.stringify({s:safe,lbl:lbl,lp:coin.lp_locked_pct,top10:coin.holder_top10_pct,mint:coin.has_mint_authority,freeze:coin.has_freeze_authority,risks:coin.rugcheck_risks}).replace(/"/g,'&quot;') + ')" style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:12px;font-size:12px;cursor:pointer">' +
             '<span style="color:' + sc + ';font-weight:600">🛡️ ' + safe + ' ' + lbl + '</span>' +
             '<span style="color:#64748b">|</span>' +
             '<span style="color:#94a3b8">LP Lock ' + lp + '</span>' +
             (coin.has_mint_authority ? '<span style="color:#ef4444"> ⚠Mint</span>' : '') +
             (coin.has_freeze_authority ? '<span style="color:#ef4444"> ⚠Freeze</span>' : '') +
+            '<span style="color:#475569;font-size:10px;margin-left:auto">タップで詳細 ›</span>' +
           '</div>';
         })() +
 
@@ -5580,6 +5582,214 @@
     }
   }
   window.closeEarlyMoverDetailModal = closeEarlyMoverDetailModal;
+
+  // ===== セキュリティ解説ポップアップ =====
+  function openSecurityGuidePopup(data) {
+    var existing = document.getElementById('security-guide-popup');
+    if (existing) existing.remove();
+
+    var hasData = data && data.s != null;
+
+    // 現在のコインの状態を信号機で表示
+    var signalHtml = '';
+    if (hasData) {
+      var s = data.s;
+      var signalColor = s >= 70 ? '#22c55e' : s >= 40 ? '#f59e0b' : '#ef4444';
+      var signalBg = s >= 70 ? 'rgba(34,197,94,0.12)' : s >= 40 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)';
+      var signalEmoji = s >= 70 ? '🟢' : s >= 40 ? '🟡' : '🔴';
+      var signalMsg = s >= 70 ? 'このコインは比較的安全と判定されています' : s >= 40 ? 'このコインにはいくつかの注意点があります' : 'このコインは高リスクです。十分注意してください';
+      signalHtml =
+        '<div style="padding:16px;background:' + signalBg + ';border-radius:12px;margin-bottom:16px;border:1px solid ' + signalColor + '33">' +
+          '<div style="text-align:center;margin-bottom:8px">' +
+            '<span style="font-size:32px">' + signalEmoji + '</span>' +
+            '<div style="font-size:18px;font-weight:700;color:' + signalColor + ';margin-top:4px">安全度 ' + s + ' / 100</div>' +
+          '</div>' +
+          '<div style="text-align:center;font-size:13px;color:' + signalColor + '">' + signalMsg + '</div>' +
+        '</div>';
+
+      // 各項目の診断結果
+      var items = [];
+      if (data.lp != null && data.lp >= 0) {
+        var lpOk = data.lp > 50;
+        var lpWarn = data.lp > 0 && data.lp <= 50;
+        items.push({
+          icon: lpOk ? '🔒' : lpWarn ? '⚠️' : '🚨',
+          label: 'LP Lock: ' + data.lp.toFixed(0) + '%',
+          color: lpOk ? '#22c55e' : lpWarn ? '#f59e0b' : '#ef4444',
+          msg: lpOk ? '流動性がロックされています' : lpWarn ? '一部のみロック — 引き抜きの可能性あり' : '未ロック — ラグプル注意'
+        });
+      }
+      if (data.top10 != null && data.top10 >= 0) {
+        var t10Ok = data.top10 < 30;
+        var t10Warn = data.top10 >= 30 && data.top10 <= 50;
+        items.push({
+          icon: t10Ok ? '👥' : t10Warn ? '⚠️' : '🚨',
+          label: 'Top10保有: ' + data.top10.toFixed(0) + '%',
+          color: t10Ok ? '#22c55e' : t10Warn ? '#f59e0b' : '#ef4444',
+          msg: t10Ok ? '保有が分散しています' : t10Warn ? 'やや集中 — 大口売りに注意' : '保有が集中 — 暴落リスク高'
+        });
+      }
+      if (data.mint != null) {
+        items.push({
+          icon: data.mint ? '🚨' : '✅',
+          label: 'Mint権限: ' + (data.mint ? 'あり' : 'なし'),
+          color: data.mint ? '#ef4444' : '#22c55e',
+          msg: data.mint ? '運営がコインを無限に増やせます' : '新規発行はできません'
+        });
+      }
+      if (data.freeze != null) {
+        items.push({
+          icon: data.freeze ? '🚨' : '✅',
+          label: 'Freeze権限: ' + (data.freeze ? 'あり' : 'なし'),
+          color: data.freeze ? '#ef4444' : '#22c55e',
+          msg: data.freeze ? '運営があなたの資産を凍結できます' : '資産凍結の権限はありません'
+        });
+      }
+
+      if (items.length > 0) {
+        signalHtml += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">';
+        items.forEach(function(it) {
+          signalHtml +=
+            '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.04);border-radius:8px;border-left:3px solid ' + it.color + '">' +
+              '<span style="font-size:18px">' + it.icon + '</span>' +
+              '<div style="flex:1">' +
+                '<div style="font-size:12px;font-weight:600;color:' + it.color + '">' + it.label + '</div>' +
+                '<div style="font-size:11px;color:#94a3b8;margin-top:2px">' + it.msg + '</div>' +
+              '</div>' +
+            '</div>';
+        });
+        signalHtml += '</div>';
+      }
+
+      // リスクフラグ
+      if (data.risks && data.risks.length > 0) {
+        signalHtml += '<div style="padding:10px 12px;background:rgba(239,68,68,0.08);border-radius:8px;margin-bottom:16px">' +
+          '<div style="font-size:11px;font-weight:600;color:#ef4444;margin-bottom:6px">🚩 検出されたリスク</div>';
+        data.risks.forEach(function(r) {
+          signalHtml += '<div style="font-size:11px;color:#f87171;padding:2px 0">・' + r + '</div>';
+        });
+        signalHtml += '</div>';
+      }
+    } else {
+      signalHtml =
+        '<div style="text-align:center;padding:20px 0;margin-bottom:16px;background:rgba(255,255,255,0.04);border-radius:12px">' +
+          '<div style="font-size:32px;margin-bottom:8px">🔒</div>' +
+          '<div style="font-size:14px;color:#94a3b8">このコインのセキュリティデータはありません</div>' +
+          '<div style="font-size:11px;color:#64748b;margin-top:4px">Rugcheck.xyzはSolanaチェーンのトークンのみ対応しています</div>' +
+        '</div>';
+    }
+
+    // 用語ガイド（常に表示）
+    var guideHtml =
+      '<div style="margin-top:4px">' +
+        '<div style="font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:10px">📖 セキュリティ用語ガイド</div>' +
+
+        // 信号機の見方
+        '<div style="padding:12px;background:rgba(255,255,255,0.04);border-radius:10px;margin-bottom:10px">' +
+          '<div style="font-size:12px;font-weight:600;color:#e2e8f0;margin-bottom:8px">安全度スコアの見方</div>' +
+          '<div style="display:flex;gap:6px;margin-bottom:4px">' +
+            '<div style="flex:1;text-align:center;padding:8px 4px;background:rgba(34,197,94,0.12);border-radius:6px">' +
+              '<div style="font-size:16px">🟢</div>' +
+              '<div style="font-size:11px;font-weight:600;color:#22c55e">70〜100</div>' +
+              '<div style="font-size:10px;color:#94a3b8">安全</div>' +
+            '</div>' +
+            '<div style="flex:1;text-align:center;padding:8px 4px;background:rgba(245,158,11,0.12);border-radius:6px">' +
+              '<div style="font-size:16px">🟡</div>' +
+              '<div style="font-size:11px;font-weight:600;color:#f59e0b">40〜69</div>' +
+              '<div style="font-size:10px;color:#94a3b8">注意</div>' +
+            '</div>' +
+            '<div style="flex:1;text-align:center;padding:8px 4px;background:rgba(239,68,68,0.12);border-radius:6px">' +
+              '<div style="font-size:16px">🔴</div>' +
+              '<div style="font-size:11px;font-weight:600;color:#ef4444">0〜39</div>' +
+              '<div style="font-size:10px;color:#94a3b8">危険</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        // 各用語の解説
+        '<div style="display:flex;flex-direction:column;gap:8px">' +
+          // LP Lock
+          '<div style="padding:12px;background:rgba(255,255,255,0.04);border-radius:10px">' +
+            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
+              '<span style="font-size:16px">🔒</span>' +
+              '<span style="font-size:12px;font-weight:600;color:#e2e8f0">LP Lock（流動性ロック）</span>' +
+            '</div>' +
+            '<div style="font-size:11px;color:#94a3b8;line-height:1.5">' +
+              'コインを売買するための資金プール（LP）が引き出せないようロックされているかどうか。' +
+              '<br><span style="color:#22c55e">高い</span> = 運営が資金を持ち逃げしにくい' +
+              '<br><span style="color:#ef4444">0%</span> = いつでも資金を引き抜ける（ラグプル危険）' +
+            '</div>' +
+          '</div>' +
+
+          // Top10保有率
+          '<div style="padding:12px;background:rgba(255,255,255,0.04);border-radius:10px">' +
+            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
+              '<span style="font-size:16px">👥</span>' +
+              '<span style="font-size:12px;font-weight:600;color:#e2e8f0">Top10保有率</span>' +
+            '</div>' +
+            '<div style="font-size:11px;color:#94a3b8;line-height:1.5">' +
+              '上位10アドレスが全体の何%を持っているか。' +
+              '<br><span style="color:#22c55e">30%未満</span> = 分散している（安全）' +
+              '<br><span style="color:#ef4444">50%超</span> = 大口が売ると暴落する恐れ' +
+            '</div>' +
+          '</div>' +
+
+          // Mint権限
+          '<div style="padding:12px;background:rgba(255,255,255,0.04);border-radius:10px">' +
+            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
+              '<span style="font-size:16px">🏭</span>' +
+              '<span style="font-size:12px;font-weight:600;color:#e2e8f0">Mint権限（追加発行）</span>' +
+            '</div>' +
+            '<div style="font-size:11px;color:#94a3b8;line-height:1.5">' +
+              '運営がコインを新たに無限発行できる権限。' +
+              '<br><span style="color:#22c55e">なし</span> = 供給量が固定（安心）' +
+              '<br><span style="color:#ef4444">あり</span> = 大量発行で価値が希薄化する恐れ' +
+            '</div>' +
+          '</div>' +
+
+          // Freeze権限
+          '<div style="padding:12px;background:rgba(255,255,255,0.04);border-radius:10px">' +
+            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
+              '<span style="font-size:16px">🧊</span>' +
+              '<span style="font-size:12px;font-weight:600;color:#e2e8f0">Freeze権限（資産凍結）</span>' +
+            '</div>' +
+            '<div style="font-size:11px;color:#94a3b8;line-height:1.5">' +
+              '運営が特定のウォレットの残高を凍結できる権限。' +
+              '<br><span style="color:#22c55e">なし</span> = 自由に売買できる（安心）' +
+              '<br><span style="color:#ef4444">あり</span> = あなたのコインが売れなくなる恐れ' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        // 注意書き
+        '<div style="margin-top:12px;padding:10px 12px;background:rgba(212,168,83,0.08);border-radius:8px;border:1px solid rgba(212,168,83,0.2)">' +
+          '<div style="font-size:11px;color:#d4a853;line-height:1.5">' +
+            '💡 <b>判断のコツ:</b> 安全度が高くても他の要素（出来高・コミュニティ・開発状況）を必ず確認してください。セキュリティスコアだけで投資判断をしないでください。' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    var popup = document.createElement('div');
+    popup.id = 'security-guide-popup';
+    popup.className = 'security-guide-overlay';
+    popup.innerHTML =
+      '<div class="security-guide-modal">' +
+        '<div class="security-guide-header">' +
+          '<span style="font-size:16px;font-weight:600">🛡️ セキュリティチェック</span>' +
+          '<button onclick="document.getElementById(\'security-guide-popup\').remove()" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;padding:4px 8px">✕</button>' +
+        '</div>' +
+        '<div class="security-guide-body">' +
+          signalHtml +
+          guideHtml +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(popup);
+    requestAnimationFrame(function() { popup.classList.add('active'); });
+    popup.addEventListener('click', function(e) {
+      if (e.target === popup) popup.remove();
+    });
+  }
+  window.openSecurityGuidePopup = openSecurityGuidePopup;
 
   // ===== DEXコイン専用詳細画面 =====
 
@@ -5830,7 +6040,17 @@
 
         // セキュリティ（Rugcheck）
         (function() {
-          if (coin.rugcheck_score == null || coin.rugcheck_score === -1) return '';
+          if (coin.rugcheck_score == null || coin.rugcheck_score === -1) {
+            return '<div class="dex-detail__security-section" onclick="window.openSecurityGuidePopup(null)" style="cursor:pointer">' +
+              '<div class="dex-detail__section-title">🛡️ セキュリティ <span style="font-size:10px;color:#64748b">(Rugcheck)</span></div>' +
+              '<div style="text-align:center;padding:16px 0;color:#64748b;font-size:13px">' +
+                '<div style="font-size:24px;margin-bottom:6px">🔒</div>' +
+                '<div>セキュリティデータなし</div>' +
+                '<div style="font-size:11px;color:#475569;margin-top:4px">Solanaチェーンのトークンのみ対応</div>' +
+                '<div style="font-size:11px;color:#d4a853;margin-top:8px">タップでセキュリティの見方を確認 ›</div>' +
+              '</div>' +
+            '</div>';
+          }
           var rcScore = coin.rugcheck_score;
           var safeScore = 100 - rcScore;
           var safeColor = safeScore >= 70 ? '#22c55e' : safeScore >= 40 ? '#f59e0b' : '#ef4444';
@@ -5855,8 +6075,10 @@
             risksHtml += '</div>';
           }
 
-          return '<div class="dex-detail__security-section">' +
-            '<div class="dex-detail__section-title">🛡️ セキュリティ <span style="font-size:10px;color:#64748b">(Rugcheck)</span></div>' +
+          var guideData = JSON.stringify({s:safeScore,lbl:safeLabel,lp:lpLock,top10:top10,mint:coin.has_mint_authority,freeze:coin.has_freeze_authority,risks:coin.rugcheck_risks}).replace(/"/g,'&quot;');
+
+          return '<div class="dex-detail__security-section" onclick="window.openSecurityGuidePopup(' + guideData + ')" style="cursor:pointer">' +
+            '<div class="dex-detail__section-title">🛡️ セキュリティ <span style="font-size:10px;color:#64748b">(Rugcheck)</span> <span style="font-size:10px;color:#d4a853;float:right">タップで解説 ›</span></div>' +
             '<div class="dex-detail__security-score">' +
               '<div class="dex-detail__security-score-circle" style="border-color:' + safeColor + '">' +
                 '<span class="dex-detail__security-score-value" style="color:' + safeColor + '">' + safeScore + '</span>' +
