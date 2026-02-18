@@ -12152,6 +12152,13 @@ body.has-ticker-bar {
   margin-top: 2px;
 }
 
+.dex-detail__coin-desc {
+  font-size: 12px;
+  color: #94a3b8;
+  padding: 0 16px 8px;
+  line-height: 1.4;
+}
+
 .dex-detail__jp-badge {
   display: inline-block;
   padding: 2px 8px;
@@ -12362,6 +12369,85 @@ body.has-ticker-bar {
 .dex-detail__copy-btn:active {
   transform: scale(0.95);
   background: rgba(212, 168, 83, 0.3);
+}
+
+/* Security section (Rugcheck) */
+.dex-detail__security-section {
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dex-detail__security-score {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+  justify-content: center;
+}
+
+.dex-detail__security-score-circle {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 3px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.dex-detail__security-score-value {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.dex-detail__security-score-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dex-detail__security-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.dex-detail__security-item {
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.dex-detail__security-item-label {
+  font-size: 10px;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.dex-detail__security-item-value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dex-detail__security-risks {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.dex-detail__security-risk-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  font-size: 11px;
 }
 
 .dex-detail__links {

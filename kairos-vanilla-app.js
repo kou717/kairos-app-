@@ -5353,6 +5353,7 @@
           renderScoreBar('Buy圧', bd.buy_pressure || 0, 20) +
           renderScoreBar('鮮度', bd.freshness || 0, 15) +
           renderScoreBar('SNS', bd.social_buzz || 0, 25) +
+          (bd.safety != null && bd.safety !== 0 ? '<div style="font-size:11px;color:' + (bd.safety > 0 ? '#22c55e' : '#ef4444') + ';margin-top:4px">🛡️ Safety: ' + (bd.safety > 0 ? '+' : '') + bd.safety + '</div>' : '') +
         '</div>' +
 
         // SNSデータ詳細
@@ -5512,6 +5513,22 @@
             '<div style="font-size:16px;font-weight:600;color:#ef4444">' + (coin.txns_sell_1h || 0) + '</div>' +
           '</div>' +
         '</div>' +
+
+        // Rugcheckセキュリティ簡易表示
+        (function() {
+          if (coin.rugcheck_score == null || coin.rugcheck_score === -1) return '';
+          var safe = 100 - coin.rugcheck_score;
+          var sc = safe >= 70 ? '#22c55e' : safe >= 40 ? '#f59e0b' : '#ef4444';
+          var lbl = safe >= 70 ? 'Safe' : safe >= 40 ? 'Caution' : 'Danger';
+          var lp = coin.lp_locked_pct >= 0 ? coin.lp_locked_pct.toFixed(0) + '%' : '?';
+          return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:12px;font-size:12px">' +
+            '<span style="color:' + sc + ';font-weight:600">🛡️ ' + safe + ' ' + lbl + '</span>' +
+            '<span style="color:#64748b">|</span>' +
+            '<span style="color:#94a3b8">LP Lock ' + lp + '</span>' +
+            (coin.has_mint_authority ? '<span style="color:#ef4444">⚠Mint</span>' : '') +
+            (coin.has_freeze_authority ? '<span style="color:#ef4444">⚠Freeze</span>' : '') +
+          '</div>';
+        })() +
 
         // アドレス
         (addr ? '<div style="padding:8px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:12px;font-size:11px;color:#94a3b8;text-align:center">' +
@@ -5744,6 +5761,9 @@
           '</div>' +
         '</div>' +
 
+        // コイン概要説明
+        (coin.ai_description_ja ? '<div class="dex-detail__coin-desc">\u{1F4CB} ' + coin.ai_description_ja + '</div>' : '') +
+
         // 価格セクション
         '<div class="dex-detail__price-section">' +
           '<div class="dex-detail__price-main">' + priceStr + '</div>' +
@@ -5780,6 +5800,7 @@
           renderScoreBar('Buy圧', bd.buy_pressure || 0, 20) +
           renderScoreBar('鮮度', bd.freshness || 0, 15) +
           renderScoreBar('SNS', bd.social_buzz || 0, 25) +
+          (bd.safety != null && bd.safety !== 0 ? '<div style="font-size:11px;color:' + (bd.safety > 0 ? '#22c55e' : '#ef4444') + ';margin-top:4px">🛡️ Safety: ' + (bd.safety > 0 ? '+' : '') + bd.safety + '</div>' : '') +
         '</div>' +
 
         // DEX情報グリッド
@@ -5801,6 +5822,63 @@
             '<div class="dex-detail__info-value">' + (sourceLabel || '不明') + '</div>' +
           '</div>' +
         '</div>' +
+
+        // セキュリティ（Rugcheck）
+        (function() {
+          if (coin.rugcheck_score == null || coin.rugcheck_score === -1) return '';
+          var rcScore = coin.rugcheck_score;
+          var safeScore = 100 - rcScore;
+          var safeColor = safeScore >= 70 ? '#22c55e' : safeScore >= 40 ? '#f59e0b' : '#ef4444';
+          var safeLabel = safeScore >= 70 ? 'Safe' : safeScore >= 40 ? 'Caution' : 'Danger';
+          var lpLock = coin.lp_locked_pct;
+          var lpStr = lpLock >= 0 ? lpLock.toFixed(1) + '%' : 'N/A';
+          var lpColor = lpLock > 50 ? '#22c55e' : lpLock > 0 ? '#f59e0b' : '#ef4444';
+          var top10 = coin.holder_top10_pct;
+          var top10Str = top10 >= 0 ? top10.toFixed(1) + '%' : 'N/A';
+          var top10Color = top10 >= 0 ? (top10 > 50 ? '#ef4444' : top10 > 30 ? '#f59e0b' : '#22c55e') : '#94a3b8';
+          var mintIcon = coin.has_mint_authority ? '⚠️ あり' : '✅ なし';
+          var mintColor = coin.has_mint_authority ? '#ef4444' : '#22c55e';
+          var freezeIcon = coin.has_freeze_authority ? '⚠️ あり' : '✅ なし';
+          var freezeColor = coin.has_freeze_authority ? '#ef4444' : '#22c55e';
+
+          var risksHtml = '';
+          if (coin.rugcheck_risks && coin.rugcheck_risks.length > 0) {
+            risksHtml = '<div class="dex-detail__security-risks">';
+            coin.rugcheck_risks.forEach(function(r) {
+              risksHtml += '<span class="dex-detail__security-risk-tag">🚩 ' + r + '</span>';
+            });
+            risksHtml += '</div>';
+          }
+
+          return '<div class="dex-detail__security-section">' +
+            '<div class="dex-detail__section-title">🛡️ セキュリティ <span style="font-size:10px;color:#64748b">(Rugcheck)</span></div>' +
+            '<div class="dex-detail__security-score">' +
+              '<div class="dex-detail__security-score-circle" style="border-color:' + safeColor + '">' +
+                '<span class="dex-detail__security-score-value" style="color:' + safeColor + '">' + safeScore + '</span>' +
+              '</div>' +
+              '<div class="dex-detail__security-score-label" style="color:' + safeColor + '">' + safeLabel + '</div>' +
+            '</div>' +
+            '<div class="dex-detail__security-grid">' +
+              '<div class="dex-detail__security-item">' +
+                '<div class="dex-detail__security-item-label">LP Lock</div>' +
+                '<div class="dex-detail__security-item-value" style="color:' + lpColor + '">' + lpStr + '</div>' +
+              '</div>' +
+              '<div class="dex-detail__security-item">' +
+                '<div class="dex-detail__security-item-label">Top10保有</div>' +
+                '<div class="dex-detail__security-item-value" style="color:' + top10Color + '">' + top10Str + '</div>' +
+              '</div>' +
+              '<div class="dex-detail__security-item">' +
+                '<div class="dex-detail__security-item-label">Mint権限</div>' +
+                '<div class="dex-detail__security-item-value" style="color:' + mintColor + '">' + mintIcon + '</div>' +
+              '</div>' +
+              '<div class="dex-detail__security-item">' +
+                '<div class="dex-detail__security-item-label">Freeze権限</div>' +
+                '<div class="dex-detail__security-item-value" style="color:' + freezeColor + '">' + freezeIcon + '</div>' +
+              '</div>' +
+            '</div>' +
+            risksHtml +
+          '</div>';
+        })() +
 
         // Buy/Sell比
         '<div class="dex-detail__buysell">' +
