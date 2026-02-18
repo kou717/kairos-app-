@@ -5516,17 +5516,22 @@
 
         // Rugcheckセキュリティ簡易表示
         (function() {
-          if (coin.rugcheck_score == null || coin.rugcheck_score === -1) return '';
-          var safe = 100 - coin.rugcheck_score;
+          var rcScore = coin.rugcheck_score;
+          if (rcScore === undefined || rcScore === null || rcScore < 0) {
+            return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:12px;font-size:12px">' +
+              '<span style="color:#64748b">🛡️ セキュリティ: データ取得中...</span>' +
+            '</div>';
+          }
+          var safe = 100 - rcScore;
           var sc = safe >= 70 ? '#22c55e' : safe >= 40 ? '#f59e0b' : '#ef4444';
           var lbl = safe >= 70 ? 'Safe' : safe >= 40 ? 'Caution' : 'Danger';
-          var lp = coin.lp_locked_pct >= 0 ? coin.lp_locked_pct.toFixed(0) + '%' : '?';
+          var lp = (coin.lp_locked_pct != null && coin.lp_locked_pct >= 0) ? coin.lp_locked_pct.toFixed(0) + '%' : '?';
           return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:12px;font-size:12px">' +
             '<span style="color:' + sc + ';font-weight:600">🛡️ ' + safe + ' ' + lbl + '</span>' +
             '<span style="color:#64748b">|</span>' +
             '<span style="color:#94a3b8">LP Lock ' + lp + '</span>' +
-            (coin.has_mint_authority ? '<span style="color:#ef4444">⚠Mint</span>' : '') +
-            (coin.has_freeze_authority ? '<span style="color:#ef4444">⚠Freeze</span>' : '') +
+            (coin.has_mint_authority ? '<span style="color:#ef4444"> ⚠Mint</span>' : '') +
+            (coin.has_freeze_authority ? '<span style="color:#ef4444"> ⚠Freeze</span>' : '') +
           '</div>';
         })() +
 
