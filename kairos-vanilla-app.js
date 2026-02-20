@@ -6836,13 +6836,20 @@
   window.addChartCheckpoint = function() {
     var ticker = appState.selectedCurrency;
     if (!ticker) return;
-    // 現在価格を取得
+    // チャート上の最新キャンドルの終値を使用（最も正確）
     var currentPrice = 0;
-    var coin = window._pendingMoonshotCoin;
-    if (coin && coin.price_usd) {
-      currentPrice = coin.price_usd;
-    } else if (scoreCache && scoreCache.data && scoreCache.data[ticker]) {
-      currentPrice = scoreCache.data[ticker].price || 0;
+    if (_chartCandleData && _chartCandleData.length > 0) {
+      var lastCandle = _chartCandleData[_chartCandleData.length - 1];
+      currentPrice = lastCandle.close || lastCandle.value || 0;
+    }
+    // フォールバック
+    if (!currentPrice) {
+      var coin = window._pendingMoonshotCoin;
+      if (coin && coin.price_usd) {
+        currentPrice = coin.price_usd;
+      } else if (scoreCache && scoreCache.data && scoreCache.data[ticker]) {
+        currentPrice = scoreCache.data[ticker].price || 0;
+      }
     }
     if (!currentPrice) {
       showToast('価格データがありません');
@@ -6870,15 +6877,26 @@
     showToast('チェックポイントを削除');
   };
 
-  // チェックポイントピンSVG（フラグ型）
-  var checkpointPinSvg = '<svg width="18" height="26" viewBox="0 0 18 26" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-    '<line x1="2" y1="0" x2="2" y2="26" stroke="#d4a853" stroke-width="1.5"/>' +
-    '<path d="M2 1L16 5.5L2 10Z" fill="#d4a853" stroke="rgba(0,0,0,0.3)" stroke-width="0.5"/>' +
+  // チェックポイントピンSVG — 取引マーカーと同じGoogle Maps風ドロップピン（金色）
+  var checkpointPinSvg = function() {
+    return '<svg width="20" height="28" viewBox="0 0 20 28" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+      '<g filter="url(#cp-pin-shadow)">' +
+        '<path d="M10 26C10 26 19 16 19 10C19 5.03 14.97 1 10 1C5.03 1 1 5.03 1 10C1 16 10 26 10 26Z" fill="#d4a853"/>' +
+        '<path d="M10 26C10 26 19 16 19 10C19 5.03 14.97 1 10 1C5.03 1 1 5.03 1 10C1 16 10 26 10 26Z" stroke="rgba(0,0,0,0.2)" stroke-width="0.5"/>' +
+        '<text x="10" y="14" text-anchor="middle" font-size="10" fill="#000" font-weight="bold">📍</text>' +
+      '</g>' +
+      '<defs><filter id="cp-pin-shadow" x="-2" y="0" width="24" height="32" filterUnits="userSpaceOnUse">' +
+        '<feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-opacity="0.4"/>' +
+      '</filter></defs>' +
     '</svg>';
+  };
 
   function renderCheckpointMarkers(ticker) {
     var container = document.getElementById('detail-chart');
     if (!container || !priceChart) return;
+
+    var series = candleSeries || priceSeries;
+    if (!series) return;
 
     // 既存オーバーレイを削除
     var existing = document.getElementById('checkpoint-pins-overlay');
@@ -6891,63 +6909,81 @@
     var checkpoints = getCheckpoints(ticker);
     if (checkpoints.length === 0) return;
 
-    var series = candleSeries || priceSeries;
-    if (!series) return;
-
-    var candleTimes = _chartCandleData.map(function(c) { return c.time; });
+    // チャートデータの時間範囲を取得（取引マーカーと同じ方式）
+    var chartCandles = _chartCandleData || [];
+    var candleTimes = chartCandles.map(function(c) { return c.time; });
     if (candleTimes.length === 0) return;
     var chartStart = candleTimes[0];
     var chartEnd = candleTimes[candleTimes.length - 1];
+    var avgInterval = candleTimes.length > 1
+      ? (chartEnd - chartStart) / (candleTimes.length - 1)
+      : 86400;
+    var timeMargin = Math.max(86400, avgInterval * 2);
 
-    // 最も近いキャンドル時間にスナップ
+    // 取引マーカーと同じスナップ関数
     function snapToNearestCandle(cpTime) {
-      if (cpTime <= chartStart) return chartEnd; // 範囲外→最新
+      if (cpTime <= chartStart) return chartStart;
       if (cpTime >= chartEnd) return chartEnd;
       var best = candleTimes[0];
       var bestDiff = Math.abs(cpTime - best);
       for (var i = 1; i < candleTimes.length; i++) {
         var diff = Math.abs(cpTime - candleTimes[i]);
-        if (diff < bestDiff) { best = candleTimes[i]; bestDiff = diff; }
+        if (diff < bestDiff) {
+          best = candleTimes[i];
+          bestDiff = diff;
+        }
         if (candleTimes[i] > cpTime) break;
       }
       return best;
     }
 
-    // 現在価格を取得
+    // 現在価格を取得（チャートの最新キャンドル終値を優先）
     var currentPrice = 0;
-    var coin = window._pendingMoonshotCoin;
-    if (coin && coin.price_usd) {
-      currentPrice = coin.price_usd;
-    } else if (scoreCache && scoreCache.data && scoreCache.data[ticker]) {
-      currentPrice = scoreCache.data[ticker].price || 0;
+    if (chartCandles.length > 0) {
+      var lastC = chartCandles[chartCandles.length - 1];
+      currentPrice = lastC.close || lastC.value || 0;
+    }
+    if (!currentPrice) {
+      var coin = window._pendingMoonshotCoin;
+      if (coin && coin.price_usd) currentPrice = coin.price_usd;
+      else if (scoreCache && scoreCache.data && scoreCache.data[ticker]) currentPrice = scoreCache.data[ticker].price || 0;
     }
 
+    // オーバーレイレイヤー（取引マーカーと同じ方式）
     container.style.position = 'relative';
     var overlay = document.createElement('div');
     overlay.id = 'checkpoint-pins-overlay';
-    overlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:60;overflow:hidden';
+    overlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:60;overflow:hidden;';
     container.appendChild(overlay);
 
-    var PIN_HEIGHT = 26;
+    // 取引マーカーと同じピンサイズ・オフセット
+    var PIN_HEIGHT = 28;
+    var PIN_OFFSET = 4;
     var pins = [];
 
     checkpoints.forEach(function(cp) {
       var snappedTime = snapToNearestCandle(cp.time);
 
+      // 取引マーカーと同じDOM構造
       var pin = document.createElement('div');
-      pin.style.cssText = 'position:absolute;pointer-events:auto;cursor:pointer;width:18px;height:26px;transition:transform 0.12s ease;';
-      pin.innerHTML = checkpointPinSvg;
+      pin.style.cssText = 'position:absolute;pointer-events:auto;cursor:pointer;' +
+        'transform:translateX(-50%);transition:transform 0.12s ease;width:20px;height:28px;';
+      pin.innerHTML = checkpointPinSvg();
+
+      // ホバー/タッチ反応（取引マーカーと同じ）
+      pin.addEventListener('mouseenter', function() { pin.style.transform = 'translateX(-50%) scale(1.25)'; });
+      pin.addEventListener('mouseleave', function() { pin.style.transform = 'translateX(-50%)'; });
 
       // タップ→ポップアップ
       pin.addEventListener('click', function(e) {
         e.stopPropagation();
-        showCheckpointPopup(cp, currentPrice, container, series);
+        showCheckpointPopup(cp, currentPrice, container);
       });
 
       // 長押し→緑/赤ゾーン表示
       var pressTimer = null;
       var isLongPress = false;
-      function startPress(e) {
+      function startPress() {
         isLongPress = false;
         pressTimer = setTimeout(function() {
           isLongPress = true;
@@ -6968,26 +7004,35 @@
       pin.addEventListener('mouseleave', endPress);
 
       overlay.appendChild(pin);
+
+      // チェックポイント価格はチャートデータの終値から取得済みなので変換不要
       pins.push({ el: pin, time: snappedTime, price: cp.price });
     });
 
-    // ピン位置を更新
+    if (pins.length === 0) { overlay.remove(); return; }
+
+    // ピン位置を更新（取引マーカーと完全に同じ計算式）
     function updatePins() {
       pins.forEach(function(p) {
         var x = priceChart.timeScale().timeToCoordinate(p.time);
+        if (x === null || x < -20 || x > container.clientWidth + 20) {
+          p.el.style.display = 'none';
+          return;
+        }
         var y = series.priceToCoordinate(p.price);
-        if (x === null || y === null || x < -20 || x > container.clientWidth + 20) {
+        if (y === null || y < -PIN_HEIGHT || y > container.clientHeight + 10) {
           p.el.style.display = 'none';
           return;
         }
         p.el.style.display = '';
-        p.el.style.left = (x - 2) + 'px'; // フラグポールをキャンドル位置に合わせる
-        p.el.style.top = (y - PIN_HEIGHT) + 'px';
+        p.el.style.left = x + 'px';
+        p.el.style.top = (y - PIN_HEIGHT - PIN_OFFSET) + 'px';
       });
     }
 
     updatePins();
 
+    // スクロール/ズームで位置更新（取引マーカーと同じ）
     try {
       priceChart.timeScale().subscribeVisibleLogicalRangeChange(updatePins);
     } catch(e) {}
@@ -7019,7 +7064,7 @@
     if (zone) zone.remove();
   }
 
-  function showCheckpointPopup(cp, currentPrice, container, series) {
+  function showCheckpointPopup(cp, currentPrice, container) {
     var existingPopup = document.getElementById('checkpoint-popup');
     if (existingPopup) existingPopup.remove();
 
