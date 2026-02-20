@@ -5302,6 +5302,10 @@
       else if (coin.risk_level === 'medium') riskBadge = '<span class="early-mover__risk early-mover__risk--medium">MID RISK</span>';
       else if (coin.risk_level === 'low') riskBadge = '<span class="early-mover__risk early-mover__risk--low">LOW RISK</span>';
 
+      var priceStr = formatPriceCompact(coin.price_usd);
+      var ch5m = coin.price_change_5m || 0;
+      var ch24h = coin.price_change_24h || 0;
+
       html += '<div class="early-mover-coin' + (isTop3 ? ' early-mover-coin--top' : '') + '" onclick="openEarlyMoverDetail(' + idx + ')" style="animation-delay:' + (idx * 0.05) + 's;cursor:pointer">' +
         '<div class="early-mover__header">' +
           (coin.image_url ? '<img class="moonshot-coin__icon" src="' + coin.image_url + '" alt="">' : '<div class="moonshot-coin__icon-placeholder">🪙</div>') +
@@ -5310,6 +5314,14 @@
               (isNew ? ' <span class="early-mover__new-badge">NEW</span>' : '') +
             '</span>' +
             '<span class="moonshot-coin__name">' + (coin.name || '').substring(0, 20) + '</span>' +
+          '</div>' +
+          '<div class="early-mover__price-col">' +
+            '<div class="early-mover__price">' + priceStr + '</div>' +
+            '<div class="early-mover__changes">' +
+              '<span class="' + (ch5m >= 0 ? 'positive' : 'negative') + '">' + (ch5m >= 0 ? '+' : '') + ch5m.toFixed(1) + '%<small>5m</small></span>' +
+              '<span class="' + (change1h >= 0 ? 'positive' : 'negative') + '">' + (change1h >= 0 ? '+' : '') + change1h.toFixed(1) + '%<small>1h</small></span>' +
+              '<span class="' + (ch24h >= 0 ? 'positive' : 'negative') + '">' + (ch24h >= 0 ? '+' : '') + ch24h.toFixed(1) + '%<small>24h</small></span>' +
+            '</div>' +
           '</div>' +
           '<div class="early-mover__scores">' +
             '<div class="early-mover__score-main" style="color:' + scoreColor + '">' + mscore + '</div>' +
@@ -5320,9 +5332,7 @@
           '<span>Vol: ' + formatValueCompact(coin.volume_24h || 0) + '</span>' +
           '<span>Liq: ' + formatValueCompact(coin.liquidity_usd || 0) + '</span>' +
           '<span>Age: ' + formatAgeHours(coin.age_hours) + '</span>' +
-          '<span class="' + (change1h >= 0 ? 'positive' : 'negative') + '">' +
-            (change1h >= 0 ? '+' : '') + change1h.toFixed(1) + '% (1h)' +
-          '</span>' +
+          riskBadge +
         '</div>' +
         // SNS話題度
         (coin.social_interactions > 0 ?
@@ -5341,7 +5351,6 @@
             '<span>24h: ' + coin.ai_price_prediction['24h'] + '</span>' +
           '</div>' : '') +
         '<div class="early-mover__footer">' +
-          riskBadge +
           (coin.ai_potential ? '<span class="early-mover__potential">🎯 ' + coin.ai_potential + '</span>' : '') +
           '<span class="early-mover__sources">' + (coin.sources || []).join(' + ') + '</span>' +
         '</div>' +
@@ -5369,63 +5378,20 @@
     var coin = coins[idx];
     if (!coin) return;
 
-    var mscore = coin.moonshot_score || 0;
-    var scoreColor = mscore >= 70 ? '#22c55e' : mscore >= 50 ? '#f59e0b' : mscore >= 30 ? '#ef4444' : '#6b7280';
-    var priceStr = formatPriceCompact(coin.price_usd);
-    var riskColor = coin.risk_level === 'high' ? '#ef4444' : coin.risk_level === 'medium' ? '#f59e0b' : coin.risk_level === 'low' ? '#22c55e' : '#6b7280';
-    var riskLabel = coin.risk_level === 'high' ? 'HIGH' : coin.risk_level === 'medium' ? 'MID' : coin.risk_level === 'low' ? 'LOW' : '?';
-
-    var modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.id = 'early-mover-detail-modal';
-    modal.innerHTML = '<div class="modal" style="max-width:400px;border-radius:16px;overflow:hidden">' +
-      '<div style="padding:20px">' +
-        // ヘッダー: アイコン+名前+閉じる
-        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">' +
-          (coin.image_url ? '<img src="' + coin.image_url + '" style="width:32px;height:32px;border-radius:50%">' : '<div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:16px">🪙</div>') +
-          '<div style="flex:1">' +
-            '<div style="font-size:16px;font-weight:700;color:#fff">' + coin.symbol + '</div>' +
-            '<div style="font-size:11px;color:#94a3b8">' + (coin.name || '').substring(0, 30) + '</div>' +
-          '</div>' +
-          '<button onclick="closeEarlyMoverDetailModal()" style="background:none;border:none;color:#64748b;font-size:22px;cursor:pointer;padding:4px">×</button>' +
-        '</div>' +
-
-        // スコア + リスク + 価格（1行）
-        '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">' +
-          '<div style="font-size:32px;font-weight:700;color:' + scoreColor + '">' + mscore + '</div>' +
-          '<div style="padding:3px 10px;border-radius:6px;border:1px solid ' + riskColor + ';color:' + riskColor + ';font-size:11px;font-weight:600">' + riskLabel + '</div>' +
-          '<div style="margin-left:auto;text-align:right">' +
-            '<div style="font-size:18px;font-weight:700;color:#fff">' + priceStr + '</div>' +
-          '</div>' +
-        '</div>' +
-
-        // AI一言
-        (coin.ai_summary_ja ? '<div style="padding:10px 12px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:10px;margin-bottom:16px;font-size:13px;color:#c4b5fd;line-height:1.5">' + coin.ai_summary_ja + '</div>' : '') +
-
-        // 詳細を見るボタン
-        '<button onclick="window._pendingMoonshotCoin=window._earlyMovers[' + idx + '];if(window.injectCoinDataForDetail)window.injectCoinDataForDetail(\'' + coin.symbol + '\',{price:' + (coin.price_usd || 0) + ',change24h:' + (coin.price_change_24h || 0) + (coin.dex_url ? ',dexUrl:\'' + coin.dex_url + '\'' : '') + (coin.token_address ? ',tokenAddress:\'' + coin.token_address + '\'' : '') + '}); closeEarlyMoverDetailModal(); window.KairosApp.viewCurrency(\'' + coin.symbol + '\');" style="width:100%;padding:14px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:700;border:none;border-radius:10px;font-size:15px;cursor:pointer">詳細を見る</button>' +
-      '</div>' +
-    '</div>';
-
-    document.body.appendChild(modal);
-    document.body.style.overflow = 'hidden';
-    requestAnimationFrame(function() { modal.classList.add('active'); });
-
-    modal.onclick = function(e) {
-      if (e.target === modal) closeEarlyMoverDetailModal();
-    };
+    // 直接DEX詳細画面に遷移
+    window._pendingMoonshotCoin = coin;
+    if (window.injectCoinDataForDetail) {
+      window.injectCoinDataForDetail(coin.symbol, {
+        price: coin.price_usd || 0,
+        change24h: coin.price_change_24h || 0,
+        dexUrl: coin.dex_url || '',
+        tokenAddress: coin.token_address || ''
+      });
+    }
+    window.KairosApp.viewCurrency(coin.symbol);
   }
   window.openEarlyMoverDetail = openEarlyMoverDetail;
 
-  function closeEarlyMoverDetailModal() {
-    var modal = document.getElementById('early-mover-detail-modal');
-    if (modal) {
-      modal.classList.remove('active');
-      document.body.style.overflow = '';
-      setTimeout(function() { modal.remove(); }, 300);
-    }
-  }
-  window.closeEarlyMoverDetailModal = closeEarlyMoverDetailModal;
 
   // ===== セキュリティ解説ポップアップ =====
   function openSecurityGuidePopup(data) {
