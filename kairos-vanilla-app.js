@@ -6816,9 +6816,11 @@
     if (all[ticker].length >= MAX_CHECKPOINTS_PER_COIN) {
       all[ticker].shift(); // 最古を削除
     }
+    // チャートデータはJSTオフセット(+9h)済みなので合わせる
+    var jstOffset = 9 * 60 * 60;
     all[ticker].push({
       price: price,
-      time: Math.floor(Date.now() / 1000),
+      time: Math.floor(Date.now() / 1000) + jstOffset,
       id: Date.now()
     });
     _saveCheckpoints(all);
@@ -7072,7 +7074,9 @@
     var changeColor = changePct >= 0 ? '#22c55e' : '#ef4444';
     var changeSign = changePct >= 0 ? '+' : '';
 
-    var date = new Date(cp.time * 1000);
+    // cp.timeはJSTオフセット済みなので元のUTC時間に戻してからDate生成
+    var realUtcSec = cp.time - 9 * 60 * 60;
+    var date = new Date(realUtcSec * 1000);
     var dateStr = (date.getMonth() + 1) + '/' + date.getDate() + ' ' +
       ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2);
 
