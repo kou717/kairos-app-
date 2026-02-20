@@ -6972,38 +6972,59 @@
         'transform:translateX(-50%);transition:transform 0.12s ease;width:20px;height:28px;';
       pin.innerHTML = checkpointPinSvg();
 
-      // ホバー/タッチ反応（取引マーカーと同じ）
-      pin.addEventListener('mouseenter', function() { pin.style.transform = 'translateX(-50%) scale(1.25)'; });
-      pin.addEventListener('mouseleave', function() { pin.style.transform = 'translateX(-50%)'; });
+      // タッチ領域を広げる（ピンの周囲にヒットエリア）
+      pin.style.padding = '8px';
+      pin.style.margin = '-8px';
 
-      // タップ→ポップアップ
-      pin.addEventListener('click', function(e) {
-        e.stopPropagation();
-        showCheckpointPopup(cp, currentPrice, container);
-      });
-
-      // 長押し→緑/赤ゾーン表示
+      // 長押し/タップ判定
       var pressTimer = null;
       var isLongPress = false;
-      function startPress() {
+
+      function startPress(e) {
         isLongPress = false;
         pressTimer = setTimeout(function() {
           isLongPress = true;
+          pin.style.transform = 'translateX(-50%) scale(1.3)';
           showCheckpointZone(cp, series, container);
-        }, 300);
+        }, 400);
       }
-      function endPress() {
+      function endPress(e) {
         clearTimeout(pressTimer);
+        pin.style.transform = 'translateX(-50%)';
         if (isLongPress) {
+          // 長押し終了→ゾーン消去、clickは発火させない
+          isLongPress = false;
           hideCheckpointZone();
         }
       }
-      pin.addEventListener('touchstart', startPress, { passive: true });
-      pin.addEventListener('touchend', endPress);
+      function onTap(e) {
+        e.stopPropagation();
+        // 長押し中はタップ扱いしない
+        if (isLongPress) { isLongPress = false; return; }
+        showCheckpointPopup(cp, currentPrice, container);
+      }
+
+      pin.addEventListener('touchstart', function(e) {
+        e.preventDefault(); // ブラウザのコンテキストメニュー防止
+        startPress(e);
+      }, { passive: false });
+      pin.addEventListener('touchend', function(e) {
+        e.preventDefault();
+        if (!isLongPress) onTap(e);
+        endPress(e);
+      });
       pin.addEventListener('touchcancel', endPress);
       pin.addEventListener('mousedown', startPress);
       pin.addEventListener('mouseup', endPress);
       pin.addEventListener('mouseleave', endPress);
+      pin.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (!isLongPress) onTap(e);
+      });
+
+      // ホバー（PC）
+      pin.addEventListener('mouseenter', function() { pin.style.transform = 'translateX(-50%) scale(1.25)'; });
+      pin.addEventListener('mouseleave', function() { pin.style.transform = 'translateX(-50%)'; });
 
       overlay.appendChild(pin);
 
