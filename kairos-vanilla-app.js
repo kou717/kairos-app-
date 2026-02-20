@@ -6668,15 +6668,33 @@
 
     root.querySelectorAll('.chart-card__period').forEach(function(btn) {
       btn.addEventListener('click', function() {
-        appState.chartPeriod = btn.getAttribute('data-period');
-        renderApp();
+        var newPeriod = btn.getAttribute('data-period');
+        appState.chartPeriod = newPeriod;
+        // ボタンのアクティブ状態を更新
+        root.querySelectorAll('.chart-card__period').forEach(function(b) {
+          b.classList.toggle('chart-card__period--active', b.getAttribute('data-period') === newPeriod);
+        });
+        // ポートフォリオチャートSVGだけ再描画
+        var chartContainer = root.querySelector('.chart-card__chart');
+        if (chartContainer) {
+          chartContainer.innerHTML = renderPortfolioChart();
+        }
       });
     });
 
     root.querySelectorAll('.detail__chart-period').forEach(function(btn) {
       btn.addEventListener('click', function() {
-        appState.chartPeriod = btn.getAttribute('data-period');
-        renderApp();
+        var newPeriod = btn.getAttribute('data-period');
+        appState.chartPeriod = newPeriod;
+        // ボタンのアクティブ状態を更新
+        root.querySelectorAll('.detail__chart-period').forEach(function(b) {
+          b.classList.toggle('active', b.getAttribute('data-period') === newPeriod);
+        });
+        // チャートだけ再描画
+        var ticker = appState.selectedCurrency;
+        if (ticker) {
+          initPriceChart(ticker, newPeriod);
+        }
       });
     });
 
