@@ -7686,21 +7686,76 @@
       return Promise.resolve(cached.data);
     }
 
-    return new Promise(function(resolve, reject) {
-      // 期間に応じたパラメータ（Binance）
+    // DEXコイン判定: _pendingMoonshotCoin または scoreCache に _dexUrl/_tokenAddress がある
+    var coinData = scoreCache && scoreCache.data && scoreCache.data[ticker];
+    var isDex = !!(window._pendingMoonshotCoin && window._pendingMoonshotCoin.symbol === ticker) ||
+                !!(coinData && (coinData._dexUrl || coinData._tokenAddress));
+
+    if (isDex) {
+      // DEXコイン → GeckoTerminal直行（Binanceスキップ）
+      return fetchDexChartData(ticker, period, cacheKey);
+    }
+
+    // 通常コイン → Binance API
+    return fetchBinanceChartData(ticker, period, cacheKey);
+  }
+
+  function fetchDexChartData(ticker, period, cacheKey) {
+    return new Promise(function(resolve) {
+      var coinData = scoreCache && scoreCache.data && scoreCache.data[ticker];
+      var dexUrl = coinData && coinData._dexUrl;
+      var tokenAddr = coinData && coinData._tokenAddress;
+
+      var dexMatch = dexUrl ? dexUrl.match(/dexscreener\.com\/([^\/]+)\/([^\/\?#]+)/) : null;
+      var chain = dexMatch ? dexMatch[1] : 'solana';
+      var poolFromUrl = dexMatch ? dexMatch[2] : null;
+
+      var networkMap = {
+        'solana': 'solana', 'ethereum': 'eth', 'bsc': 'bsc',
+        'arbitrum': 'arbitrum', 'base': 'base', 'polygon': 'polygon_pos',
+        'avalanche': 'avax', 'optimism': 'optimism', 'fantom': 'ftm', 'sui': 'sui-network'
+      };
+      var network = networkMap[chain] || chain;
+
+      var cacheAndResolve = function(d) {
+        if (d) _chartCache[cacheKey] = { data: d, time: Date.now() };
+        resolve(d);
+      };
+
+      if (poolFromUrl) {
+        fetchGeckoTerminalOHLCV(network, poolFromUrl, period).then(function(gtData) {
+          if (gtData) {
+            cacheAndResolve(gtData);
+          } else if (tokenAddr) {
+            resolvePoolAndFetchOHLCV(network, tokenAddr, period).then(function(gtData2) {
+              cacheAndResolve(gtData2 || null);
+            });
+          } else {
+            resolve(null);
+          }
+        });
+      } else if (tokenAddr) {
+        resolvePoolAndFetchOHLCV(network, tokenAddr, period).then(function(gtData) {
+          cacheAndResolve(gtData || null);
+        });
+      } else {
+        resolve(null);
+      }
+    });
+  }
+
+  function fetchBinanceChartData(ticker, period, cacheKey) {
+    return new Promise(function(resolve) {
       var params = {
-        '1H': { interval: '1m', limit: 1000 },    // 1分足×1000本 = 約16時間分
-        '4H': { interval: '5m', limit: 1000 },   // 5分足×1000本 = 約3.5日分
-        '1D': { interval: '15m', limit: 1000 },  // 15分足×1000本 = 約10日分
-        '1W': { interval: '1h', limit: 1000 },   // 1時間足×1000本 = 約6週間分
-        '1M': { interval: '4h', limit: 1000 },   // 4時間足×1000本 = 約5.5ヶ月分
-        '1Y': { interval: '1d', limit: 1000 }    // 日足×1000本 = 約2.7年分
+        '1H': { interval: '1m', limit: 1000 },
+        '4H': { interval: '5m', limit: 1000 },
+        '1D': { interval: '15m', limit: 1000 },
+        '1W': { interval: '1h', limit: 1000 },
+        '1M': { interval: '4h', limit: 1000 },
+        '1Y': { interval: '1d', limit: 1000 }
       };
       var config = params[period] || params['1D'];
-
-      // Binanceのシンボル
       var symbol = ticker.toUpperCase() + 'USDT';
-
       var url = 'https://api.binance.com/api/v3/klines?symbol=' + symbol + '&interval=' + config.interval + '&limit=' + config.limit;
 
       fetch(url)
@@ -7711,11 +7766,9 @@
         .then(function(data) {
           var candles = [];
           var volumes = [];
-          // JPY表示の場合はレート変換
           var jpyRate = appState.priceCurrency === 'JPY' ? 150 : 1;
-
-          // JST(+9h)オフセット
           var jstOffset = 9 * 60 * 60;
+
           data.forEach(function(item) {
             var time = Math.floor(item[0] / 1000) + jstOffset;
             candles.push({
@@ -7738,50 +7791,7 @@
         })
         .catch(function(err) {
           console.error('[Chart] Binance fetch error:', err);
-          // GeckoTerminalフォールバック（DEXコイン用）
-          var coinData = scoreCache && scoreCache.data && scoreCache.data[ticker];
-          var dexUrl = coinData && coinData._dexUrl;
-          var tokenAddr = coinData && coinData._tokenAddress;
-
-          // dex_urlからchain/poolを抽出試行
-          var dexMatch = dexUrl ? dexUrl.match(/dexscreener\.com\/([^\/]+)\/([^\/\?#]+)/) : null;
-          var chain = dexMatch ? dexMatch[1] : 'solana';
-          var poolFromUrl = dexMatch ? dexMatch[2] : null;
-
-          var networkMap = {
-            'solana': 'solana', 'ethereum': 'eth', 'bsc': 'bsc',
-            'arbitrum': 'arbitrum', 'base': 'base', 'polygon': 'polygon_pos',
-            'avalanche': 'avax', 'optimism': 'optimism', 'fantom': 'ftm', 'sui': 'sui-network'
-          };
-          var network = networkMap[chain] || chain;
-
-          var cacheAndResolve = function(d) {
-            if (d) _chartCache[cacheKey] = { data: d, time: Date.now() };
-            resolve(d);
-          };
-
-          if (poolFromUrl) {
-            // Step 1: dex_urlのアドレスでOHLCV試行（ペアアドレスのはず）
-            fetchGeckoTerminalOHLCV(network, poolFromUrl, period).then(function(gtData) {
-              if (gtData) {
-                cacheAndResolve(gtData);
-              } else if (tokenAddr) {
-                // Step 2: 失敗 → tokenAddressでプール検索 → OHLCV
-                resolvePoolAndFetchOHLCV(network, tokenAddr, period).then(function(gtData2) {
-                  cacheAndResolve(gtData2 || null);
-                });
-              } else {
-                resolve(null);
-              }
-            });
-          } else if (tokenAddr) {
-            // dex_urlなし → tokenAddressでプール検索 → OHLCV
-            resolvePoolAndFetchOHLCV(network, tokenAddr, period).then(function(gtData) {
-              cacheAndResolve(gtData || null);
-            });
-          } else {
-            resolve(null);
-          }
+          resolve(null);
         });
     });
   }
