@@ -5806,6 +5806,7 @@
         '<div class="detail__chart-section">' +
           '<div class="detail__chart-header">' +
             '<span class="detail__chart-title">📈 価格チャート</span>' +
+            '<button onclick="addChartCheckpoint()" class="checkpoint-add-btn" title="チェックポイントを設置">📍</button>' +
             '<div class="detail__chart-periods">' +
               ['1H', '4H', '1D', '1W', '1M'].map(function(p) {
                 var labels = { '1H': '1時間', '4H': '4時間', '1D': '1日', '1W': '1週', '1M': '1月' };
@@ -6145,6 +6146,7 @@
         '<div class="detail__chart-section">' +
           '<div class="detail__chart-header">' +
             '<span class="detail__chart-title">📈 価格チャート</span>' +
+            '<button onclick="addChartCheckpoint()" class="checkpoint-add-btn" title="チェックポイントを設置">📍</button>' +
             '<button onclick="openChartDrawingModal()" style="padding:4px 8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#d4a853;font-size:11px;cursor:pointer;margin-left:8px">✏️ 描画</button>' +
             '<div class="detail__chart-periods">' +
               (function() {
@@ -6788,6 +6790,213 @@
   var chartUpdateTicker = null;
   var chartUpdatePeriod = null;
 
+  // ============================================
+  // チャート チェックポイント（📍フラグ機能）
+  // ============================================
+  var CHECKPOINT_STORAGE_KEY = 'kairos_chart_checkpoints';
+  var MAX_CHECKPOINTS_PER_COIN = 5;
+
+  function _loadCheckpoints() {
+    try { return JSON.parse(localStorage.getItem(CHECKPOINT_STORAGE_KEY) || '{}'); } catch(e) { return {}; }
+  }
+  function _saveCheckpoints(all) {
+    localStorage.setItem(CHECKPOINT_STORAGE_KEY, JSON.stringify(all));
+  }
+
+  function getCheckpoints(ticker) {
+    var all = _loadCheckpoints();
+    return (all[ticker] || []).slice();
+  }
+
+  function addCheckpoint(ticker, price) {
+    var all = _loadCheckpoints();
+    if (!all[ticker]) all[ticker] = [];
+    // 最大5個制限
+    if (all[ticker].length >= MAX_CHECKPOINTS_PER_COIN) {
+      all[ticker].shift(); // 最古を削除
+    }
+    all[ticker].push({
+      price: price,
+      time: Math.floor(Date.now() / 1000),
+      id: Date.now()
+    });
+    _saveCheckpoints(all);
+    return all[ticker];
+  }
+
+  function removeCheckpoint(ticker, cpId) {
+    var all = _loadCheckpoints();
+    if (!all[ticker]) return;
+    all[ticker] = all[ticker].filter(function(cp) { return cp.id !== cpId; });
+    if (all[ticker].length === 0) delete all[ticker];
+    _saveCheckpoints(all);
+  }
+
+  window.addChartCheckpoint = function() {
+    var ticker = appState.selectedCurrency;
+    if (!ticker) return;
+    // 現在価格を取得
+    var currentPrice = 0;
+    var coin = window._pendingMoonshotCoin;
+    if (coin && coin.price_usd) {
+      currentPrice = coin.price_usd;
+    } else if (scoreCache && scoreCache.data && scoreCache.data[ticker]) {
+      currentPrice = scoreCache.data[ticker].price || 0;
+    }
+    if (!currentPrice) {
+      showToast('価格データがありません');
+      return;
+    }
+    addCheckpoint(ticker, currentPrice);
+    showToast('📍 チェックポイントを設置');
+    // チャート再描画でマーカー反映
+    if (priceChart && (candleSeries || priceSeries)) {
+      renderCheckpointMarkers(ticker);
+    }
+  };
+
+  window.removeChartCheckpoint = function(cpId) {
+    var ticker = appState.selectedCurrency;
+    if (!ticker) return;
+    removeCheckpoint(ticker, cpId);
+    // ポップアップ閉じる
+    var popup = document.getElementById('checkpoint-popup');
+    if (popup) popup.remove();
+    // マーカー再描画
+    if (priceChart && (candleSeries || priceSeries)) {
+      renderCheckpointMarkers(ticker);
+    }
+    showToast('チェックポイントを削除');
+  };
+
+  function renderCheckpointMarkers(ticker) {
+    var container = document.getElementById('detail-chart');
+    if (!container || !priceChart) return;
+
+    // 既存チェックポイントオーバーレイを削除
+    var existing = document.getElementById('checkpoint-pins-overlay');
+    if (existing) existing.remove();
+    var existingPopup = document.getElementById('checkpoint-popup');
+    if (existingPopup) existingPopup.remove();
+
+    var checkpoints = getCheckpoints(ticker);
+    if (checkpoints.length === 0) return;
+
+    var series = candleSeries || priceSeries;
+    if (!series) return;
+
+    var overlay = document.createElement('div');
+    overlay.id = 'checkpoint-pins-overlay';
+    overlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:80;overflow:hidden';
+    container.appendChild(overlay);
+
+    // 現在価格を取得
+    var currentPrice = 0;
+    var coin = window._pendingMoonshotCoin;
+    if (coin && coin.price_usd) {
+      currentPrice = coin.price_usd;
+    } else if (scoreCache && scoreCache.data && scoreCache.data[ticker]) {
+      currentPrice = scoreCache.data[ticker].price || 0;
+    }
+
+    checkpoints.forEach(function(cp) {
+      // 価格→Y座標に変換
+      var coord = series.priceToCoordinate(cp.price);
+      if (coord === null || coord === undefined) return;
+
+      var pin = document.createElement('div');
+      pin.className = 'checkpoint-pin';
+      pin.style.cssText = 'position:absolute;top:' + (coord - 12) + 'px;right:4px;pointer-events:auto;cursor:pointer;z-index:81';
+      pin.innerHTML = '<div class="checkpoint-pin__flag">📍</div>';
+
+      pin.addEventListener('click', function(e) {
+        e.stopPropagation();
+        showCheckpointPopup(cp, currentPrice, container);
+      });
+
+      overlay.appendChild(pin);
+
+      // 水平ダッシュラインを描画
+      var line = document.createElement('div');
+      line.style.cssText = 'position:absolute;top:' + coord + 'px;left:0;right:60px;height:1px;border-top:1px dashed rgba(212,168,83,0.4);pointer-events:none';
+      overlay.appendChild(line);
+    });
+
+    // チャートスクロール/ズーム時にマーカー位置を更新
+    priceChart.timeScale().subscribeVisibleLogicalRangeChange(function() {
+      updateCheckpointPositions(ticker, series, overlay, currentPrice, container);
+    });
+  }
+
+  function updateCheckpointPositions(ticker, series, overlay, currentPrice, container) {
+    var checkpoints = getCheckpoints(ticker);
+    var pins = overlay.querySelectorAll('.checkpoint-pin');
+    var lines = overlay.querySelectorAll('div[style*="border-top"]');
+
+    checkpoints.forEach(function(cp, i) {
+      var coord = series.priceToCoordinate(cp.price);
+      if (coord === null || coord === undefined) {
+        if (pins[i]) pins[i].style.display = 'none';
+        if (lines[i]) lines[i].style.display = 'none';
+        return;
+      }
+      if (pins[i]) {
+        pins[i].style.top = (coord - 12) + 'px';
+        pins[i].style.display = '';
+      }
+      if (lines[i]) {
+        lines[i].style.top = coord + 'px';
+        lines[i].style.display = '';
+      }
+    });
+  }
+
+  function showCheckpointPopup(cp, currentPrice, container) {
+    var existingPopup = document.getElementById('checkpoint-popup');
+    if (existingPopup) existingPopup.remove();
+
+    var changePct = currentPrice > 0 && cp.price > 0 ? ((currentPrice - cp.price) / cp.price * 100) : 0;
+    var changeColor = changePct >= 0 ? '#22c55e' : '#ef4444';
+    var changeSign = changePct >= 0 ? '+' : '';
+
+    var date = new Date(cp.time * 1000);
+    var dateStr = (date.getMonth() + 1) + '/' + date.getDate() + ' ' +
+      ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2);
+
+    var fmtP = function(v) {
+      if (v >= 1) return '$' + v.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      if (v >= 0.001) return '$' + v.toFixed(4);
+      if (v > 0) return '$' + v.toPrecision(3);
+      return '$0';
+    };
+
+    var popup = document.createElement('div');
+    popup.id = 'checkpoint-popup';
+    popup.className = 'checkpoint-popup';
+    popup.innerHTML =
+      '<div class="checkpoint-popup__header">' +
+        '<span>📍 ' + dateStr + '</span>' +
+        '<button onclick="document.getElementById(\'checkpoint-popup\').remove()" class="checkpoint-popup__close">&times;</button>' +
+      '</div>' +
+      '<div class="checkpoint-popup__body">' +
+        '<div class="checkpoint-popup__row">' +
+          '<span class="checkpoint-popup__label">記録時</span>' +
+          '<span class="checkpoint-popup__val">' + fmtP(cp.price) + '</span>' +
+        '</div>' +
+        '<div class="checkpoint-popup__row">' +
+          '<span class="checkpoint-popup__label">現在</span>' +
+          '<span class="checkpoint-popup__val">' + fmtP(currentPrice) + '</span>' +
+        '</div>' +
+        '<div class="checkpoint-popup__change" style="color:' + changeColor + '">' +
+          changeSign + changePct.toFixed(2) + '%' +
+        '</div>' +
+      '</div>' +
+      '<button onclick="removeChartCheckpoint(' + cp.id + ')" class="checkpoint-popup__delete">削除</button>';
+
+    container.style.position = 'relative';
+    container.appendChild(popup);
+  }
+
   // チャート自動更新（詳細画面表示中のみ）
   function startChartAutoUpdate(ticker, period) {
     stopChartAutoUpdate();
@@ -7145,6 +7354,11 @@
       if (!data.isLongTerm && candleSeries) {
         addPatternMarkersAndLines(ticker, candleSeries, data.candles || []);
       }
+
+      // チェックポイントマーカーを描画
+      requestAnimationFrame(function() {
+        renderCheckpointMarkers(ticker);
+      });
 
       // 自動更新開始（短期チャートのみ）
       startChartAutoUpdate(ticker, period);

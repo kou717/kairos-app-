@@ -4251,6 +4251,122 @@ body {
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
+/* チェックポイントボタン */
+.checkpoint-add-btn {
+  padding: 4px 8px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.checkpoint-add-btn:active {
+  transform: scale(0.9);
+  background: rgba(212,168,83,0.2);
+}
+
+/* チェックポイントピン */
+.checkpoint-pin__flag {
+  font-size: 18px;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
+  transition: transform 0.15s ease;
+}
+
+.checkpoint-pin:active .checkpoint-pin__flag {
+  transform: scale(1.3);
+}
+
+/* チェックポイントポップアップ */
+.checkpoint-popup {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(15,23,42,0.97);
+  border: 1px solid rgba(212,168,83,0.4);
+  border-radius: 14px;
+  padding: 0;
+  z-index: 200;
+  min-width: 220px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  animation: checkpointPopIn 0.2s ease;
+  pointer-events: auto;
+}
+
+@keyframes checkpointPopIn {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.checkpoint-popup__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+}
+
+.checkpoint-popup__close {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.checkpoint-popup__body {
+  padding: 12px 14px;
+}
+
+.checkpoint-popup__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.checkpoint-popup__label {
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+}
+
+.checkpoint-popup__val {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.checkpoint-popup__change {
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  padding: 8px 0 4px;
+}
+
+.checkpoint-popup__delete {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  background: none;
+  border: none;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  color: #ef4444;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 0 0 14px 14px;
+}
+
+.checkpoint-popup__delete:active {
+  background: rgba(239,68,68,0.1);
+}
+
 .detail__chart-area.chart-switching {
   opacity: 0.3;
   transform: scale(0.97);
