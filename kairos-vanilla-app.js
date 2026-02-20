@@ -7700,47 +7700,87 @@
     return fetchBinanceChartData(ticker, period, cacheKey);
   }
 
+  // DEX全期間一括取得の進行中Promise管理
+  var _dexPrefetchInFlight = {};
+
   function fetchDexChartData(ticker, period, cacheKey) {
-    return new Promise(function(resolve) {
-      var coinData = scoreCache && scoreCache.data && scoreCache.data[ticker];
-      var dexUrl = coinData && coinData._dexUrl;
-      var tokenAddr = coinData && coinData._tokenAddress;
+    // 一括取得が進行中ならそれを待つ
+    if (_dexPrefetchInFlight[ticker]) {
+      return _dexPrefetchInFlight[ticker].then(function() {
+        var cached = _chartCache[cacheKey];
+        return cached ? cached.data : null;
+      });
+    }
 
-      var dexMatch = dexUrl ? dexUrl.match(/dexscreener\.com\/([^\/]+)\/([^\/\?#]+)/) : null;
-      var chain = dexMatch ? dexMatch[1] : 'solana';
-      var poolFromUrl = dexMatch ? dexMatch[2] : null;
+    // 初回: 全5期間を並列取得
+    var allPeriods = ['1H', '4H', '1D', '1W', '1M'];
+    var coinData = scoreCache && scoreCache.data && scoreCache.data[ticker];
+    var dexUrl = coinData && coinData._dexUrl;
+    var tokenAddr = coinData && coinData._tokenAddress;
 
-      var networkMap = {
-        'solana': 'solana', 'ethereum': 'eth', 'bsc': 'bsc',
-        'arbitrum': 'arbitrum', 'base': 'base', 'polygon': 'polygon_pos',
-        'avalanche': 'avax', 'optimism': 'optimism', 'fantom': 'ftm', 'sui': 'sui-network'
-      };
-      var network = networkMap[chain] || chain;
+    var dexMatch = dexUrl ? dexUrl.match(/dexscreener\.com\/([^\/]+)\/([^\/\?#]+)/) : null;
+    var chain = dexMatch ? dexMatch[1] : 'solana';
+    var poolFromUrl = dexMatch ? dexMatch[2] : null;
 
-      var cacheAndResolve = function(d) {
-        if (d) _chartCache[cacheKey] = { data: d, time: Date.now() };
-        resolve(d);
-      };
+    var networkMap = {
+      'solana': 'solana', 'ethereum': 'eth', 'bsc': 'bsc',
+      'arbitrum': 'arbitrum', 'base': 'base', 'polygon': 'polygon_pos',
+      'avalanche': 'avax', 'optimism': 'optimism', 'fantom': 'ftm', 'sui': 'sui-network'
+    };
+    var network = networkMap[chain] || chain;
 
-      if (poolFromUrl) {
-        fetchGeckoTerminalOHLCV(network, poolFromUrl, period).then(function(gtData) {
-          if (gtData) {
-            cacheAndResolve(gtData);
-          } else if (tokenAddr) {
-            resolvePoolAndFetchOHLCV(network, tokenAddr, period).then(function(gtData2) {
-              cacheAndResolve(gtData2 || null);
-            });
-          } else {
-            resolve(null);
-          }
+    // プール解決 → 全期間並列OHLCV取得
+    var resolvePool;
+    if (poolFromUrl) {
+      resolvePool = Promise.resolve(poolFromUrl);
+    } else if (tokenAddr) {
+      // トークンアドレスからプール検索
+      resolvePool = fetch('https://api.geckoterminal.com/api/v2/networks/' + network + '/tokens/' + tokenAddr + '/pools?page=1')
+        .then(function(res) { return res.ok ? res.json() : null; })
+        .then(function(json) {
+          var pools = json && json.data;
+          return (pools && pools.length > 0 && pools[0].attributes) ? pools[0].attributes.address : null;
+        })
+        .catch(function() { return null; });
+    } else {
+      resolvePool = Promise.resolve(null);
+    }
+
+    _dexPrefetchInFlight[ticker] = resolvePool.then(function(poolAddr) {
+      if (!poolAddr) {
+        // プール見つからず → 全期間null
+        allPeriods.forEach(function(p) {
+          _chartCache[ticker + '_' + p] = { data: null, time: Date.now() };
         });
-      } else if (tokenAddr) {
-        resolvePoolAndFetchOHLCV(network, tokenAddr, period).then(function(gtData) {
-          cacheAndResolve(gtData || null);
-        });
-      } else {
-        resolve(null);
+        return;
       }
+
+      // 5期間を並列取得
+      var fetches = allPeriods.map(function(p) {
+        var ck = ticker + '_' + p;
+        // 既にキャッシュがあればスキップ
+        var existing = _chartCache[ck];
+        if (existing && Date.now() - existing.time < (_chartCacheTTL[p] || 300000)) {
+          return Promise.resolve();
+        }
+        return fetchGeckoTerminalOHLCV(network, poolAddr, p).then(function(data) {
+          _chartCache[ck] = { data: data, time: Date.now() };
+        }).catch(function() {
+          _chartCache[ck] = { data: null, time: Date.now() };
+        });
+      });
+
+      return Promise.all(fetches);
+    }).then(function() {
+      delete _dexPrefetchInFlight[ticker];
+    }).catch(function() {
+      delete _dexPrefetchInFlight[ticker];
+    });
+
+    // 要求された期間のデータを返す
+    return _dexPrefetchInFlight[ticker].then(function() {
+      var cached = _chartCache[cacheKey];
+      return cached ? cached.data : null;
     });
   }
 
