@@ -4269,15 +4269,10 @@ body {
   background: rgba(212,168,83,0.2);
 }
 
-/* チェックポイントピン */
-.checkpoint-pin__flag {
-  font-size: 18px;
-  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
-  transition: transform 0.15s ease;
-}
-
-.checkpoint-pin:active .checkpoint-pin__flag {
-  transform: scale(1.3);
+/* チェックポイント緑/赤ゾーン */
+@keyframes cpZoneIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* チェックポイントポップアップ */

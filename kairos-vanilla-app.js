@@ -6789,6 +6789,7 @@
   var chartUpdateInterval = null;
   var chartUpdateTicker = null;
   var chartUpdatePeriod = null;
+  var _chartCandleData = []; // initPriceChart内で保存
 
   // ============================================
   // チャート チェックポイント（📍フラグ機能）
@@ -6869,15 +6870,23 @@
     showToast('チェックポイントを削除');
   };
 
+  // チェックポイントピンSVG（フラグ型）
+  var checkpointPinSvg = '<svg width="18" height="26" viewBox="0 0 18 26" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<line x1="2" y1="0" x2="2" y2="26" stroke="#d4a853" stroke-width="1.5"/>' +
+    '<path d="M2 1L16 5.5L2 10Z" fill="#d4a853" stroke="rgba(0,0,0,0.3)" stroke-width="0.5"/>' +
+    '</svg>';
+
   function renderCheckpointMarkers(ticker) {
     var container = document.getElementById('detail-chart');
     if (!container || !priceChart) return;
 
-    // 既存チェックポイントオーバーレイを削除
+    // 既存オーバーレイを削除
     var existing = document.getElementById('checkpoint-pins-overlay');
     if (existing) existing.remove();
     var existingPopup = document.getElementById('checkpoint-popup');
     if (existingPopup) existingPopup.remove();
+    var existingZone = document.getElementById('checkpoint-zone-overlay');
+    if (existingZone) existingZone.remove();
 
     var checkpoints = getCheckpoints(ticker);
     if (checkpoints.length === 0) return;
@@ -6885,10 +6894,24 @@
     var series = candleSeries || priceSeries;
     if (!series) return;
 
-    var overlay = document.createElement('div');
-    overlay.id = 'checkpoint-pins-overlay';
-    overlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:80;overflow:hidden';
-    container.appendChild(overlay);
+    var candleTimes = _chartCandleData.map(function(c) { return c.time; });
+    if (candleTimes.length === 0) return;
+    var chartStart = candleTimes[0];
+    var chartEnd = candleTimes[candleTimes.length - 1];
+
+    // 最も近いキャンドル時間にスナップ
+    function snapToNearestCandle(cpTime) {
+      if (cpTime <= chartStart) return chartEnd; // 範囲外→最新
+      if (cpTime >= chartEnd) return chartEnd;
+      var best = candleTimes[0];
+      var bestDiff = Math.abs(cpTime - best);
+      for (var i = 1; i < candleTimes.length; i++) {
+        var diff = Math.abs(cpTime - candleTimes[i]);
+        if (diff < bestDiff) { best = candleTimes[i]; bestDiff = diff; }
+        if (candleTimes[i] > cpTime) break;
+      }
+      return best;
+    }
 
     // 現在価格を取得
     var currentPrice = 0;
@@ -6899,59 +6922,104 @@
       currentPrice = scoreCache.data[ticker].price || 0;
     }
 
+    container.style.position = 'relative';
+    var overlay = document.createElement('div');
+    overlay.id = 'checkpoint-pins-overlay';
+    overlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:60;overflow:hidden';
+    container.appendChild(overlay);
+
+    var PIN_HEIGHT = 26;
+    var pins = [];
+
     checkpoints.forEach(function(cp) {
-      // 価格→Y座標に変換
-      var coord = series.priceToCoordinate(cp.price);
-      if (coord === null || coord === undefined) return;
+      var snappedTime = snapToNearestCandle(cp.time);
 
       var pin = document.createElement('div');
-      pin.className = 'checkpoint-pin';
-      pin.style.cssText = 'position:absolute;top:' + (coord - 12) + 'px;right:4px;pointer-events:auto;cursor:pointer;z-index:81';
-      pin.innerHTML = '<div class="checkpoint-pin__flag">📍</div>';
+      pin.style.cssText = 'position:absolute;pointer-events:auto;cursor:pointer;width:18px;height:26px;transition:transform 0.12s ease;';
+      pin.innerHTML = checkpointPinSvg;
 
+      // タップ→ポップアップ
       pin.addEventListener('click', function(e) {
         e.stopPropagation();
-        showCheckpointPopup(cp, currentPrice, container);
+        showCheckpointPopup(cp, currentPrice, container, series);
       });
 
+      // 長押し→緑/赤ゾーン表示
+      var pressTimer = null;
+      var isLongPress = false;
+      function startPress(e) {
+        isLongPress = false;
+        pressTimer = setTimeout(function() {
+          isLongPress = true;
+          showCheckpointZone(cp, series, container);
+        }, 300);
+      }
+      function endPress() {
+        clearTimeout(pressTimer);
+        if (isLongPress) {
+          hideCheckpointZone();
+        }
+      }
+      pin.addEventListener('touchstart', startPress, { passive: true });
+      pin.addEventListener('touchend', endPress);
+      pin.addEventListener('touchcancel', endPress);
+      pin.addEventListener('mousedown', startPress);
+      pin.addEventListener('mouseup', endPress);
+      pin.addEventListener('mouseleave', endPress);
+
       overlay.appendChild(pin);
-
-      // 水平ダッシュラインを描画
-      var line = document.createElement('div');
-      line.style.cssText = 'position:absolute;top:' + coord + 'px;left:0;right:60px;height:1px;border-top:1px dashed rgba(212,168,83,0.4);pointer-events:none';
-      overlay.appendChild(line);
+      pins.push({ el: pin, time: snappedTime, price: cp.price });
     });
 
-    // チャートスクロール/ズーム時にマーカー位置を更新
-    priceChart.timeScale().subscribeVisibleLogicalRangeChange(function() {
-      updateCheckpointPositions(ticker, series, overlay, currentPrice, container);
-    });
+    // ピン位置を更新
+    function updatePins() {
+      pins.forEach(function(p) {
+        var x = priceChart.timeScale().timeToCoordinate(p.time);
+        var y = series.priceToCoordinate(p.price);
+        if (x === null || y === null || x < -20 || x > container.clientWidth + 20) {
+          p.el.style.display = 'none';
+          return;
+        }
+        p.el.style.display = '';
+        p.el.style.left = (x - 2) + 'px'; // フラグポールをキャンドル位置に合わせる
+        p.el.style.top = (y - PIN_HEIGHT) + 'px';
+      });
+    }
+
+    updatePins();
+
+    try {
+      priceChart.timeScale().subscribeVisibleLogicalRangeChange(updatePins);
+    } catch(e) {}
   }
 
-  function updateCheckpointPositions(ticker, series, overlay, currentPrice, container) {
-    var checkpoints = getCheckpoints(ticker);
-    var pins = overlay.querySelectorAll('.checkpoint-pin');
-    var lines = overlay.querySelectorAll('div[style*="border-top"]');
+  // 長押し時: チェックポイント価格を基準に緑/赤ゾーン表示
+  function showCheckpointZone(cp, series, container) {
+    hideCheckpointZone();
+    var y = series.priceToCoordinate(cp.price);
+    if (y === null || y === undefined) return;
 
-    checkpoints.forEach(function(cp, i) {
-      var coord = series.priceToCoordinate(cp.price);
-      if (coord === null || coord === undefined) {
-        if (pins[i]) pins[i].style.display = 'none';
-        if (lines[i]) lines[i].style.display = 'none';
-        return;
-      }
-      if (pins[i]) {
-        pins[i].style.top = (coord - 12) + 'px';
-        pins[i].style.display = '';
-      }
-      if (lines[i]) {
-        lines[i].style.top = coord + 'px';
-        lines[i].style.display = '';
-      }
-    });
+    var chartH = container.clientHeight;
+    var zone = document.createElement('div');
+    zone.id = 'checkpoint-zone-overlay';
+    zone.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:55;overflow:hidden;animation:cpZoneIn 0.15s ease';
+
+    // 上（緑）= チェックポイント価格より上
+    zone.innerHTML =
+      '<div style="position:absolute;top:0;left:0;right:0;height:' + y + 'px;background:rgba(34,197,94,0.1);border-bottom:2px solid rgba(34,197,94,0.6)"></div>' +
+      '<div style="position:absolute;top:' + y + 'px;left:0;right:0;bottom:0;background:rgba(239,68,68,0.1);border-top:none"></div>' +
+      '<div style="position:absolute;top:' + (y - 10) + 'px;right:62px;font-size:10px;font-weight:700;color:#22c55e;text-shadow:0 1px 3px rgba(0,0,0,0.8)">▲ 利益</div>' +
+      '<div style="position:absolute;top:' + (y + 2) + 'px;right:62px;font-size:10px;font-weight:700;color:#ef4444;text-shadow:0 1px 3px rgba(0,0,0,0.8)">▼ 損失</div>';
+
+    container.appendChild(zone);
   }
 
-  function showCheckpointPopup(cp, currentPrice, container) {
+  function hideCheckpointZone() {
+    var zone = document.getElementById('checkpoint-zone-overlay');
+    if (zone) zone.remove();
+  }
+
+  function showCheckpointPopup(cp, currentPrice, container, series) {
     var existingPopup = document.getElementById('checkpoint-popup');
     if (existingPopup) existingPopup.remove();
 
@@ -6975,7 +7043,7 @@
     popup.className = 'checkpoint-popup';
     popup.innerHTML =
       '<div class="checkpoint-popup__header">' +
-        '<span>📍 ' + dateStr + '</span>' +
+        '<span>🚩 ' + dateStr + '</span>' +
         '<button onclick="document.getElementById(\'checkpoint-popup\').remove()" class="checkpoint-popup__close">&times;</button>' +
       '</div>' +
       '<div class="checkpoint-popup__body">' +
@@ -6993,7 +7061,6 @@
       '</div>' +
       '<button onclick="removeChartCheckpoint(' + cp.id + ')" class="checkpoint-popup__delete">削除</button>';
 
-    container.style.position = 'relative';
     container.appendChild(popup);
   }
 
@@ -7191,6 +7258,7 @@
           lineWidth: 2
         });
         lineSeries.setData(data.lineData);
+        _chartCandleData = data.lineData || [];
 
         // 目標価格ラインを追加
         addPriceTargetLines(ticker, lineSeries);
@@ -7264,6 +7332,7 @@
           wickDownColor: '#ef4444'
         });
         candleSeries.setData(data.candles);
+        _chartCandleData = data.candles || [];
 
         // 出来高シリーズ
         if (data.volumes && data.volumes.length > 0) {
