@@ -6685,15 +6685,31 @@
     root.querySelectorAll('.detail__chart-period').forEach(function(btn) {
       btn.addEventListener('click', function() {
         var newPeriod = btn.getAttribute('data-period');
+        if (newPeriod === appState.chartPeriod) return;
         appState.chartPeriod = newPeriod;
         // ボタンのアクティブ状態を更新
         root.querySelectorAll('.detail__chart-period').forEach(function(b) {
           b.classList.toggle('active', b.getAttribute('data-period') === newPeriod);
         });
-        // チャートだけ再描画
+        // チャート切り替えアニメーション
+        var chartArea = document.querySelector('.detail__chart-area');
+        if (chartArea) {
+          chartArea.classList.remove('chart-entering');
+          chartArea.classList.add('chart-switching');
+        }
         var ticker = appState.selectedCurrency;
         if (ticker) {
-          initPriceChart(ticker, newPeriod);
+          setTimeout(function() {
+            initPriceChart(ticker, newPeriod);
+            if (chartArea) {
+              chartArea.classList.remove('chart-switching');
+              chartArea.classList.add('chart-entering');
+              chartArea.addEventListener('animationend', function onEnd() {
+                chartArea.classList.remove('chart-entering');
+                chartArea.removeEventListener('animationend', onEnd);
+              });
+            }
+          }, 150);
         }
       });
     });

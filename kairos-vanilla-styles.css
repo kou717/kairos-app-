@@ -4248,6 +4248,21 @@ body {
   margin-bottom: 12px;
   position: relative;
   overflow: hidden;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.detail__chart-area.chart-switching {
+  opacity: 0.3;
+  transform: scale(0.97);
+}
+
+.detail__chart-area.chart-entering {
+  animation: chartFadeIn 0.25s ease forwards;
+}
+
+@keyframes chartFadeIn {
+  from { opacity: 0.3; transform: scale(0.97); }
+  to   { opacity: 1;   transform: scale(1); }
 }
 
 .detail__chart-area .chart-loading {
