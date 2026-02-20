@@ -6893,11 +6893,12 @@
     '</svg>';
   };
 
-  function renderCheckpointMarkers(ticker) {
+  function renderCheckpointMarkers(ticker, seriesParam, chartCandlesParam) {
     var container = document.getElementById('detail-chart');
     if (!container || !priceChart) return;
 
-    var series = candleSeries || priceSeries;
+    // パラメータ優先、未指定時はグローバルフォールバック（addChartCheckpoint等の直接呼び出し用）
+    var series = seriesParam || candleSeries || priceSeries;
     if (!series) return;
 
     // 既存オーバーレイを削除
@@ -6912,7 +6913,7 @@
     if (checkpoints.length === 0) return;
 
     // チャートデータの時間範囲を取得（取引マーカーと同じ方式）
-    var chartCandles = _chartCandleData || [];
+    var chartCandles = chartCandlesParam || _chartCandleData || [];
     var candleTimes = chartCandles.map(function(c) { return c.time; });
     if (candleTimes.length === 0) return;
     var chartStart = candleTimes[0];
@@ -7054,9 +7055,6 @@
     }
 
     updatePins();
-    // チャートレイアウトが遅れる場合に備えて再試行
-    setTimeout(updatePins, 200);
-    setTimeout(updatePins, 500);
 
     // スクロール/ズームで位置更新（取引マーカーと同じ）
     try {
@@ -7485,22 +7483,18 @@
         priceChart.timeScale().fitContent();
       }
 
-      // 取引マーカーを追加（表示範囲設定後にレイアウト確定を待って実行）
+      // 取引マーカー + チェックポイントマーカーを追加（表示範囲設定後にレイアウト確定を待って実行）
       var chartSeries = priceSeries || candleSeries;
       var chartCandles = data.candles || data.lineData || [];
       requestAnimationFrame(function() {
         addTradeMarkers(ticker, chartSeries, chartCandles);
+        renderCheckpointMarkers(ticker, chartSeries, chartCandles);
       });
 
       // パターンマーカー + S/Rライン + シグナルライン追加（短期チャートのみ）
       if (!data.isLongTerm && candleSeries) {
         addPatternMarkersAndLines(ticker, candleSeries, data.candles || []);
       }
-
-      // チェックポイントマーカーを描画（チャートレイアウト確定後に実行）
-      setTimeout(function() {
-        renderCheckpointMarkers(ticker);
-      }, 300);
 
       // 自動更新開始（短期チャートのみ）
       startChartAutoUpdate(ticker, period);
