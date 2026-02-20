@@ -200,8 +200,7 @@ body {
           location.replace(location.pathname);
         }
       });
-      return;
-    }
+    } else {
     window.addEventListener('load', function() {
       navigator.serviceWorker.register('./sw.js')
         .then(function(registration) {
@@ -224,6 +223,7 @@ body {
           console.log('[KAIROS] Service Worker registration failed:', error);
         });
     });
+    }
   }
   </script>
 </body>
