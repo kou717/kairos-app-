@@ -7662,10 +7662,28 @@
   }
 
   // チャートデータ取得（短期はBinance、長期はCoinGecko）
+  // チャートデータキャッシュ（DEXコインのGeckoTerminal API制限対策）
+  var _chartCache = {};
+  var _chartCacheTTL = {
+    '1H': 60000,    // 1分
+    '4H': 120000,   // 2分
+    '1D': 300000,   // 5分
+    '1W': 600000,   // 10分
+    '1M': 600000    // 10分
+  };
+
   function fetchChartData(ticker, period) {
     // 長期間は CoinGecko API を使用
     if (period === '5Y' || period === 'MAX') {
       return fetchLongTermChartData(ticker, period);
+    }
+
+    // キャッシュチェック
+    var cacheKey = ticker + '_' + period;
+    var cached = _chartCache[cacheKey];
+    var ttl = _chartCacheTTL[period] || 300000;
+    if (cached && Date.now() - cached.time < ttl) {
+      return Promise.resolve(cached.data);
     }
 
     return new Promise(function(resolve, reject) {
@@ -7714,7 +7732,9 @@
             });
           });
 
-          resolve({ candles: candles, volumes: volumes, isLongTerm: false });
+          var result = { candles: candles, volumes: volumes, isLongTerm: false };
+          _chartCache[cacheKey] = { data: result, time: Date.now() };
+          resolve(result);
         })
         .catch(function(err) {
           console.error('[Chart] Binance fetch error:', err);
@@ -7735,15 +7755,20 @@
           };
           var network = networkMap[chain] || chain;
 
+          var cacheAndResolve = function(d) {
+            if (d) _chartCache[cacheKey] = { data: d, time: Date.now() };
+            resolve(d);
+          };
+
           if (poolFromUrl) {
             // Step 1: dex_urlのアドレスでOHLCV試行（ペアアドレスのはず）
             fetchGeckoTerminalOHLCV(network, poolFromUrl, period).then(function(gtData) {
               if (gtData) {
-                resolve(gtData);
+                cacheAndResolve(gtData);
               } else if (tokenAddr) {
                 // Step 2: 失敗 → tokenAddressでプール検索 → OHLCV
                 resolvePoolAndFetchOHLCV(network, tokenAddr, period).then(function(gtData2) {
-                  resolve(gtData2 || null);
+                  cacheAndResolve(gtData2 || null);
                 });
               } else {
                 resolve(null);
@@ -7752,7 +7777,7 @@
           } else if (tokenAddr) {
             // dex_urlなし → tokenAddressでプール検索 → OHLCV
             resolvePoolAndFetchOHLCV(network, tokenAddr, period).then(function(gtData) {
-              resolve(gtData || null);
+              cacheAndResolve(gtData || null);
             });
           } else {
             resolve(null);
