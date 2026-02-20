@@ -7054,6 +7054,9 @@
     }
 
     updatePins();
+    // チャートレイアウトが遅れる場合に備えて再試行
+    setTimeout(updatePins, 200);
+    setTimeout(updatePins, 500);
 
     // スクロール/ズームで位置更新（取引マーカーと同じ）
     try {
@@ -7494,10 +7497,10 @@
         addPatternMarkersAndLines(ticker, candleSeries, data.candles || []);
       }
 
-      // チェックポイントマーカーを描画
-      requestAnimationFrame(function() {
+      // チェックポイントマーカーを描画（チャートレイアウト確定後に実行）
+      setTimeout(function() {
         renderCheckpointMarkers(ticker);
-      });
+      }, 300);
 
       // 自動更新開始（短期チャートのみ）
       startChartAutoUpdate(ticker, period);
