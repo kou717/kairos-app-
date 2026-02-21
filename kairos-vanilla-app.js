@@ -7269,10 +7269,17 @@
           rightOffset: 5,
           barSpacing: 6,
           minBarSpacing: 2,
-          tickMarkFormatter: data.isLongTerm ? function(time) {
+          tickMarkFormatter: function(time, tickMarkType) {
             var date = new Date(time * 1000);
-            return date.getUTCFullYear() + '/' + (date.getUTCMonth() + 1);
-          } : undefined
+            if (data.isLongTerm) {
+              // 長期: 年/月 or 年
+              if (tickMarkType <= 1) return date.getUTCFullYear() + '/' + (date.getUTCMonth() + 1);
+              return (date.getUTCMonth() + 1) + '/' + date.getUTCDate();
+            }
+            // 短期: 日境界は月/日、それ以外はHH:MM
+            if (tickMarkType <= 2) return (date.getUTCMonth() + 1) + '/' + date.getUTCDate();
+            return ('0' + date.getUTCHours()).slice(-2) + ':' + ('0' + date.getUTCMinutes()).slice(-2);
+          }
         },
         handleScroll: {
           mouseWheel: true,
