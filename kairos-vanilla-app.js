@@ -6816,11 +6816,9 @@
     if (all[ticker].length >= MAX_CHECKPOINTS_PER_COIN) {
       all[ticker].shift(); // 最古を削除
     }
-    // チャートデータはJSTオフセット(+9h)済みなので合わせる
-    var jstOffset = 9 * 60 * 60;
     all[ticker].push({
       price: price,
-      time: Math.floor(Date.now() / 1000) + jstOffset,
+      time: Math.floor(Date.now() / 1000),
       id: Date.now()
     });
     _saveCheckpoints(all);
@@ -7096,9 +7094,7 @@
     var changeColor = changePct >= 0 ? '#22c55e' : '#ef4444';
     var changeSign = changePct >= 0 ? '+' : '';
 
-    // cp.timeはJSTオフセット済みなので元のUTC時間に戻してからDate生成
-    var realUtcSec = cp.time - 9 * 60 * 60;
-    var date = new Date(realUtcSec * 1000);
+    var date = new Date(cp.time * 1000);
     var dateStr = (date.getMonth() + 1) + '/' + date.getDate() + ' ' +
       ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2);
 
@@ -7272,13 +7268,11 @@
           tickMarkFormatter: function(time, tickMarkType) {
             var date = new Date(time * 1000);
             if (data.isLongTerm) {
-              // 長期: 年/月 or 年
-              if (tickMarkType <= 1) return date.getUTCFullYear() + '/' + (date.getUTCMonth() + 1);
-              return (date.getUTCMonth() + 1) + '/' + date.getUTCDate();
+              if (tickMarkType <= 1) return date.getFullYear() + '/' + (date.getMonth() + 1);
+              return (date.getMonth() + 1) + '/' + date.getDate();
             }
-            // 短期: 日境界は月/日、それ以外はHH:MM
-            if (tickMarkType <= 2) return (date.getUTCMonth() + 1) + '/' + date.getUTCDate();
-            return ('0' + date.getUTCHours()).slice(-2) + ':' + ('0' + date.getUTCMinutes()).slice(-2);
+            if (tickMarkType <= 2) return (date.getMonth() + 1) + '/' + date.getDate();
+            return ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2);
           }
         },
         handleScroll: {
@@ -7309,11 +7303,11 @@
           },
           timeFormatter: data.isLongTerm ? function(time) {
             var date = new Date(time * 1000);
-            return date.getUTCFullYear() + '年' + (date.getUTCMonth() + 1) + '月' + date.getUTCDate() + '日';
+            return date.getFullYear() + '年' + (date.getMonth() + 1) + '月' + date.getDate() + '日';
           } : function(time) {
             var date = new Date(time * 1000);
-            return date.getUTCFullYear() + '/' + (date.getUTCMonth() + 1) + '/' + date.getUTCDate() + ' ' +
-              ('0' + date.getUTCHours()).slice(-2) + ':' + ('0' + date.getUTCMinutes()).slice(-2);
+            return date.getFullYear() + '/' + (date.getMonth() + 1) + '/' + date.getDate() + ' ' +
+              ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2);
           }
         },
         handleScroll: { mouseWheel: true, pressedMouseMove: true },
@@ -8164,10 +8158,9 @@
           var candles = [];
           var volumes = [];
           var jpyRate = appState.priceCurrency === 'JPY' ? 150 : 1;
-          var jstOffset = 9 * 60 * 60;
 
           data.forEach(function(item) {
-            var time = Math.floor(item[0] / 1000) + jstOffset;
+            var time = Math.floor(item[0] / 1000);
             candles.push({
               time: time,
               open: parseFloat(item[1]) * jpyRate,
@@ -8259,12 +8252,11 @@
         var candles = [];
         var volumes = [];
         var jpyRate = appState.priceCurrency === 'JPY' ? 150 : 1;
-        var jstOffset = 9 * 60 * 60;
 
         ohlcvList.sort(function(a, b) { return a[0] - b[0]; });
 
         ohlcvList.forEach(function(item) {
-          var time = item[0] + jstOffset;
+          var time = item[0];
           candles.push({
             time: time,
             open: parseFloat(item[1]) * jpyRate,
@@ -8315,10 +8307,9 @@
           var endPrice = parseFloat(data[data.length - 1][4]) * jpyRate;
           var changePercent = ((endPrice - startPrice) / startPrice) * 100;
 
-          var jstOffset = 9 * 60 * 60;
           data.forEach(function(item) {
             lineData.push({
-              time: Math.floor(item[0] / 1000) + jstOffset,
+              time: Math.floor(item[0] / 1000),
               value: parseFloat(item[4]) * jpyRate // 終値を使用
             });
           });
