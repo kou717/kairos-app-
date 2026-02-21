@@ -11522,58 +11522,46 @@
 
     var popup = document.createElement('div');
     popup.id = 'notification-detail-popup';
-    popup.style.cssText = 'position:fixed;inset:0;z-index:10060;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn 0.2s ease;';
+    popup.className = 'notif-popup-overlay';
     popup.innerHTML =
-      '<div style="background:var(--surface-card,#1a1a2e);border:1px solid rgba(255,255,255,0.1);border-radius:20px;width:100%;max-width:380px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5)">' +
-        // ヘッダー: ticker + スコア + 価格
-        '<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between">' +
+      '<div class="notif-popup">' +
+        '<div class="notif-popup__header">' +
           '<div>' +
-            '<div style="font-size:18px;font-weight:700;color:#fff">' + ticker + '</div>' +
-            '<div style="font-size:13px;margin-top:2px">' +
-              '<span style="color:rgba(255,255,255,0.7)">' + priceStr + '</span>' +
-              '<span style="color:' + changeColor + ';margin-left:8px;font-weight:600">' + changeSign + change24h.toFixed(1) + '%</span>' +
+            '<div class="notif-popup__ticker">' + ticker + '</div>' +
+            '<div class="notif-popup__price-row">' +
+              '<span style="color:rgba(255,255,255,0.6)">' + priceStr + '</span>' +
+              '<span style="color:' + changeColor + ';font-weight:700">' + changeSign + change24h.toFixed(1) + '%</span>' +
             '</div>' +
           '</div>' +
-          '<div style="display:flex;align-items:center;gap:8px">' +
-            '<div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:6px 12px;text-align:center">' +
-              '<div style="font-size:10px;color:rgba(255,255,255,0.5)">Score</div>' +
-              '<div style="font-size:16px;font-weight:700;color:' + gradeColor + '">' + grade + ' ' + score + '</div>' +
-            '</div>' +
+          '<div class="notif-popup__score-badge">' +
+            '<div class="notif-popup__score-label">Score</div>' +
+            '<div class="notif-popup__score-value" style="color:' + gradeColor + '">' + grade + ' ' + score + '</div>' +
           '</div>' +
         '</div>' +
-        // 通知内容
         (alertTitle || alertBody ?
-          '<div style="padding:12px 20px;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06)">' +
-            (alertTitle ? '<div style="font-weight:600;font-size:14px;color:#fff;margin-bottom:2px">' + alertTitle + '</div>' : '') +
-            (alertBody ? '<div style="font-size:12px;color:rgba(255,255,255,0.7)">' + alertBody + '</div>' : '') +
+          '<div class="notif-popup__alert">' +
+            (alertTitle ? '<div class="notif-popup__alert-title">' + alertTitle + '</div>' : '') +
+            (alertBody ? '<div class="notif-popup__alert-body">' + alertBody + '</div>' : '') +
           '</div>' : '') +
-        // AI解説エリア
-        '<div id="notif-popup-ai" style="padding:16px 20px;min-height:120px">' +
-          '<div style="font-size:11px;color:#d4a853;margin-bottom:8px">AI分析</div>' +
-          '<div style="text-align:center;padding:24px 0">' +
+        '<div id="notif-popup-ai" class="notif-popup__ai">' +
+          '<div class="notif-popup__ai-label">AI分析</div>' +
+          '<div class="notif-popup__ai-loading">' +
             '<div style="font-size:20px;margin-bottom:8px;animation:spin 1s linear infinite">🔄</div>' +
-            '<div style="font-size:12px;color:rgba(255,255,255,0.5)">AI分析を取得中...</div>' +
+            '<div style="font-size:12px;color:rgba(255,255,255,0.45)">AI分析を取得中...</div>' +
           '</div>' +
         '</div>' +
-        // ボタン
-        '<div style="padding:12px 20px 16px;display:flex;gap:10px">' +
-          '<button id="notif-popup-detail-btn" style="flex:1;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#d4a853,#b8912a);color:#000;font-weight:700;font-size:14px;cursor:pointer">詳細を見る →</button>' +
-          '<button id="notif-popup-close-btn" style="flex:0.6;padding:12px;border:1px solid rgba(255,255,255,0.15);border-radius:12px;background:transparent;color:#fff;font-size:14px;cursor:pointer">閉じる</button>' +
+        '<div class="notif-popup__actions">' +
+          '<button id="notif-popup-detail-btn" class="notif-popup__btn notif-popup__btn--primary">詳細を見る →</button>' +
+          '<button id="notif-popup-close-btn" class="notif-popup__btn notif-popup__btn--secondary">閉じる</button>' +
         '</div>' +
       '</div>';
 
     document.body.appendChild(popup);
 
-    // 背景クリックで閉じる
     popup.onclick = function(e) { if (e.target === popup) popup.remove(); };
-
-    // 閉じるボタン
     document.getElementById('notif-popup-close-btn').onclick = function() { popup.remove(); };
-
-    // 詳細ボタン
     document.getElementById('notif-popup-detail-btn').onclick = function() {
       popup.remove();
-      // 履歴モーダルも閉じる
       var histModal = document.getElementById('kairos-alert-history-modal');
       if (histModal) histModal.remove();
       if (window.KairosApp && window.KairosApp.viewCurrency) {
@@ -11591,35 +11579,30 @@
           'strong_buy': '🟢 強い買い', 'buy': '🟢 買い',
           'neutral': '🟡 中立', 'sell': '🔴 売り', 'strong_sell': '🔴 強い売り'
         };
-        var html = '<div style="font-size:11px;color:#d4a853;margin-bottom:8px">AI分析</div>';
-        // シグナル
+        var html = '<div class="notif-popup__ai-label">AI分析</div>';
         if (ai.signal) {
-          html += '<div style="font-size:14px;font-weight:600;margin-bottom:8px">' + (signalText[ai.signal] || ai.signal) + '</div>';
+          html += '<div class="notif-popup__ai-signal">' + (signalText[ai.signal] || ai.signal) + '</div>';
         }
-        // サマリー
         if (ai.summary) {
-          html += '<div style="font-size:13px;color:#fff;line-height:1.6;margin-bottom:10px;background:rgba(212,168,83,0.08);border-radius:10px;padding:10px 12px">' + ai.summary + '</div>';
+          html += '<div class="notif-popup__ai-summary">' + ai.summary + '</div>';
         }
-        // キーポイント (最大3つ)
         if (ai.key_points && ai.key_points.length > 0) {
-          var points = ai.key_points.slice(0, 3);
-          html += '<div style="margin-bottom:8px">';
-          points.forEach(function(p) {
-            html += '<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;font-size:12px;color:rgba(255,255,255,0.85)"><span style="color:#d4a853">•</span><span>' + p + '</span></div>';
+          html += '<div class="notif-popup__ai-points">';
+          ai.key_points.slice(0, 3).forEach(function(p) {
+            html += '<div class="notif-popup__ai-point"><span>•</span><span>' + p + '</span></div>';
           });
           html += '</div>';
         }
-        // 推奨アクション
         if (ai.recommendation) {
-          html += '<div style="font-size:12px;color:rgba(255,255,255,0.7);padding:8px 10px;background:rgba(59,130,246,0.08);border-radius:8px"><span style="color:#3b82f6">💡</span> ' + ai.recommendation + '</div>';
+          html += '<div class="notif-popup__ai-rec"><span style="color:#3b82f6">💡</span> ' + ai.recommendation + '</div>';
         }
         aiArea.innerHTML = html;
       }).catch(function() {
         var aiArea = document.getElementById('notif-popup-ai');
         if (aiArea) {
           aiArea.innerHTML =
-            '<div style="font-size:11px;color:#d4a853;margin-bottom:8px">AI分析</div>' +
-            '<div style="font-size:12px;color:rgba(255,255,255,0.5);text-align:center;padding:16px 0">AI分析を取得できませんでした</div>';
+            '<div class="notif-popup__ai-label">AI分析</div>' +
+            '<div style="font-size:12px;color:rgba(255,255,255,0.4);text-align:center;padding:16px 0">AI分析を取得できませんでした</div>';
         }
       });
     }
@@ -13499,31 +13482,117 @@
 
   }
 
-  // アラート用トースト（目立つデザイン）
-  function showAlertToast(title, body, type, ticker) {
-    var bgColor = type === 'spike' ? 'linear-gradient(135deg, #22c55e, #16a34a)' : 'linear-gradient(135deg, #ef4444, #dc2626)';
+  // アラート用トースト（キュー制・同時1つ・スワイプ消去）
+  var _alertToastQueue = [];
+  var _alertToastActive = null;
+
+  function _dismissActiveToast(onComplete) {
+    if (!_alertToastActive) { if (onComplete) onComplete(); return; }
+    var t = _alertToastActive;
+    _alertToastActive = null;
+    t.classList.add('alert-toast--exit');
+    setTimeout(function() { if (t.parentNode) t.remove(); if (onComplete) onComplete(); }, 350);
+  }
+
+  function _showNextToast() {
+    if (_alertToastActive || _alertToastQueue.length === 0) return;
+    var item = _alertToastQueue.shift();
+    _renderToast(item.title, item.body, item.type, item.ticker);
+  }
+
+  function _renderToast(title, body, type, ticker) {
+    var icon = type === 'spike' ? '📈' : '📉';
     var toast = document.createElement('div');
-    toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:' + bgColor + ';color:#fff;padding:16px 24px;border-radius:16px;z-index:10050;box-shadow:0 8px 32px rgba(0,0,0,0.4);font-size:14px;text-align:center;min-width:200px;animation:alertPulse 0.5s ease;cursor:pointer;';
-    toast.innerHTML = '<div style="font-weight:700;font-size:16px;margin-bottom:4px;">' + title + '</div><div style="opacity:0.9;">' + body + '</div>' + (ticker ? '<div style="opacity:0.6;font-size:11px;margin-top:4px;">タップでAI解説 →</div>' : '');
+    toast.className = 'alert-toast alert-toast--' + (type === 'spike' ? 'spike' : 'drop');
+    toast.innerHTML =
+      '<div class="alert-toast__inner">' +
+        '<div class="alert-toast__icon">' + icon + '</div>' +
+        '<div class="alert-toast__content">' +
+          '<div class="alert-toast__title">' + title + '</div>' +
+          '<div class="alert-toast__body">' + body + '</div>' +
+          (ticker ? '<div class="alert-toast__hint">← スワイプで消去 · タップでAI解説</div>' : '') +
+        '</div>' +
+        (ticker ? '<div class="alert-toast__chevron">›</div>' : '') +
+      '</div>' +
+      '<div class="alert-toast__progress"></div>';
+
+    _alertToastActive = toast;
+
+    // タップ → AI解説ポップアップ
     if (ticker) {
-      toast.onclick = function() {
-        toast.remove();
-        if (window.openNotificationDetailPopup) {
-          window.openNotificationDetailPopup(ticker, title, body);
-        }
-      };
+      toast.addEventListener('click', function(e) {
+        if (toast._swiping) return;
+        _dismissActiveToast(function() {
+          if (window.openNotificationDetailPopup) {
+            window.openNotificationDetailPopup(ticker, title, body);
+          }
+          _showNextToast();
+        });
+      });
     }
+
+    // スワイプで消去
+    var startX = 0, startY = 0, currentX = 0, swiping = false;
+    toast.addEventListener('touchstart', function(e) {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      currentX = 0;
+      swiping = false;
+      toast._swiping = false;
+      toast.style.transition = 'none';
+    }, { passive: true });
+    toast.addEventListener('touchmove', function(e) {
+      var dx = e.touches[0].clientX - startX;
+      var dy = e.touches[0].clientY - startY;
+      if (!swiping && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) swiping = true;
+      if (swiping) {
+        currentX = dx;
+        toast._swiping = true;
+        toast.style.transform = 'translateX(' + dx + 'px)';
+        toast.style.opacity = Math.max(0, 1 - Math.abs(dx) / 250);
+      }
+    }, { passive: true });
+    toast.addEventListener('touchend', function() {
+      toast.style.transition = 'transform 0.15s ease, opacity 0.15s ease';
+      if (Math.abs(currentX) > 80) {
+        toast.style.transform = 'translateX(' + (currentX > 0 ? '120%' : '-120%') + ')';
+        toast.style.opacity = '0';
+        setTimeout(function() {
+          _alertToastActive = null;
+          if (toast.parentNode) toast.remove();
+          _showNextToast();
+        }, 200);
+      } else {
+        toast.style.transform = 'translateX(0)';
+        toast.style.opacity = '1';
+        setTimeout(function() { toast._swiping = false; }, 50);
+      }
+    });
+
     document.body.appendChild(toast);
 
-    // アニメーションCSS追加
-    if (!document.getElementById('alert-animation-style')) {
-      var style = document.createElement('style');
-      style.id = 'alert-animation-style';
-      style.textContent = '@keyframes alertPulse { 0% { transform: translateX(-50%) scale(0.8); opacity: 0; } 50% { transform: translateX(-50%) scale(1.05); } 100% { transform: translateX(-50%) scale(1); opacity: 1; } }';
-      document.head.appendChild(style);
-    }
+    // 8秒後に自動消去 → 次のキュー
+    var autoTimer = setTimeout(function() {
+      _dismissActiveToast(_showNextToast);
+    }, 8000);
 
-    setTimeout(function() { toast.remove(); }, 5000);
+    // 手動消去時にタイマーもクリア
+    var origRemove = toast.remove.bind(toast);
+    toast.remove = function() {
+      clearTimeout(autoTimer);
+      origRemove();
+    };
+  }
+
+  function showAlertToast(title, body, type, ticker) {
+    if (_alertToastActive) {
+      // キューに追加（最大3件）
+      if (_alertToastQueue.length < 3) {
+        _alertToastQueue.push({ title: title, body: body, type: type, ticker: ticker });
+      }
+      return;
+    }
+    _renderToast(title, body, type, ticker);
   }
 
   // 価格変動をチェック
