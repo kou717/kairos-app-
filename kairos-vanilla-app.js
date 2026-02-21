@@ -11446,8 +11446,8 @@
           else if (parts.length >= 2 && /^[A-Z]{2,10}$/.test(parts[1])) ticker = parts[1];
         }
         var clickable = ticker ? ' cursor:pointer;' : '';
-        var clickAttr = ticker ? ' data-ticker="' + ticker + '"' : '';
-        var hint = ticker ? '<div style="font-size:10px;color:rgba(212,168,83,0.7);margin-top:2px">タップで詳細 →</div>' : '';
+        var clickAttr = ticker ? ' data-ticker="' + ticker + '" data-alert-title="' + (item.title || '').replace(/"/g, '&quot;') + '" data-alert-body="' + (item.body || '').replace(/"/g, '&quot;') + '"' : '';
+        var hint = ticker ? '<div style="font-size:10px;color:rgba(212,168,83,0.7);margin-top:2px">タップでAI解説 →</div>' : '';
         listHtml +=
           '<div class="alert-history-item"' + clickAttr + ' style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:8px;' + clickable + '">' +
             '<div style="font-weight:600;margin-bottom:4px">' + item.title + '</div>' +
@@ -11477,14 +11477,15 @@
     document.body.appendChild(modal);
     modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
 
-    // 履歴アイテムクリックで通貨詳細へ遷移
+    // 履歴アイテムクリックでAI解説ポップアップ表示
     modal.querySelectorAll('.alert-history-item[data-ticker]').forEach(function(el) {
       el.onclick = function(e) {
         e.stopPropagation();
         var ticker = el.getAttribute('data-ticker');
-        modal.remove();
-        if (ticker && window.KairosApp && window.KairosApp.viewCurrency) {
-          window.KairosApp.viewCurrency(ticker);
+        var title = el.getAttribute('data-alert-title') || '';
+        var body = el.getAttribute('data-alert-body') || '';
+        if (ticker && window.openNotificationDetailPopup) {
+          window.openNotificationDetailPopup(ticker, title, body);
         }
       };
     });
@@ -11499,6 +11500,130 @@
 
   // アラート監視を開始（データ更新時に呼び出し）
   window.checkPriceAlerts = checkPriceAlerts;
+
+  // ===== 通知タップ → AI解説ポップアップ =====
+  window.openNotificationDetailPopup = function(ticker, alertTitle, alertBody) {
+    var existing = document.getElementById('notification-detail-popup');
+    if (existing) existing.remove();
+
+    var cached = scoreCache.data[ticker] || {};
+    var stratScore = window.getStrategyScore(ticker);
+    var score = stratScore.score || 0;
+    var grade = stratScore.grade || '-';
+    var price = cached.price || 0;
+    var change24h = cached.change24h || 0;
+
+    var gradeColor = (grade === 'S' || grade === 'A') ? '#22c55e' :
+                     grade === 'B' ? '#3b82f6' :
+                     grade === 'C' ? '#f59e0b' : '#ef4444';
+    var changeColor = change24h >= 0 ? '#22c55e' : '#ef4444';
+    var changeSign = change24h >= 0 ? '+' : '';
+    var priceStr = price > 0 ? '$' + price.toFixed(price < 1 ? 4 : 2) : '-';
+
+    var popup = document.createElement('div');
+    popup.id = 'notification-detail-popup';
+    popup.style.cssText = 'position:fixed;inset:0;z-index:10060;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn 0.2s ease;';
+    popup.innerHTML =
+      '<div style="background:var(--surface-card,#1a1a2e);border:1px solid rgba(255,255,255,0.1);border-radius:20px;width:100%;max-width:380px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5)">' +
+        // ヘッダー: ticker + スコア + 価格
+        '<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between">' +
+          '<div>' +
+            '<div style="font-size:18px;font-weight:700;color:#fff">' + ticker + '</div>' +
+            '<div style="font-size:13px;margin-top:2px">' +
+              '<span style="color:rgba(255,255,255,0.7)">' + priceStr + '</span>' +
+              '<span style="color:' + changeColor + ';margin-left:8px;font-weight:600">' + changeSign + change24h.toFixed(1) + '%</span>' +
+            '</div>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+            '<div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:6px 12px;text-align:center">' +
+              '<div style="font-size:10px;color:rgba(255,255,255,0.5)">Score</div>' +
+              '<div style="font-size:16px;font-weight:700;color:' + gradeColor + '">' + grade + ' ' + score + '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        // 通知内容
+        (alertTitle || alertBody ?
+          '<div style="padding:12px 20px;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06)">' +
+            (alertTitle ? '<div style="font-weight:600;font-size:14px;color:#fff;margin-bottom:2px">' + alertTitle + '</div>' : '') +
+            (alertBody ? '<div style="font-size:12px;color:rgba(255,255,255,0.7)">' + alertBody + '</div>' : '') +
+          '</div>' : '') +
+        // AI解説エリア
+        '<div id="notif-popup-ai" style="padding:16px 20px;min-height:120px">' +
+          '<div style="font-size:11px;color:#d4a853;margin-bottom:8px">AI分析</div>' +
+          '<div style="text-align:center;padding:24px 0">' +
+            '<div style="font-size:20px;margin-bottom:8px;animation:spin 1s linear infinite">🔄</div>' +
+            '<div style="font-size:12px;color:rgba(255,255,255,0.5)">AI分析を取得中...</div>' +
+          '</div>' +
+        '</div>' +
+        // ボタン
+        '<div style="padding:12px 20px 16px;display:flex;gap:10px">' +
+          '<button id="notif-popup-detail-btn" style="flex:1;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#d4a853,#b8912a);color:#000;font-weight:700;font-size:14px;cursor:pointer">詳細を見る →</button>' +
+          '<button id="notif-popup-close-btn" style="flex:0.6;padding:12px;border:1px solid rgba(255,255,255,0.15);border-radius:12px;background:transparent;color:#fff;font-size:14px;cursor:pointer">閉じる</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(popup);
+
+    // 背景クリックで閉じる
+    popup.onclick = function(e) { if (e.target === popup) popup.remove(); };
+
+    // 閉じるボタン
+    document.getElementById('notif-popup-close-btn').onclick = function() { popup.remove(); };
+
+    // 詳細ボタン
+    document.getElementById('notif-popup-detail-btn').onclick = function() {
+      popup.remove();
+      // 履歴モーダルも閉じる
+      var histModal = document.getElementById('kairos-alert-history-modal');
+      if (histModal) histModal.remove();
+      if (window.KairosApp && window.KairosApp.viewCurrency) {
+        window.KairosApp.viewCurrency(ticker);
+      }
+    };
+
+    // AI分析を非同期で取得
+    if (typeof BackendAPI !== 'undefined' && BackendAPI.getAIAnalysis) {
+      BackendAPI.getAIAnalysis(ticker).then(function(data) {
+        var aiArea = document.getElementById('notif-popup-ai');
+        if (!aiArea) return;
+        var ai = data.ai_analysis || {};
+        var signalText = {
+          'strong_buy': '🟢 強い買い', 'buy': '🟢 買い',
+          'neutral': '🟡 中立', 'sell': '🔴 売り', 'strong_sell': '🔴 強い売り'
+        };
+        var html = '<div style="font-size:11px;color:#d4a853;margin-bottom:8px">AI分析</div>';
+        // シグナル
+        if (ai.signal) {
+          html += '<div style="font-size:14px;font-weight:600;margin-bottom:8px">' + (signalText[ai.signal] || ai.signal) + '</div>';
+        }
+        // サマリー
+        if (ai.summary) {
+          html += '<div style="font-size:13px;color:#fff;line-height:1.6;margin-bottom:10px;background:rgba(212,168,83,0.08);border-radius:10px;padding:10px 12px">' + ai.summary + '</div>';
+        }
+        // キーポイント (最大3つ)
+        if (ai.key_points && ai.key_points.length > 0) {
+          var points = ai.key_points.slice(0, 3);
+          html += '<div style="margin-bottom:8px">';
+          points.forEach(function(p) {
+            html += '<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;font-size:12px;color:rgba(255,255,255,0.85)"><span style="color:#d4a853">•</span><span>' + p + '</span></div>';
+          });
+          html += '</div>';
+        }
+        // 推奨アクション
+        if (ai.recommendation) {
+          html += '<div style="font-size:12px;color:rgba(255,255,255,0.7);padding:8px 10px;background:rgba(59,130,246,0.08);border-radius:8px"><span style="color:#3b82f6">💡</span> ' + ai.recommendation + '</div>';
+        }
+        aiArea.innerHTML = html;
+      }).catch(function() {
+        var aiArea = document.getElementById('notif-popup-ai');
+        if (aiArea) {
+          aiArea.innerHTML =
+            '<div style="font-size:11px;color:#d4a853;margin-bottom:8px">AI分析</div>' +
+            '<div style="font-size:12px;color:rgba(255,255,255,0.5);text-align:center;padding:16px 0">AI分析を取得できませんでした</div>';
+        }
+      });
+    }
+  };
 
   // ===== RANK/PRICEポップアップ =====
 
@@ -13323,8 +13448,8 @@
       notification.onclick = function() {
         window.focus();
         notification.close();
-        if (ticker && window.KairosApp && window.KairosApp.viewCurrency) {
-          window.KairosApp.viewCurrency(ticker);
+        if (ticker && window.openNotificationDetailPopup) {
+          window.openNotificationDetailPopup(ticker, title, body);
         }
       };
 
@@ -13379,12 +13504,12 @@
     var bgColor = type === 'spike' ? 'linear-gradient(135deg, #22c55e, #16a34a)' : 'linear-gradient(135deg, #ef4444, #dc2626)';
     var toast = document.createElement('div');
     toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:' + bgColor + ';color:#fff;padding:16px 24px;border-radius:16px;z-index:10050;box-shadow:0 8px 32px rgba(0,0,0,0.4);font-size:14px;text-align:center;min-width:200px;animation:alertPulse 0.5s ease;cursor:pointer;';
-    toast.innerHTML = '<div style="font-weight:700;font-size:16px;margin-bottom:4px;">' + title + '</div><div style="opacity:0.9;">' + body + '</div>' + (ticker ? '<div style="opacity:0.6;font-size:11px;margin-top:4px;">タップで詳細 →</div>' : '');
+    toast.innerHTML = '<div style="font-weight:700;font-size:16px;margin-bottom:4px;">' + title + '</div><div style="opacity:0.9;">' + body + '</div>' + (ticker ? '<div style="opacity:0.6;font-size:11px;margin-top:4px;">タップでAI解説 →</div>' : '');
     if (ticker) {
       toast.onclick = function() {
         toast.remove();
-        if (window.KairosApp && window.KairosApp.viewCurrency) {
-          window.KairosApp.viewCurrency(ticker);
+        if (window.openNotificationDetailPopup) {
+          window.openNotificationDetailPopup(ticker, title, body);
         }
       };
     }
