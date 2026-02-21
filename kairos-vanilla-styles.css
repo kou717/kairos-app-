@@ -6278,6 +6278,26 @@ body {
   color: #fff;
 }
 
+.kairos-side-menu-bell {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  border: none;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  margin-right: 8px;
+  transition: background 0.2s, color 0.2s;
+}
+.kairos-side-menu-bell:active {
+  background: rgba(255,255,255,0.15);
+  color: #d4a853;
+}
+
 .kairos-side-menu-close {
   width: 36px;
   height: 36px;
@@ -6290,6 +6310,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .kairos-side-menu-section {

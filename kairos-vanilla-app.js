@@ -9985,6 +9985,9 @@
     menu.innerHTML =
       '<div class="kairos-side-menu-header">' +
         '<span class="kairos-side-menu-title">KAIROS</span>' +
+        '<button class="kairos-side-menu-bell" onclick="openAlertHistoryModal(); closeSideMenu();" title="通知履歴">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' +
+        '</button>' +
         '<button class="kairos-side-menu-close" onclick="closeSideMenu()">×</button>' +
       '</div>' +
 
@@ -10014,10 +10017,6 @@
         '<button class="kairos-side-menu-btn" onclick="openAlertModal(); closeSideMenu();">' +
           '<span class="kairos-side-menu-btn-icon">🔔</span>' +
           '<span>アラート設定</span>' +
-        '</button>' +
-        '<button class="kairos-side-menu-btn" onclick="openAlertHistoryModal(); closeSideMenu();">' +
-          '<span class="kairos-side-menu-btn-icon">📬</span>' +
-          '<span>通知履歴</span>' +
         '</button>' +
         '<button class="kairos-side-menu-btn" onclick="openDCAModal(); closeSideMenu();">' +
           '<span class="kairos-side-menu-btn-icon">📊</span>' +
@@ -11294,10 +11293,11 @@
   }
 
   // 通知を送信
-  function sendNotification(title, body, icon) {
+  function sendNotification(title, body, icon, ticker) {
     if (!('Notification' in window) || Notification.permission !== 'granted') {
       // フォールバック：トーストで表示
       showToast(title + ': ' + body, 'warning');
+      saveAlertHistory(title, body, ticker);
       return;
     }
 
@@ -11313,24 +11313,30 @@
     notification.onclick = function() {
       window.focus();
       notification.close();
+      if (ticker && window.KairosApp && window.KairosApp.viewCurrency) {
+        window.KairosApp.viewCurrency(ticker);
+      }
     };
 
     // アラート履歴に保存
-    saveAlertHistory(title, body);
+    saveAlertHistory(title, body, ticker);
   }
 
   // アラート履歴保存
-  function saveAlertHistory(title, body) {
+  function saveAlertHistory(title, body, ticker) {
     var history = [];
     try {
       history = JSON.parse(localStorage.getItem('kairos_alert_history') || '[]');
     } catch(e) {}
 
-    history.unshift({
+    var entry = {
       title: title,
       body: body,
       time: new Date().toISOString()
-    });
+    };
+    if (ticker) entry.ticker = ticker;
+
+    history.unshift(entry);
 
     // 最新50件のみ保持
     history = history.slice(0, 50);
@@ -11367,7 +11373,8 @@
         if (!lastAlertTimes[alertKey] || now - lastAlertTimes[alertKey] > 300000) {
           sendNotification(
             '🚀 ' + ticker + ' 目標価格到達',
-            ticker + 'が$' + price.toLocaleString() + 'に到達しました（目標: $' + target.high + '）'
+            ticker + 'が$' + price.toLocaleString() + 'に到達しました（目標: $' + target.high + '）',
+            null, ticker
           );
           lastAlertTimes[alertKey] = now;
         }
@@ -11379,7 +11386,8 @@
         if (!lastAlertTimes[alertKey] || now - lastAlertTimes[alertKey] > 300000) {
           sendNotification(
             '📉 ' + ticker + ' 下限価格到達',
-            ticker + 'が$' + price.toLocaleString() + 'に下落しました（下限: $' + target.low + '）'
+            ticker + 'が$' + price.toLocaleString() + 'に下落しました（下限: $' + target.low + '）',
+            null, ticker
           );
           lastAlertTimes[alertKey] = now;
         }
@@ -11391,7 +11399,8 @@
         if (!lastAlertTimes[alertKey] || now - lastAlertTimes[alertKey] > 300000) {
           sendNotification(
             '📈 ' + ticker + ' スコア上昇',
-            ticker + 'のスコアが' + score + 'に上昇しました（上限: ' + alert.scoreHigh + '）'
+            ticker + 'のスコアが' + score + 'に上昇しました（上限: ' + alert.scoreHigh + '）',
+            null, ticker
           );
           lastAlertTimes[alertKey] = now;
         }
@@ -11403,7 +11412,8 @@
         if (!lastAlertTimes[alertKey] || now - lastAlertTimes[alertKey] > 300000) {
           sendNotification(
             '⚠️ ' + ticker + ' スコア低下',
-            ticker + 'のスコアが' + score + 'に低下しました（下限: ' + alert.scoreLow + '）'
+            ticker + 'のスコアが' + score + 'に低下しました（下限: ' + alert.scoreLow + '）',
+            null, ticker
           );
           lastAlertTimes[alertKey] = now;
         }
@@ -11428,11 +11438,15 @@
       history.forEach(function(item) {
         var time = new Date(item.time);
         var timeStr = time.toLocaleDateString('ja-JP') + ' ' + time.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+        var clickable = item.ticker ? ' cursor:pointer;' : '';
+        var clickAttr = item.ticker ? ' data-ticker="' + item.ticker + '"' : '';
+        var hint = item.ticker ? '<div style="font-size:10px;color:rgba(212,168,83,0.7);margin-top:2px">タップで詳細 →</div>' : '';
         listHtml +=
-          '<div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:8px">' +
+          '<div class="alert-history-item"' + clickAttr + ' style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:8px;' + clickable + '">' +
             '<div style="font-weight:600;margin-bottom:4px">' + item.title + '</div>' +
             '<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:4px">' + item.body + '</div>' +
             '<div style="font-size:10px;color:rgba(255,255,255,0.4)">' + timeStr + '</div>' +
+            hint +
           '</div>';
       });
     }
@@ -11455,6 +11469,18 @@
 
     document.body.appendChild(modal);
     modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
+
+    // 履歴アイテムクリックで通貨詳細へ遷移
+    modal.querySelectorAll('.alert-history-item[data-ticker]').forEach(function(el) {
+      el.onclick = function(e) {
+        e.stopPropagation();
+        var ticker = el.getAttribute('data-ticker');
+        modal.remove();
+        if (ticker && window.KairosApp && window.KairosApp.viewCurrency) {
+          window.KairosApp.viewCurrency(ticker);
+        }
+      };
+    });
   };
 
   // アラート履歴削除
@@ -11889,7 +11915,7 @@
     }, 10000);
 
     // 履歴に保存
-    saveAlertHistory(emoji + ' ' + ticker + ' ' + title, sign + changePercent.toFixed(1) + '% ($' + price.toFixed(2) + ')');
+    saveAlertHistory(emoji + ' ' + ticker + ' ' + title, sign + changePercent.toFixed(1) + '% ($' + price.toFixed(2) + ')', ticker);
   };
 
   // ===== データバックアップ/復元 =====
@@ -13242,7 +13268,7 @@
 
     showAlertToast(title, body, config.color, ticker);
     sendBrowserNotification(title, body, null, ticker);
-    saveAlertHistory(title, body);
+    saveAlertHistory(title, body, ticker);
 
   }
 
@@ -13337,7 +13363,7 @@
     sendBrowserNotification(title, body, null, ticker);
 
     // 履歴に保存
-    saveAlertHistory(title, body);
+    saveAlertHistory(title, body, ticker);
 
   }
 
@@ -13420,9 +13446,9 @@
         var title = emoji + ' ' + alert.ticker + ' 目標価格到達!';
         var body = '$' + currentPrice.toFixed(currentPrice < 1 ? 4 : 2) + ' (目標: $' + alert.targetPrice + ')';
 
-        showAlertToast(title, body, alert.type === 'above' ? 'spike' : 'crash');
-        sendBrowserNotification(title, body);
-        saveAlertHistory(title, body);
+        showAlertToast(title, body, alert.type === 'above' ? 'spike' : 'crash', alert.ticker);
+        sendBrowserNotification(title, body, null, alert.ticker);
+        saveAlertHistory(title, body, alert.ticker);
 
         // トリガー済みにマーク
         priceAlerts.customAlerts[index].triggered = true;
