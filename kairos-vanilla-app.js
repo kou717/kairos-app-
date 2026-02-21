@@ -5190,7 +5190,7 @@
       title: '出来高（Volume 24h）',
       desc: '過去24時間の取引総額。DEX初動コインは出来高が少ないのが普通です。流動性と合わせて「売れるかどうか」を判断します。',
       example: '\u{2705} ¥750万（$50K）以上 → DEXとしては活発。注目度が高い\n\u{26A0}\uFE0F ¥75万〜750万 → 初動段階として普通。まだ伸びる余地あり\n\u{274C} ¥75万（$5K）未満 → ほぼ取引なし。売りたい時に売れない',
-      warn: '出来高÷流動性が20倍超 → ウォッシュトレード（自作自演の水増し）の疑いあり。見かけ上活発でも要注意'
+      warn: 'DEXでは出来高÷流動性が数十倍は正常（同じプールを何度も通るため）。100倍超でも即水増しとは限りませんが、流動性が極端に少ない場合は注意'
     },
     'age': {
       title: '経過時間（Age）',
@@ -5243,10 +5243,10 @@
         var vol = c.volume_24h || 0;
         var liq2 = c.liquidity_usd || 1;
         var ratio = vol / liq2;
-        if (ratio > 20) return { level: 'danger', label: '水増し疑い（÷流動性=' + Math.round(ratio) + '倍）', val: '$' + formatValueCompact(vol) };
-        if (vol >= 50000) return { level: 'safe', label: 'DEXとしては活発', val: '$' + formatValueCompact(vol) };
+        if (vol >= 50000) return { level: 'safe', label: 'DEXとしては活発' + (ratio > 100 ? '（回転' + Math.round(ratio) + '倍）' : ''), val: '$' + formatValueCompact(vol) };
         if (vol >= 5000) return { level: 'warn', label: '初動段階として普通', val: '$' + formatValueCompact(vol) };
-        return { level: 'danger', label: 'ほぼ取引なし', val: '$' + formatValueCompact(vol) };
+        if (vol > 0) return { level: 'danger', label: 'ほぼ取引なし', val: '$' + formatValueCompact(vol) };
+        return { level: 'danger', label: '取引なし', val: '$0' };
       case 'age':
         var age = c.age_hours;
         if (age == null) return null;
