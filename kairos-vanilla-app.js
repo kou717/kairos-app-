@@ -11438,9 +11438,16 @@
       history.forEach(function(item) {
         var time = new Date(item.time);
         var timeStr = time.toLocaleDateString('ja-JP') + ' ' + time.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-        var clickable = item.ticker ? ' cursor:pointer;' : '';
-        var clickAttr = item.ticker ? ' data-ticker="' + item.ticker + '"' : '';
-        var hint = item.ticker ? '<div style="font-size:10px;color:rgba(212,168,83,0.7);margin-top:2px">タップで詳細 →</div>' : '';
+        // tickerフィールドがない旧データはタイトルから抽出（"🚀 BTC 月間上昇!" → "BTC"）
+        var ticker = item.ticker;
+        if (!ticker && item.title) {
+          var parts = item.title.replace(/[^\w\s]/g, '').trim().split(/\s+/);
+          if (parts.length >= 1 && /^[A-Z]{2,10}$/.test(parts[0])) ticker = parts[0];
+          else if (parts.length >= 2 && /^[A-Z]{2,10}$/.test(parts[1])) ticker = parts[1];
+        }
+        var clickable = ticker ? ' cursor:pointer;' : '';
+        var clickAttr = ticker ? ' data-ticker="' + ticker + '"' : '';
+        var hint = ticker ? '<div style="font-size:10px;color:rgba(212,168,83,0.7);margin-top:2px">タップで詳細 →</div>' : '';
         listHtml +=
           '<div class="alert-history-item"' + clickAttr + ' style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:8px;' + clickable + '">' +
             '<div style="font-weight:600;margin-bottom:4px">' + item.title + '</div>' +
