@@ -5230,6 +5230,64 @@
     }
   };
 
+  function getMetricLevel(key) {
+    var c = window._pendingMoonshotCoin;
+    if (!c) return null;
+    switch (key) {
+      case 'liquidity':
+        var liq = c.liquidity_usd || 0;
+        if (liq >= 100000) return { level: 'safe', label: '安全に売買しやすい', val: '$' + formatValueCompact(liq) };
+        if (liq >= 10000) return { level: 'warn', label: '少額なら可', val: '$' + formatValueCompact(liq) };
+        return { level: 'danger', label: '売れない危険あり', val: '$' + formatValueCompact(liq) };
+      case 'volume':
+        var vol = c.volume_24h || 0;
+        var liq2 = c.liquidity_usd || 1;
+        var ratio = vol / liq2;
+        if (ratio > 20) return { level: 'danger', label: '水増し疑い（出来高÷流動性=' + Math.round(ratio) + '倍）', val: '$' + formatValueCompact(vol) };
+        if (vol >= 100000) return { level: 'safe', label: '活発に取引中', val: '$' + formatValueCompact(vol) };
+        if (vol >= 10000) return { level: 'warn', label: 'そこそこ', val: '$' + formatValueCompact(vol) };
+        return { level: 'danger', label: '売買相手がほぼいない', val: '$' + formatValueCompact(vol) };
+      case 'age':
+        var age = c.age_hours;
+        if (age == null) return null;
+        if (age >= 24) return { level: 'safe', label: '一定の実績あり', val: formatAgeHours(age) };
+        if (age >= 6) return { level: 'warn', label: 'まだ注意が必要', val: formatAgeHours(age) };
+        if (age >= 1) return { level: 'warn', label: '高リスク帯', val: formatAgeHours(age) };
+        return { level: 'danger', label: 'RugPull最多ゾーン', val: formatAgeHours(age) };
+      case 'holders':
+        var h = c.goplus_holder_count;
+        if (!h || h <= 0) return null;
+        if (h >= 500) return { level: 'safe', label: '十分に分散', val: h.toLocaleString() + '人' };
+        if (h >= 100) return { level: 'warn', label: '大口の売りに注意', val: h.toLocaleString() + '人' };
+        return { level: 'danger', label: '極めて集中', val: h.toLocaleString() + '人' };
+      case 'buysell':
+        var b = c.buys || 0, s = c.sells || 1;
+        var r = b / Math.max(s, 1);
+        if (r >= 1.5) return { level: 'safe', label: '強い買い圧力', val: r.toFixed(1) + '倍' };
+        if (r >= 0.8) return { level: 'warn', label: 'ほぼ均衡', val: r.toFixed(1) + '倍' };
+        return { level: 'danger', label: '売り優勢', val: r.toFixed(1) + '倍' };
+      case 'social':
+        var inter = (c.social_interactions || 0);
+        if (inter >= 10000) return { level: 'safe', label: 'SNSで大きく話題', val: inter.toLocaleString() + '件' };
+        if (inter >= 1000) return { level: 'warn', label: '注目され始めている', val: inter.toLocaleString() + '件' };
+        if (inter > 0) return { level: 'danger', label: 'ほぼ無名', val: inter.toLocaleString() + '件' };
+        return null;
+      case 'price_change':
+        var ch1h = c.price_change_1h;
+        if (ch1h == null) return null;
+        if (ch1h > 100) return { level: 'danger', label: '急騰後の暴落リスク大', val: (ch1h > 0 ? '+' : '') + ch1h.toFixed(1) + '% (1h)' };
+        if (ch1h > 0) return { level: 'safe', label: '上昇中', val: '+' + ch1h.toFixed(1) + '% (1h)' };
+        if (ch1h > -20) return { level: 'warn', label: '調整中', val: ch1h.toFixed(1) + '% (1h)' };
+        return { level: 'danger', label: '下落トレンド', val: ch1h.toFixed(1) + '% (1h)' };
+      case 'moonshot_score':
+        var sc = c.moonshot_score || 0;
+        if (sc >= 70) return { level: 'safe', label: '有望', val: Math.round(sc) + '点' };
+        if (sc >= 40) return { level: 'warn', label: '慎重に判断', val: Math.round(sc) + '点' };
+        return { level: 'danger', label: 'まだ弱い', val: Math.round(sc) + '点' };
+      default: return null;
+    }
+  }
+
   function showMetricGuide(key, event) {
     if (event) { event.stopPropagation(); event.preventDefault(); }
     var info = metricGuides[key];
@@ -5238,14 +5296,27 @@
     var existing = document.getElementById('metric-guide-popup');
     if (existing) existing.remove();
 
+    var ml = getMetricLevel(key);
+    var levelClass = ml ? ' metric-guide-popup--' + ml.level : '';
+    var statusHtml = '';
+    if (ml) {
+      var icon = ml.level === 'safe' ? '\u2705' : ml.level === 'warn' ? '\u26A0\uFE0F' : '\u274C';
+      statusHtml = '<div class="metric-guide-popup__status metric-guide-popup__status--' + ml.level + '">' +
+        '<span class="metric-guide-popup__status-icon">' + icon + '</span>' +
+        '<span class="metric-guide-popup__status-val">' + ml.val + '</span>' +
+        '<span class="metric-guide-popup__status-label">' + ml.label + '</span>' +
+      '</div>';
+    }
+
     var popup = document.createElement('div');
     popup.id = 'metric-guide-popup';
     popup.className = 'metric-guide-overlay';
-    popup.innerHTML = '<div class="metric-guide-popup">' +
+    popup.innerHTML = '<div class="metric-guide-popup' + levelClass + '">' +
+      statusHtml +
       '<div class="metric-guide-popup__title">' + info.title + '</div>' +
       '<div class="metric-guide-popup__desc">' + info.desc + '</div>' +
       '<div class="metric-guide-popup__example">' +
-        '<div class="metric-guide-popup__example-label">見方</div>' +
+        '<div class="metric-guide-popup__example-label">判断基準</div>' +
         '<div class="metric-guide-popup__example-text">' + info.example.replace(/\n/g, '<br>') + '</div>' +
       '</div>' +
       '<div class="metric-guide-popup__warn">' + info.warn + '</div>' +
@@ -5941,24 +6012,22 @@
         '</div>' +
 
         // DEX情報グリッド
-        '<div class="dex-detail__info-grid">' +
-          '<div class="dex-detail__info-item" onclick="showMetricGuide(\'liquidity\',event)" style="cursor:pointer">' +
-            '<div class="dex-detail__info-label">流動性 <span style="font-size:9px;color:#64748b">?</span></div>' +
-            '<div class="dex-detail__info-value">' + formatValueCompact(coin.liquidity_usd || 0) + '</div>' +
-          '</div>' +
-          '<div class="dex-detail__info-item" onclick="showMetricGuide(\'volume\',event)" style="cursor:pointer">' +
-            '<div class="dex-detail__info-label">出来高 (24h) <span style="font-size:9px;color:#64748b">?</span></div>' +
-            '<div class="dex-detail__info-value">' + formatValueCompact(coin.volume_24h || 0) + '</div>' +
-          '</div>' +
-          '<div class="dex-detail__info-item" onclick="showMetricGuide(\'age\',event)" style="cursor:pointer">' +
-            '<div class="dex-detail__info-label">経過時間 <span style="font-size:9px;color:#64748b">?</span></div>' +
-            '<div class="dex-detail__info-value">' + formatAgeHours(coin.age_hours) + '</div>' +
-          '</div>' +
-          '<div class="dex-detail__info-item" onclick="showMetricGuide(\'holders\',event)" style="cursor:pointer">' +
-            '<div class="dex-detail__info-label">保有者数 <span style="font-size:9px;color:#64748b">?</span></div>' +
-            '<div class="dex-detail__info-value">' + (coin.goplus_holder_count && coin.goplus_holder_count > 0 ? coin.goplus_holder_count.toLocaleString() + '人' : '\u2014') + '</div>' +
-          '</div>' +
-        '</div>' +
+        (function() {
+          var items = [
+            { key: 'liquidity', label: '流動性', val: formatValueCompact(coin.liquidity_usd || 0) },
+            { key: 'volume', label: '出来高 (24h)', val: formatValueCompact(coin.volume_24h || 0) },
+            { key: 'age', label: '経過時間', val: formatAgeHours(coin.age_hours) },
+            { key: 'holders', label: '保有者数', val: (coin.goplus_holder_count && coin.goplus_holder_count > 0 ? coin.goplus_holder_count.toLocaleString() + '人' : '\u2014') }
+          ];
+          return '<div class="dex-detail__info-grid">' + items.map(function(it) {
+            var ml = getMetricLevel(it.key);
+            var cls = ml ? ' dex-detail__info-item--' + ml.level : '';
+            return '<div class="dex-detail__info-item' + cls + '" onclick="showMetricGuide(\'' + it.key + '\',event)" style="cursor:pointer">' +
+              '<div class="dex-detail__info-label">' + it.label + ' <span style="font-size:9px;color:#64748b">?</span></div>' +
+              '<div class="dex-detail__info-value">' + it.val + '</div>' +
+            '</div>';
+          }).join('') + '</div>';
+        })() +
 
         // セキュリティ（Rugcheck + GoPlus）
         (function() {
