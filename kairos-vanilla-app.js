@@ -13240,8 +13240,8 @@
     var title = config.emoji + ' ' + ticker + ' ' + config.label + '!';
     var body = sign + changePercent.toFixed(1) + '%' + (config.hint ? ' - ' + config.hint : '');
 
-    showAlertToast(title, body, config.color);
-    sendBrowserNotification(title, body);
+    showAlertToast(title, body, config.color, ticker);
+    sendBrowserNotification(title, body, null, ticker);
     saveAlertHistory(title, body);
 
   }
@@ -13273,7 +13273,7 @@
   }
 
   // ブラウザ通知を送信
-  function sendBrowserNotification(title, body, icon) {
+  function sendBrowserNotification(title, body, icon, ticker) {
     if (priceAlerts.notificationPermission !== 'granted') {
       return;
     }
@@ -13290,6 +13290,9 @@
       notification.onclick = function() {
         window.focus();
         notification.close();
+        if (ticker && window.KairosApp && window.KairosApp.viewCurrency) {
+          window.KairosApp.viewCurrency(ticker);
+        }
       };
 
       // 10秒後に自動で閉じる
@@ -13316,7 +13319,7 @@
     // 大きな変動（10%以上）は緊急アラート表示
     if (absChange >= 10) {
       window.showEmergencyAlert(ticker, type, changePercent, currentPrice);
-      sendBrowserNotification('🚨 ' + ticker + ' 緊急アラート', (changePercent >= 0 ? '+' : '') + changePercent.toFixed(1) + '%');
+      sendBrowserNotification('🚨 ' + ticker + ' 緊急アラート', (changePercent >= 0 ? '+' : '') + changePercent.toFixed(1) + '%', null, ticker);
       return;
     }
 
@@ -13328,10 +13331,10 @@
     var body = sign + changePercent.toFixed(1) + '% ($' + currentPrice.toFixed(currentPrice < 1 ? 4 : 2) + ')';
 
     // アプリ内トースト
-    showAlertToast(title, body, type);
+    showAlertToast(title, body, type, ticker);
 
     // ブラウザ通知
-    sendBrowserNotification(title, body);
+    sendBrowserNotification(title, body, null, ticker);
 
     // 履歴に保存
     saveAlertHistory(title, body);
@@ -13339,11 +13342,19 @@
   }
 
   // アラート用トースト（目立つデザイン）
-  function showAlertToast(title, body, type) {
+  function showAlertToast(title, body, type, ticker) {
     var bgColor = type === 'spike' ? 'linear-gradient(135deg, #22c55e, #16a34a)' : 'linear-gradient(135deg, #ef4444, #dc2626)';
     var toast = document.createElement('div');
-    toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:' + bgColor + ';color:#fff;padding:16px 24px;border-radius:16px;z-index:10050;box-shadow:0 8px 32px rgba(0,0,0,0.4);font-size:14px;text-align:center;min-width:200px;animation:alertPulse 0.5s ease;';
-    toast.innerHTML = '<div style="font-weight:700;font-size:16px;margin-bottom:4px;">' + title + '</div><div style="opacity:0.9;">' + body + '</div>';
+    toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:' + bgColor + ';color:#fff;padding:16px 24px;border-radius:16px;z-index:10050;box-shadow:0 8px 32px rgba(0,0,0,0.4);font-size:14px;text-align:center;min-width:200px;animation:alertPulse 0.5s ease;cursor:pointer;';
+    toast.innerHTML = '<div style="font-weight:700;font-size:16px;margin-bottom:4px;">' + title + '</div><div style="opacity:0.9;">' + body + '</div>' + (ticker ? '<div style="opacity:0.6;font-size:11px;margin-top:4px;">タップで詳細 →</div>' : '');
+    if (ticker) {
+      toast.onclick = function() {
+        toast.remove();
+        if (window.KairosApp && window.KairosApp.viewCurrency) {
+          window.KairosApp.viewCurrency(ticker);
+        }
+      };
+    }
     document.body.appendChild(toast);
 
     // アニメーションCSS追加
