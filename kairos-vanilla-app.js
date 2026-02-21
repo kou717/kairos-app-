@@ -5183,13 +5183,13 @@
     'liquidity': {
       title: '流動性（Liquidity）',
       desc: '売買プール内の資金量。これが多いほど、まとまった額を売買しても価格が動きにくくなります。',
-      example: '\u{2705} ¥1,500万（$100K）以上 → 安全に売買しやすい\n\u{26A0}\uFE0F ¥150万〜1,500万 → 少額なら可。大口は滑る\n\u{274C} ¥150万（$10K）未満 → 数万円でも価格が動く。売れない危険大',
+      example: '\u{2705} ¥750万（$50K）以上 → DEXとしては十分。数万円の売買OK\n\u{26A0}\uFE0F ¥150万〜750万 → 少額なら可。大口は価格が滑る\n\u{274C} ¥150万（$10K）未満 → 数万円でも価格が動く。売れない危険大',
       warn: '¥150万未満の流動性では、利確時にスリッページで想定より大幅に安く売れます。入る前に「売れるか」を確認'
     },
     'volume': {
       title: '出来高（Volume 24h）',
-      desc: '過去24時間の取引総額。多くの人が売買している証拠で、流動性と合わせて「売れるかどうか」を判断します。',
-      example: '\u{2705} ¥1,500万以上 → 活発に取引中。売買しやすい\n\u{26A0}\uFE0F ¥150万〜1,500万 → そこそこ。タイミング次第\n\u{274C} ¥150万未満 → 売買相手がほぼいない',
+      desc: '過去24時間の取引総額。DEX初動コインは出来高が少ないのが普通です。流動性と合わせて「売れるかどうか」を判断します。',
+      example: '\u{2705} ¥750万（$50K）以上 → DEXとしては活発。注目度が高い\n\u{26A0}\uFE0F ¥75万〜750万 → 初動段階として普通。まだ伸びる余地あり\n\u{274C} ¥75万（$5K）未満 → ほぼ取引なし。売りたい時に売れない',
       warn: '出来高÷流動性が20倍超 → ウォッシュトレード（自作自演の水増し）の疑いあり。見かけ上活発でも要注意'
     },
     'age': {
@@ -5236,17 +5236,17 @@
     switch (key) {
       case 'liquidity':
         var liq = c.liquidity_usd || 0;
-        if (liq >= 100000) return { level: 'safe', label: '安全に売買しやすい', val: '$' + formatValueCompact(liq) };
-        if (liq >= 10000) return { level: 'warn', label: '少額なら可', val: '$' + formatValueCompact(liq) };
+        if (liq >= 50000) return { level: 'safe', label: 'DEXとしては十分', val: '$' + formatValueCompact(liq) };
+        if (liq >= 10000) return { level: 'warn', label: '少額取引なら可', val: '$' + formatValueCompact(liq) };
         return { level: 'danger', label: '売れない危険あり', val: '$' + formatValueCompact(liq) };
       case 'volume':
         var vol = c.volume_24h || 0;
         var liq2 = c.liquidity_usd || 1;
         var ratio = vol / liq2;
-        if (ratio > 20) return { level: 'danger', label: '水増し疑い（出来高÷流動性=' + Math.round(ratio) + '倍）', val: '$' + formatValueCompact(vol) };
-        if (vol >= 100000) return { level: 'safe', label: '活発に取引中', val: '$' + formatValueCompact(vol) };
-        if (vol >= 10000) return { level: 'warn', label: 'そこそこ', val: '$' + formatValueCompact(vol) };
-        return { level: 'danger', label: '売買相手がほぼいない', val: '$' + formatValueCompact(vol) };
+        if (ratio > 20) return { level: 'danger', label: '水増し疑い（÷流動性=' + Math.round(ratio) + '倍）', val: '$' + formatValueCompact(vol) };
+        if (vol >= 50000) return { level: 'safe', label: 'DEXとしては活発', val: '$' + formatValueCompact(vol) };
+        if (vol >= 5000) return { level: 'warn', label: '初動段階として普通', val: '$' + formatValueCompact(vol) };
+        return { level: 'danger', label: 'ほぼ取引なし', val: '$' + formatValueCompact(vol) };
       case 'age':
         var age = c.age_hours;
         if (age == null) return null;
