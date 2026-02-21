@@ -12540,21 +12540,20 @@ body.has-ticker-bar {
 .dex-detail__info-item {
   padding: 10px;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  border-left: 3px solid transparent;
-  transition: border-color 0.2s;
+  border-radius: 10px;
+  transition: background 0.3s, box-shadow 0.3s;
 }
 .dex-detail__info-item--safe {
-  border-left-color: #22c55e;
-  background: rgba(34, 197, 94, 0.06);
+  background: rgba(34, 197, 94, 0.15);
+  box-shadow: inset 0 0 12px rgba(34, 197, 94, 0.1);
 }
 .dex-detail__info-item--warn {
-  border-left-color: #f59e0b;
-  background: rgba(245, 158, 11, 0.06);
+  background: rgba(245, 158, 11, 0.15);
+  box-shadow: inset 0 0 12px rgba(245, 158, 11, 0.1);
 }
 .dex-detail__info-item--danger {
-  border-left-color: #ef4444;
-  background: rgba(239, 68, 68, 0.06);
+  background: rgba(239, 68, 68, 0.15);
+  box-shadow: inset 0 0 12px rgba(239, 68, 68, 0.1);
 }
 
 .dex-detail__info-label {
@@ -12568,6 +12567,9 @@ body.has-ticker-bar {
   font-weight: 600;
   color: var(--text-primary);
 }
+.dex-detail__info-item--safe .dex-detail__info-value { color: #4ade80; }
+.dex-detail__info-item--warn .dex-detail__info-value { color: #fbbf24; }
+.dex-detail__info-item--danger .dex-detail__info-value { color: #f87171; }
 
 .dex-detail__buysell {
   display: grid;
