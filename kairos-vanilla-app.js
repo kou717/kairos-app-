@@ -1123,15 +1123,16 @@
       });
     },
 
-    getEarlyMovers: function() {
+    getEarlyMovers: function(skipAi) {
       var self = this;
+      var url = self.baseUrl + '/api/moonshot/early' + (skipAi ? '?skip_ai=true' : '');
       return new Promise(function(resolve, reject) {
         self.healthCheck().then(function(available) {
           if (!available) {
             reject(new Error('Backend not available'));
             return;
           }
-          fetch(self.baseUrl + '/api/moonshot/early')
+          fetch(url)
             .then(function(response) {
               if (!response.ok) throw new Error('API error');
               return response.json();
@@ -1139,6 +1140,19 @@
             .then(resolve)
             .catch(reject);
         });
+      });
+    },
+
+    getEarlyMoversAI: function() {
+      var self = this;
+      return new Promise(function(resolve, reject) {
+        fetch(self.baseUrl + '/api/moonshot/early/ai')
+          .then(function(response) {
+            if (!response.ok) throw new Error('API error');
+            return response.json();
+          })
+          .then(resolve)
+          .catch(reject);
       });
     },
 
@@ -1410,7 +1424,8 @@
     if (!container) return;
 
     var now = Date.now();
-    if (earlyMoverCache.data && (now - earlyMoverCache.timestamp) < earlyMoverCache.TTL) {
+    // AI付きキャッシュがあればそのまま表示
+    if (earlyMoverCache.data && earlyMoverCache.hasAI && (now - earlyMoverCache.timestamp) < earlyMoverCache.TTL) {
       renderEarlyMoversIntoDOM(earlyMoverCache.data);
       checkEarlyMoverNotifications(earlyMoverCache.data);
       return;
@@ -1421,14 +1436,39 @@
       '<div class="moonshot-loading__text">DEX初動を検索中...</div>' +
     '</div>';
 
-    fetch(BACKEND_URL + '/api/moonshot/early')
+    // Phase 1: AI抜きで高速取得 → 即表示
+    fetch(BACKEND_URL + '/api/moonshot/early?skip_ai=true')
       .then(function(res) { return res.json(); })
       .then(function(data) {
-        earlyMoverCache.data = data.coins || [];
+        var coins = data.coins || [];
+        earlyMoverCache.data = coins;
         earlyMoverCache.timestamp = Date.now();
-        renderEarlyMoversIntoDOM(earlyMoverCache.data);
-        checkEarlyMoverNotifications(earlyMoverCache.data);
+        earlyMoverCache.hasAI = false;
+        renderEarlyMoversIntoDOM(coins);
+        checkEarlyMoverNotifications(coins);
         updateEarlyMoverBadge();
+
+        // Phase 2: AI評価をバックグラウンドで取得
+        fetch(BACKEND_URL + '/api/moonshot/early/ai')
+          .then(function(res2) { return res2.json(); })
+          .then(function(aiData) {
+            var aiCoins = aiData.coins || [];
+            if (aiCoins.length > 0) {
+              earlyMoverCache.data = aiCoins;
+              earlyMoverCache.timestamp = Date.now();
+              earlyMoverCache.hasAI = true;
+              // 現在Early画面が表示中なら更新
+              var stillVisible = document.getElementById('early-mover-coins');
+              if (stillVisible) {
+                renderEarlyMoversIntoDOM(aiCoins);
+              }
+              checkEarlyMoverNotifications(aiCoins);
+              updateEarlyMoverBadge();
+            }
+          })
+          .catch(function(err) {
+            console.error('Early mover AI fetch error:', err);
+          });
       })
       .catch(function(err) {
         console.error('Early mover fetch error:', err);
@@ -5434,7 +5474,8 @@
         (coin.goplus_honeypot ? '<div class="early-mover__security-hint early-mover__security-hint--danger">\u{1F6AB} ハニーポット警告</div>' :
          coin.security_cross_verified && coin.combined_trust === 'high' ? '<div class="early-mover__security-hint early-mover__security-hint--safe">\u{1F6E1}\uFE0F 2ソース検証済</div>' :
          (coin.combined_trust === 'low' || coin.combined_trust === 'danger') ? '<div class="early-mover__security-hint early-mover__security-hint--warn">\u26A0\uFE0F セキュリティ要注意</div>' : '') +
-        (coin.ai_summary_ja ? '<div class="early-mover__ai-hint">\u{1F916} ' + coin.ai_summary_ja + '</div>' : '') +
+        (coin.ai_summary_ja ? '<div class="early-mover__ai-hint">\u{1F916} ' + coin.ai_summary_ja + '</div>' :
+         (coin.risk_level === 'unknown' ? '<div class="early-mover__ai-hint early-mover__ai-hint--loading"><span class="early-mover__ai-spinner"></span> AI分析中...</div>' : '')) +
         // 価格予想ミニ
         (coin.ai_price_prediction && coin.ai_price_prediction['1h'] ?
           '<div class="early-mover__prediction-mini">' +

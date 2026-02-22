@@ -1,7 +1,7 @@
 // KAIROS Service Worker v19.16 - Urgent Moonshot Alert + Worker Integration
-const CACHE_NAME = 'kairos-v19-28';
-const STATIC_CACHE = 'kairos-static-v19-27';
-const DYNAMIC_CACHE = 'kairos-dynamic-v19-27';
+const CACHE_NAME = 'kairos-v19-29';
+const STATIC_CACHE = 'kairos-static-v19-29';
+const DYNAMIC_CACHE = 'kairos-dynamic-v19-29';
 
 // 静的アセット（必ずキャッシュ）
 const STATIC_ASSETS = [
