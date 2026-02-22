@@ -5475,7 +5475,7 @@
          coin.security_cross_verified && coin.combined_trust === 'high' ? '<div class="early-mover__security-hint early-mover__security-hint--safe">\u{1F6E1}\uFE0F 2ソース検証済</div>' :
          (coin.combined_trust === 'low' || coin.combined_trust === 'danger') ? '<div class="early-mover__security-hint early-mover__security-hint--warn">\u26A0\uFE0F セキュリティ要注意</div>' : '') +
         (coin.ai_summary_ja ? '<div class="early-mover__ai-hint">\u{1F916} ' + coin.ai_summary_ja + '</div>' :
-         (coin.risk_level === 'unknown' ? '<div class="early-mover__ai-hint early-mover__ai-hint--loading"><span class="early-mover__ai-spinner"></span> AI分析中...</div>' : '')) +
+         (coin.risk_level === 'unknown' && !earlyMoverCache.hasAI ? '<div class="early-mover__ai-hint early-mover__ai-hint--loading"><span class="early-mover__ai-spinner"></span> AI分析中...</div>' : '')) +
         // 価格予想ミニ
         (coin.ai_price_prediction && coin.ai_price_prediction['1h'] ?
           '<div class="early-mover__prediction-mini">' +
