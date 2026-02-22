@@ -1140,6 +1140,22 @@
             .catch(reject);
         });
       });
+    },
+
+    getEarlyMoverDetail: function(address, symbol) {
+      var self = this;
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) { reject(new Error('Backend not available')); return; }
+          fetch(self.baseUrl + '/api/moonshot/early/detail?address=' + encodeURIComponent(address || '') + '&symbol=' + encodeURIComponent(symbol || ''))
+            .then(function(response) {
+              if (!response.ok) throw new Error('API error');
+              return response.json();
+            })
+            .then(resolve)
+            .catch(reject);
+        });
+      });
     }
   };
 
@@ -6064,20 +6080,8 @@
           var lpStr = lpLock >= 0 ? lpLock.toFixed(1) + '%' : 'N/A';
           var lpColor = lpLock > 50 ? '#22c55e' : lpLock > 0 ? '#f59e0b' : '#ef4444';
 
-          // LP Lock期限表示
-          var lpExpiryHtml = '';
-          if (coin.lp_has_permanent_lock) {
-            lpExpiryHtml = '<div style="font-size:10px;color:#22c55e">\u{1F525} 永久ロック</div>';
-          } else if (coin.lp_lock_expiry_ts) {
-            var nowSec = Math.floor(Date.now() / 1000);
-            var daysLeft = Math.floor((coin.lp_lock_expiry_ts - nowSec) / 86400);
-            if (daysLeft > 0) {
-              var expiryColor = daysLeft > 180 ? '#22c55e' : daysLeft > 30 ? '#f59e0b' : '#ef4444';
-              lpExpiryHtml = '<div style="font-size:10px;color:' + expiryColor + '">\u23F0 ' + daysLeft + '日後解除</div>';
-            } else {
-              lpExpiryHtml = '<div style="font-size:10px;color:#ef4444">\u{1F6A8} 期限切れ</div>';
-            }
-          }
+          // LP Lock期限表示（遅延取得で更新される）
+          var lpExpiryHtml = '<span id="dex-lp-expiry-lazy"></span>';
 
           var top10 = coin.holder_top10_pct;
           var top10Str = top10 >= 0 ? top10.toFixed(1) + '%' : 'N/A';
@@ -6199,8 +6203,8 @@
         // SNS統計
         renderDexSocialSection(coin) +
 
-        // SNS投稿一覧
-        renderDexPostsSection(coin) +
+        // SNS投稿一覧（遅延取得）
+        '<div id="dex-posts-lazy"></div>' +
 
         // トークンアドレス
         (addr ? '<div class="dex-detail__address">' +
@@ -6220,6 +6224,54 @@
     '</div>';
   }
 
+  // DEX詳細の Posts + LP Locker 遅延取得
+  function _lazyLoadDexDetail(coin) {
+    var addr = coin.token_address || '';
+    var sym = coin.symbol || '';
+    if (!addr && !sym) return;
+
+    // 投稿プレースホルダーにローディング表示
+    var postsEl = document.getElementById('dex-posts-lazy');
+    if (postsEl) postsEl.innerHTML = '<div style="text-align:center;padding:16px;color:rgba(255,255,255,0.4);font-size:12px">SNS投稿を読み込み中...</div>';
+
+    BackendAPI.getEarlyMoverDetail(addr, sym).then(function(data) {
+      // Posts
+      var postsContainer = document.getElementById('dex-posts-lazy');
+      if (postsContainer) {
+        var tempCoin = Object.assign({}, coin, { social_posts_data: data.social_posts_data || [] });
+        postsContainer.innerHTML = renderDexPostsSection(tempCoin);
+      }
+
+      // LP Locker — coinオブジェクトにも反映(セキュリティガイド用)
+      if (data.lp_lock_expiry_ts || data.lp_has_permanent_lock) {
+        coin.lp_lock_expiry_ts = data.lp_lock_expiry_ts;
+        coin.lp_has_permanent_lock = data.lp_has_permanent_lock;
+        coin.lp_total_locked_usd = data.lp_total_locked_usd;
+        coin.lp_locker_count = data.lp_locker_count;
+
+        // LP Lock期限表示を更新
+        var lpExpiryEl = document.getElementById('dex-lp-expiry-lazy');
+        if (lpExpiryEl) {
+          if (data.lp_has_permanent_lock) {
+            lpExpiryEl.innerHTML = '<div style="font-size:10px;color:#22c55e">\u{1F525} 永久ロック</div>';
+          } else if (data.lp_lock_expiry_ts) {
+            var nowSec = Math.floor(Date.now() / 1000);
+            var daysLeft = Math.floor((data.lp_lock_expiry_ts - nowSec) / 86400);
+            if (daysLeft > 0) {
+              var expiryColor = daysLeft > 180 ? '#22c55e' : daysLeft > 30 ? '#f59e0b' : '#ef4444';
+              lpExpiryEl.innerHTML = '<div style="font-size:10px;color:' + expiryColor + '">\u23F0 ' + daysLeft + '日後解除</div>';
+            } else {
+              lpExpiryEl.innerHTML = '<div style="font-size:10px;color:#ef4444">\u{1F6A8} 期限切れ</div>';
+            }
+          }
+        }
+      }
+    }).catch(function(e) {
+      var postsContainer = document.getElementById('dex-posts-lazy');
+      if (postsContainer) postsContainer.innerHTML = '';
+    });
+  }
+
   // ===== 詳細画面 =====
   function renderDetailScreen() {
     var ticker = appState.selectedCurrency;
@@ -6227,7 +6279,10 @@
     // DEXコイン分岐: Moonshot Early Detectionからの遷移時
     var moonshotCoin = window._pendingMoonshotCoin;
     if (moonshotCoin && moonshotCoin.symbol === ticker) {
-      return renderDexDetailScreen(moonshotCoin);
+      var html = renderDexDetailScreen(moonshotCoin);
+      // Posts + LP Lockerを遅延取得
+      setTimeout(function() { _lazyLoadDexDetail(moonshotCoin); }, 100);
+      return html;
     }
 
     var allResults = kairosData.all_results || [];
