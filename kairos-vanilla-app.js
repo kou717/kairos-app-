@@ -5663,16 +5663,23 @@
     if (!body) return;
     var isOpen = body.classList.contains('open');
     if (isOpen) {
+      // 閉じる: まずoverflowをhiddenにし、現在の高さを固定してから0へ
+      body.style.overflow = 'hidden';
       body.style.height = body.scrollHeight + 'px';
       requestAnimationFrame(function() { body.style.height = '0px'; });
       body.classList.remove('open');
       if (chevron) chevron.classList.remove('open');
     } else {
+      // 開く: overflow hiddenのまま高さをアニメ、完了後にauto+visible
+      body.style.overflow = 'hidden';
       body.style.height = body.scrollHeight + 'px';
       body.classList.add('open');
       if (chevron) chevron.classList.add('open');
       body.addEventListener('transitionend', function handler() {
-        body.style.height = 'auto';
+        if (body.classList.contains('open')) {
+          body.style.height = 'auto';
+          body.style.overflow = 'visible';
+        }
         body.removeEventListener('transitionend', handler);
       });
     }

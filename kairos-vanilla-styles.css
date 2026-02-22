@@ -12785,10 +12785,6 @@ body.has-ticker-bar {
   transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.dex-detail__sec-accordion.open {
-  overflow: visible;
-}
-
 /* セキュリティ項目 2列グリッド（3段セル） */
 .dex-detail__sec-grid {
   display: grid;
