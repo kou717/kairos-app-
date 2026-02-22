@@ -5712,7 +5712,13 @@
       '</div>';
     }
     if (coin.ai_potential) {
-      html += '<div class="dex-detail__ai-potential">🎯 ポテンシャル: ' + coin.ai_potential + '</div>';
+      html += '<div class="dex-detail__ai-potential">\u{1F3AF} ポテンシャル: ' + coin.ai_potential + '</div>';
+    }
+    if (coin.ai_strategy_ja) {
+      html += '<div class="dex-detail__ai-strategy">' +
+        '<div class="dex-detail__section-title">\u{1F9E0} 作戦アドバイス</div>' +
+        '<div class="dex-detail__ai-text">' + coin.ai_strategy_ja + '</div>' +
+      '</div>';
     }
 
     // AI価格予想

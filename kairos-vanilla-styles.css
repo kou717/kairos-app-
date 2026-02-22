@@ -12556,6 +12556,20 @@ body.has-ticker-bar {
   margin-bottom: 8px;
 }
 
+.dex-detail__ai-strategy {
+  padding: 12px;
+  background: rgba(212, 168, 83, 0.08);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  border-left: 3px solid #d4a853;
+}
+
+.dex-detail__ai-strategy .dex-detail__ai-text {
+  color: #e2e8f0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .dex-detail__red-flags {
   margin-top: 8px;
 }
