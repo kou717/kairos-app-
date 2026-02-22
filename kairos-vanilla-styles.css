@@ -12740,48 +12740,57 @@ body.has-ticker-bar {
   font-weight: 600;
 }
 
-/* セキュリティ項目 縦リスト */
-.dex-detail__security-items {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+/* セキュリティ項目 2列グリッド（3段セル） */
+.dex-detail__sec-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
   margin-top: 10px;
 }
 
-.dex-detail__security-row {
-  padding: 10px 12px;
+.dex-detail__sec-cell {
+  padding: 8px 10px;
   background: rgba(0, 0, 0, 0.2);
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
-.dex-detail__security-row:active {
+.dex-detail__sec-cell:active {
   background: rgba(255, 255, 255, 0.08);
 }
 
-.dex-detail__security-row-label {
-  font-size: 12px;
+.dex-detail__sec-cell-label {
+  font-size: 10px;
   font-weight: 600;
-  color: #e2e8f0;
-  margin-bottom: 4px;
-}
-
-.dex-detail__security-row-value {
-  font-size: 12px;
   color: #94a3b8;
-  line-height: 1.4;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.dex-detail__security-row-desc {
-  font-size: 11px;
-  color: #94a3b8;
-  margin-left: 4px;
+.dex-detail__sec-cell-q {
+  font-size: 9px;
+  color: #64748b;
 }
 
-.dex-detail__security-row-extra {
-  margin-top: 4px;
-  font-size: 11px;
+.dex-detail__sec-cell-val {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 2px;
+}
+
+.dex-detail__sec-cell-desc {
+  font-size: 10px;
+  color: #64748b;
+  line-height: 1.3;
+}
+
+.dex-detail__sec-cell-extra {
+  margin-top: 3px;
+  font-size: 10px;
 }
 
 .dex-detail__security-risks {

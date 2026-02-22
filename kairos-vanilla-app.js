@@ -5955,100 +5955,83 @@
             '</div>';
           }
 
-          // 項目リスト構築
-          var itemsHtml = '';
+          // 項目グリッド構築（2列 x 3段セル）
+          var cells = [];
           var hasGoplus = coin.goplus_holder_count > 0 || coin.goplus_honeypot;
+
+          // セルヘルパー: {term, icon, label, val, valColor, desc, extra?}
+          function secCell(c) {
+            return '<div class="dex-detail__sec-cell" onclick="window.openTermPopup(\'' + c.term + '\')">' +
+              '<div class="dex-detail__sec-cell-label">' + c.icon + ' ' + c.label + ' <span class="dex-detail__sec-cell-q">?</span></div>' +
+              '<div class="dex-detail__sec-cell-val" style="color:' + c.valColor + '">' + c.val + '</div>' +
+              '<div class="dex-detail__sec-cell-desc">' + c.desc + '</div>' +
+              (c.extra || '') +
+            '</div>';
+          }
 
           // 1. LP Lock
           if (coin.lp_locked_pct != null && coin.lp_locked_pct >= 0) {
             var lp = coin.lp_locked_pct;
             var lpOk = lp > 50;
             var lpColor = lpOk ? '#22c55e' : lp > 0 ? '#f59e0b' : '#ef4444';
-            var lpMsg = lpOk ? '流動性がロックされています' : lp > 0 ? '一部のみロック — 引き抜きの可能性あり' : '未ロック — ラグプル注意';
-            var lpExtra = '<span id="dex-lp-expiry-lazy"></span>';
-            itemsHtml += '<div class="dex-detail__security-row" onclick="window.openTermPopup(\'lp_lock\')">' +
-              '<div class="dex-detail__security-row-label">\u{1F512} LP Lock <span style="font-size:10px;color:#64748b">?</span></div>' +
-              '<div class="dex-detail__security-row-value"><span style="color:' + lpColor + ';font-weight:600">' + lp.toFixed(1) + '%</span> <span class="dex-detail__security-row-desc">' + lpMsg + '</span></div>' +
-              '<div class="dex-detail__security-row-extra">' + lpExtra + '</div>' +
-            '</div>';
+            var lpDesc = lpOk ? 'ロック済み' : lp > 0 ? '一部ロック' : '未ロック';
+            cells.push(secCell({term:'lp_lock', icon:'\u{1F512}', label:'LP Lock', val:lp.toFixed(1)+'%', valColor:lpColor, desc:lpDesc, extra:'<div class="dex-detail__sec-cell-extra"><span id="dex-lp-expiry-lazy"></span></div>'}));
           }
 
-          // 2. ハニーポット（GoPlus）
-          if (hasGoplus && coin.goplus_honeypot != null) {
-            var hpColor = coin.goplus_honeypot ? '#ef4444' : '#22c55e';
-            var hpVal = coin.goplus_honeypot ? '\u26A0\uFE0F 検出' : '\u2705 なし';
-            var hpMsg = coin.goplus_honeypot ? '売却できないトラップ — 購入禁止' : '売買ブロックなし';
-            itemsHtml += '<div class="dex-detail__security-row" onclick="window.openTermPopup(\'honeypot\')">' +
-              '<div class="dex-detail__security-row-label">\u{1F6AB} ハニーポット <span style="font-size:10px;color:#64748b">?</span></div>' +
-              '<div class="dex-detail__security-row-value"><span style="color:' + hpColor + ';font-weight:600">' + hpVal + '</span> <span class="dex-detail__security-row-desc">' + hpMsg + '</span></div>' +
-            '</div>';
-          }
-
-          // 3. 売却Tax（GoPlus）
+          // 2. 売却Tax（GoPlus）
           if (hasGoplus && coin.goplus_sell_tax != null && coin.goplus_sell_tax >= 0) {
             var st = coin.goplus_sell_tax;
             var stColor = st > 10 ? '#ef4444' : st > 5 ? '#f59e0b' : '#22c55e';
-            var stMsg = st > 10 ? '売却時に10%以上のTax — 利益が大幅に減少' : st > 5 ? '売却時にTaxあり — 利益に影響' : '売却Tax低い';
-            itemsHtml += '<div class="dex-detail__security-row" onclick="window.openTermPopup(\'sell_tax\')">' +
-              '<div class="dex-detail__security-row-label">\u{1F4B8} 売却Tax <span style="font-size:10px;color:#64748b">?</span></div>' +
-              '<div class="dex-detail__security-row-value"><span style="color:' + stColor + ';font-weight:600">' + st.toFixed(1) + '%</span> <span class="dex-detail__security-row-desc">' + stMsg + '</span></div>' +
-            '</div>';
+            var stDesc = st > 10 ? 'Tax非常に高い' : st > 5 ? 'Taxやや高い' : 'Tax低い';
+            cells.push(secCell({term:'sell_tax', icon:'\u{1F4B8}', label:'売却Tax', val:st.toFixed(1)+'%', valColor:stColor, desc:stDesc}));
           }
 
-          // 4. Top10保有
+          // 3. Top10保有
           if (coin.holder_top10_pct != null && coin.holder_top10_pct >= 0) {
             var t10 = coin.holder_top10_pct;
             var t10Color = t10 > 50 ? '#ef4444' : t10 > 30 ? '#f59e0b' : '#22c55e';
-            var t10Msg = t10 < 30 ? '保有が分散しています' : t10 <= 50 ? 'やや集中 — 大口売りに注意' : '保有が集中 — 暴落リスク高';
-            itemsHtml += '<div class="dex-detail__security-row" onclick="window.openTermPopup(\'top10\')">' +
-              '<div class="dex-detail__security-row-label">\u{1F465} Top10保有 <span style="font-size:10px;color:#64748b">?</span></div>' +
-              '<div class="dex-detail__security-row-value"><span style="color:' + t10Color + ';font-weight:600">' + t10.toFixed(1) + '%</span> <span class="dex-detail__security-row-desc">' + t10Msg + '</span></div>' +
-            '</div>';
+            var t10Desc = t10 < 30 ? '分散している' : t10 <= 50 ? 'やや集中' : '集中 — 暴落リスク';
+            cells.push(secCell({term:'top10', icon:'\u{1F465}', label:'Top10保有', val:t10.toFixed(1)+'%', valColor:t10Color, desc:t10Desc}));
           }
 
-          // 5. Mint権限
+          // 4. Mint権限
           if (coin.has_mint_authority != null) {
             var mintColor = coin.has_mint_authority ? '#ef4444' : '#22c55e';
             var mintVal = coin.has_mint_authority ? '\u26A0\uFE0F あり' : '\u2705 なし';
-            var mintMsg = coin.has_mint_authority ? '運営がコインを無限に増やせます' : '新規発行はできません';
-            itemsHtml += '<div class="dex-detail__security-row" onclick="window.openTermPopup(\'mint\')">' +
-              '<div class="dex-detail__security-row-label">\u{1F3ED} Mint権限 <span style="font-size:10px;color:#64748b">?</span></div>' +
-              '<div class="dex-detail__security-row-value"><span style="color:' + mintColor + ';font-weight:600">' + mintVal + '</span> <span class="dex-detail__security-row-desc">' + mintMsg + '</span></div>' +
-            '</div>';
+            var mintDesc = coin.has_mint_authority ? '無限発行可能' : '発行不可';
+            cells.push(secCell({term:'mint', icon:'\u{1F3ED}', label:'Mint権限', val:mintVal, valColor:mintColor, desc:mintDesc}));
           }
 
-          // 6. Freeze権限
+          // 5. Freeze権限
           if (coin.has_freeze_authority != null) {
             var frzColor = coin.has_freeze_authority ? '#ef4444' : '#22c55e';
             var frzVal = coin.has_freeze_authority ? '\u26A0\uFE0F あり' : '\u2705 なし';
-            var frzMsg = coin.has_freeze_authority ? '運営があなたの資産を凍結できます' : '資産凍結の権限はありません';
-            itemsHtml += '<div class="dex-detail__security-row" onclick="window.openTermPopup(\'freeze\')">' +
-              '<div class="dex-detail__security-row-label">\u{1F9CA} Freeze権限 <span style="font-size:10px;color:#64748b">?</span></div>' +
-              '<div class="dex-detail__security-row-value"><span style="color:' + frzColor + ';font-weight:600">' + frzVal + '</span> <span class="dex-detail__security-row-desc">' + frzMsg + '</span></div>' +
-            '</div>';
+            var frzDesc = coin.has_freeze_authority ? '資産凍結の恐れ' : '凍結権限なし';
+            cells.push(secCell({term:'freeze', icon:'\u{1F9CA}', label:'Freeze権限', val:frzVal, valColor:frzColor, desc:frzDesc}));
           }
 
-          // 7. 保有者数（GoPlus）
+          // 6. 保有者数（GoPlus）
           if (hasGoplus && coin.goplus_holder_count > 0) {
             var hc = coin.goplus_holder_count;
             var hcColor = hc > 500 ? '#22c55e' : hc > 100 ? '#f59e0b' : '#ef4444';
-            var hcMsg = hc > 500 ? '多くの人が保有 — コミュニティあり' : hc > 100 ? '保有者数はやや少なめ' : '保有者数が非常に少ない — 操作リスク';
-            itemsHtml += '<div class="dex-detail__security-row" onclick="window.openTermPopup(\'holders\')">' +
-              '<div class="dex-detail__security-row-label">\u{1F50D} 保有者数 <span style="font-size:10px;color:#64748b">?</span></div>' +
-              '<div class="dex-detail__security-row-value"><span style="color:' + hcColor + ';font-weight:600">' + hc.toLocaleString() + '</span> <span class="dex-detail__security-row-desc">' + hcMsg + '</span></div>' +
-            '</div>';
+            var hcDesc = hc > 500 ? 'コミュニティあり' : hc > 100 ? 'やや少ない' : '操作リスク高';
+            cells.push(secCell({term:'holders', icon:'\u{1F50D}', label:'保有者数', val:hc.toLocaleString(), valColor:hcColor, desc:hcDesc}));
           }
 
-          // 8. 作成者保有（GoPlus）
+          // 7. 作成者保有（GoPlus）
           if (hasGoplus && coin.goplus_creator_percent > 0) {
             var cp = coin.goplus_creator_percent;
             var cpColor = cp > 30 ? '#ef4444' : cp > 10 ? '#f59e0b' : '#22c55e';
-            var cpMsg = cp > 30 ? '作成者が30%以上保有 — 大量売却リスク' : cp > 10 ? '作成者保有やや多め' : '作成者保有少ない';
-            itemsHtml += '<div class="dex-detail__security-row" onclick="window.openTermPopup(\'creator\')">' +
-              '<div class="dex-detail__security-row-label">\u{1F464} 作成者保有 <span style="font-size:10px;color:#64748b">?</span></div>' +
-              '<div class="dex-detail__security-row-value"><span style="color:' + cpColor + ';font-weight:600">' + cp.toFixed(1) + '%</span> <span class="dex-detail__security-row-desc">' + cpMsg + '</span></div>' +
-            '</div>';
+            var cpDesc = cp > 30 ? '売却リスク高' : cp > 10 ? 'やや多め' : '保有少ない';
+            cells.push(secCell({term:'creator', icon:'\u{1F464}', label:'作成者保有', val:cp.toFixed(1)+'%', valColor:cpColor, desc:cpDesc}));
           }
+
+          // 8. ハニーポット（GoPlus） — バナーがない場合のみセルとして表示
+          if (hasGoplus && coin.goplus_honeypot != null && !coin.goplus_honeypot) {
+            cells.push(secCell({term:'honeypot', icon:'\u{1F6AB}', label:'ハニーポット', val:'\u2705 なし', valColor:'#22c55e', desc:'売買ブロックなし'}));
+          }
+
+          var itemsHtml = '<div class="dex-detail__sec-grid">' + cells.join('') + '</div>';
 
           // リスクタグ
           var risksHtml = '';
@@ -6066,9 +6049,7 @@
             verifyBadge +
             honeypotBanner +
             scoreHtml +
-            '<div class="dex-detail__security-items">' +
-              itemsHtml +
-            '</div>' +
+            itemsHtml +
             risksHtml +
           '</div>';
         })() +
