@@ -12719,19 +12719,32 @@ body.has-ticker-bar {
   justify-content: center;
 }
 
-.dex-detail__security-score-circle {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: 3px solid;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.3);
+/* SVG円形ゲージ */
+.dex-detail__security-gauge {
+  position: relative;
+  width: 60px;
+  height: 60px;
+}
+
+.dex-detail__security-gauge-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.dex-detail__security-gauge-arc {
+  transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dex-detail__security-gauge .dex-detail__security-score-value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .dex-detail__security-score-value {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
 }
 
