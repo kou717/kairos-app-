@@ -11319,6 +11319,13 @@ body.has-ticker-bar {
   color: #c4b5fd;
   margin-bottom: 6px;
 }
+.ai-model-tag {
+  font-size: 10px;
+  color: #64748b;
+  font-weight: 500;
+  opacity: 0.7;
+  white-space: nowrap;
+}
 .early-mover__ai-hint--loading {
   color: #94a3b8;
   background: rgba(148,163,184,0.06);

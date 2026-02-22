@@ -5480,7 +5480,7 @@
         (coin.goplus_honeypot ? '<div class="early-mover__security-hint early-mover__security-hint--danger">\u{1F6AB} ハニーポット警告</div>' :
          coin.security_cross_verified && coin.combined_trust === 'high' ? '<div class="early-mover__security-hint early-mover__security-hint--safe">\u{1F6E1}\uFE0F 2ソース検証済</div>' :
          (coin.combined_trust === 'low' || coin.combined_trust === 'danger') ? '<div class="early-mover__security-hint early-mover__security-hint--warn">\u26A0\uFE0F セキュリティ要注意</div>' : '') +
-        (coin.ai_summary_ja ? '<div class="early-mover__ai-hint">\u{1F916} ' + coin.ai_summary_ja + '</div>' : '') +
+        (coin.ai_summary_ja ? '<div class="early-mover__ai-hint">\u{1F916} ' + coin.ai_summary_ja + (coin.ai_model ? ' <span class="ai-model-tag">[' + coin.ai_model.replace('models/', '').replace('-preview', '') + ']</span>' : '') + '</div>' : '') +
         // 価格予想ミニ
         (coin.ai_price_prediction && coin.ai_price_prediction['1h'] ?
           '<div class="early-mover__prediction-mini">' +
@@ -5857,15 +5857,16 @@
     if (!coin.ai_summary_ja && !coin.ai_reason_ja) return html;
 
     html += '<div class="dex-detail__ai-section">';
+    var modelTag = coin.ai_model ? ' <span class="ai-model-tag">[' + coin.ai_model.replace('models/', '').replace('-preview', '') + ']</span>' : '';
     if (coin.ai_summary_ja) {
       html += '<div class="dex-detail__ai-desc">' +
-        '<div class="dex-detail__section-title">🤖 AI説明</div>' +
+        '<div class="dex-detail__section-title">🤖 AI説明' + modelTag + '</div>' +
         '<div class="dex-detail__ai-text">' + coin.ai_summary_ja + '</div>' +
       '</div>';
     }
     if (coin.ai_reason_ja) {
       html += '<div class="dex-detail__pump-reason">' +
-        '<div class="dex-detail__section-title">💡 上昇理由</div>' +
+        '<div class="dex-detail__section-title">💡 上昇理由' + modelTag + '</div>' +
         '<div class="dex-detail__ai-text">' + coin.ai_reason_ja + '</div>' +
       '</div>';
     }
@@ -6031,7 +6032,7 @@
         '</div>' +
 
         // コイン概要説明
-        (coin.ai_description_ja ? '<div class="dex-detail__coin-desc">\u{1F4CB} ' + coin.ai_description_ja + '</div>' : '') +
+        (coin.ai_description_ja ? '<div class="dex-detail__coin-desc">\u{1F4CB} ' + coin.ai_description_ja + (coin.ai_model ? ' <span class="ai-model-tag">[' + coin.ai_model.replace('models/', '').replace('-preview', '') + ']</span>' : '') + '</div>' : '') +
 
         // 価格セクション
         '<div class="dex-detail__price-section" onclick="showMetricGuide(\'price_change\',event)" style="cursor:pointer">' +
