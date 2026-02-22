@@ -13431,8 +13431,8 @@
       notification.onclick = function() {
         window.focus();
         notification.close();
-        if (ticker && window.openNotificationDetailPopup) {
-          window.openNotificationDetailPopup(ticker, title, body);
+        if (ticker && window.KairosApp && window.KairosApp.viewCurrency) {
+          window.KairosApp.viewCurrency(ticker);
         }
       };
 
@@ -13504,30 +13504,83 @@
     var icon = type === 'spike' ? '📈' : '📉';
     var toast = document.createElement('div');
     toast.className = 'alert-toast alert-toast--' + (type === 'spike' ? 'spike' : 'drop');
+    toast._expanded = false;
+
+    // キャッシュからスコア取得
+    var cached = (ticker && scoreCache.data[ticker]) ? scoreCache.data[ticker] : null;
+    var stratScore = ticker && window.getStrategyScore ? window.getStrategyScore(ticker) : { score: 0, grade: '-' };
+    var grade = stratScore.grade || '-';
+    var score = stratScore.score || 0;
+    var gradeColor = (grade === 'S' || grade === 'A') ? '#22c55e' :
+                     grade === 'B' ? '#3b82f6' :
+                     grade === 'C' ? '#f59e0b' : '#ef4444';
+
     toast.innerHTML =
       '<div class="alert-toast__inner">' +
         '<div class="alert-toast__icon">' + icon + '</div>' +
         '<div class="alert-toast__content">' +
           '<div class="alert-toast__title">' + title + '</div>' +
           '<div class="alert-toast__body">' + body + '</div>' +
-          (ticker ? '<div class="alert-toast__hint">← スワイプで消去 · タップでAI解説</div>' : '') +
+          (ticker ? '<div class="alert-toast__hint">スワイプで消去 · タップで詳しく</div>' : '') +
         '</div>' +
-        (ticker ? '<div class="alert-toast__chevron">›</div>' : '') +
+        (ticker ? '<div class="alert-toast__chevron">▼</div>' : '') +
       '</div>' +
+      // 展開エリア（初期非表示）
+      (ticker ?
+        '<div class="alert-toast__expand">' +
+          '<div class="alert-toast__expand-row">' +
+            '<div class="alert-toast__grade" style="color:' + gradeColor + '">' + grade + '</div>' +
+            '<div class="alert-toast__score-num">Score ' + score + '</div>' +
+            '<div class="alert-toast__signal-area" id="toast-signal-' + ticker + '">---</div>' +
+          '</div>' +
+          '<div class="alert-toast__ai-text" id="toast-ai-' + ticker + '">AI分析を取得中...</div>' +
+          '<div class="alert-toast__detail-btn" id="toast-detail-' + ticker + '">詳細を見る →</div>' +
+        '</div>' : '') +
       '<div class="alert-toast__progress"></div>';
 
     _alertToastActive = toast;
 
-    // タップ → AI解説ポップアップ
+    // タップ → 展開/折りたたみ
     if (ticker) {
       toast.addEventListener('click', function(e) {
         if (toast._swiping) return;
-        _dismissActiveToast(function() {
-          if (window.openNotificationDetailPopup) {
-            window.openNotificationDetailPopup(ticker, title, body);
-          }
-          _showNextToast();
-        });
+        // 「詳細を見る」ボタンクリック
+        var detailBtn = document.getElementById('toast-detail-' + ticker);
+        if (detailBtn && (e.target === detailBtn || detailBtn.contains(e.target))) {
+          _dismissActiveToast(function() {
+            if (window.KairosApp && window.KairosApp.viewCurrency) {
+              window.KairosApp.viewCurrency(ticker);
+            }
+            _showNextToast();
+          });
+          return;
+        }
+        // 展開トグル
+        if (!toast._expanded) {
+          toast._expanded = true;
+          toast.classList.add('alert-toast--expanded');
+          // 自動消去を停止
+          clearTimeout(autoTimer);
+          // プログレスバーも停止
+          var prog = toast.querySelector('.alert-toast__progress');
+          if (prog) prog.style.animationPlayState = 'paused';
+          // シェブロン変更
+          var chevron = toast.querySelector('.alert-toast__chevron');
+          if (chevron) chevron.textContent = '▲';
+          // AI分析を非同期取得
+          _fetchToastAI(ticker);
+        } else {
+          toast._expanded = false;
+          toast.classList.remove('alert-toast--expanded');
+          var chevron2 = toast.querySelector('.alert-toast__chevron');
+          if (chevron2) chevron2.textContent = '▼';
+          // 自動消去を再開(5秒)
+          autoTimer = setTimeout(function() {
+            _dismissActiveToast(_showNextToast);
+          }, 5000);
+          var prog2 = toast.querySelector('.alert-toast__progress');
+          if (prog2) { prog2.style.animation = 'none'; prog2.offsetHeight; prog2.style.animation = 'alertProgress 5s linear forwards'; }
+        }
       });
     }
 
@@ -13582,6 +13635,35 @@
       clearTimeout(autoTimer);
       origRemove();
     };
+  }
+
+  // トースト展開時のAI分析取得
+  function _fetchToastAI(ticker) {
+    var signalEl = document.getElementById('toast-signal-' + ticker);
+    var aiEl = document.getElementById('toast-ai-' + ticker);
+    if (!aiEl) return;
+
+    var signalText = {
+      'strong_buy': '🟢 強い買い', 'buy': '🟢 買い',
+      'neutral': '🟡 中立', 'sell': '🔴 売り', 'strong_sell': '🔴 強い売り'
+    };
+
+    if (typeof BackendAPI !== 'undefined' && BackendAPI.getAIAnalysis) {
+      BackendAPI.getAIAnalysis(ticker).then(function(data) {
+        var ai = data.ai_analysis || {};
+        if (signalEl && ai.signal) signalEl.textContent = signalText[ai.signal] || ai.signal;
+        if (aiEl) {
+          var text = ai.summary || 'AI分析データなし';
+          // 長い場合は80文字で切る
+          if (text.length > 80) text = text.substring(0, 80) + '...';
+          aiEl.textContent = text;
+        }
+      }).catch(function() {
+        if (aiEl) aiEl.textContent = 'AI分析を取得できませんでした';
+      });
+    } else {
+      if (aiEl) aiEl.textContent = 'AI分析が利用できません';
+    }
   }
 
   function showAlertToast(title, body, type, ticker) {

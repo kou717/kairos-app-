@@ -12931,9 +12931,71 @@ body.has-ticker-bar {
 }
 .alert-toast__chevron {
   flex-shrink: 0;
-  opacity: 0.5;
-  font-size: 18px;
+  opacity: 0.4;
+  font-size: 12px;
+  transition: transform 0.3s ease;
 }
+.alert-toast--expanded .alert-toast__chevron {
+  transform: rotate(180deg);
+}
+
+/* 展開エリア */
+.alert-toast__expand {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.25s ease, margin-top 0.3s ease;
+  margin-top: 0;
+}
+.alert-toast--expanded .alert-toast__expand {
+  max-height: 200px;
+  opacity: 1;
+  margin-top: 12px;
+}
+.alert-toast__expand-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.alert-toast__grade {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+}
+.alert-toast__score-num {
+  font-size: 12px;
+  opacity: 0.7;
+  font-weight: 600;
+}
+.alert-toast__signal-area {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 700;
+}
+.alert-toast__ai-text {
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 0.85;
+  padding: 8px 10px;
+  background: rgba(0,0,0,0.15);
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+.alert-toast__detail-btn {
+  text-align: center;
+  padding: 10px;
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.18);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.alert-toast__detail-btn:active {
+  background: rgba(255,255,255,0.3);
+}
+
 .alert-toast__progress {
   position: absolute;
   bottom: 0;
