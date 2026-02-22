@@ -5530,311 +5530,122 @@
   window.openEarlyMoverDetail = openEarlyMoverDetail;
 
 
-  // ===== セキュリティ解説ポップアップ =====
-  function openSecurityGuidePopup(data) {
-    var existing = document.getElementById('security-guide-popup');
+  // ===== 用語解説ポップアップ（個別項目） =====
+  var _termGuideData = {
+    safety_score: {
+      icon: '\u{1F6E1}\uFE0F', title: '安全度スコアの見方',
+      html: '<div style="display:flex;gap:6px;margin-bottom:8px">' +
+        '<div style="flex:1;text-align:center;padding:8px 4px;background:rgba(34,197,94,0.12);border-radius:6px">' +
+          '<div style="font-size:16px">\u{1F7E2}</div>' +
+          '<div style="font-size:11px;font-weight:600;color:#22c55e">70\u301C100</div>' +
+          '<div style="font-size:10px;color:#94a3b8">安全</div>' +
+        '</div>' +
+        '<div style="flex:1;text-align:center;padding:8px 4px;background:rgba(245,158,11,0.12);border-radius:6px">' +
+          '<div style="font-size:16px">\u{1F7E1}</div>' +
+          '<div style="font-size:11px;font-weight:600;color:#f59e0b">40\u301C69</div>' +
+          '<div style="font-size:10px;color:#94a3b8">注意</div>' +
+        '</div>' +
+        '<div style="flex:1;text-align:center;padding:8px 4px;background:rgba(239,68,68,0.12);border-radius:6px">' +
+          '<div style="font-size:16px">\u{1F534}</div>' +
+          '<div style="font-size:11px;font-weight:600;color:#ef4444">0\u301C39</div>' +
+          '<div style="font-size:10px;color:#94a3b8">危険</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="font-size:11px;color:#94a3b8;line-height:1.5">Rugcheck.xyzのリスクスコアを100点満点に変換した安全度。GoPlus検出があれば強制的にDangerとなります。</div>'
+    },
+    honeypot: {
+      icon: '\u{1F6AB}', title: 'ハニーポット',
+      html: '<div style="font-size:11px;color:#94a3b8;line-height:1.5">' +
+        '買えるが売れないようにプログラムされたトラップトークン。' +
+        '<br><br><span style="color:#22c55e">\u2705 なし</span> = 売買に制限なし' +
+        '<br><span style="color:#ef4444">\u26A0\uFE0F 検出</span> = 絶対に購入しないでください' +
+      '</div>'
+    },
+    lp_lock: {
+      icon: '\u{1F512}', title: 'LP Lock（流動性ロック）',
+      html: '<div style="font-size:11px;color:#94a3b8;line-height:1.5">' +
+        'コインを売買するための資金プール（LP）が引き出せないようロックされているかどうか。' +
+        '<br><br><span style="color:#22c55e">高い</span> = 運営が資金を持ち逃げしにくい' +
+        '<br><span style="color:#ef4444">0%</span> = いつでも資金を引き抜ける（ラグプル危険）' +
+        '<br><br>\u{1F525} 永久ロック = バーンアドレスに送付済み（最も安全）' +
+        '<br>\u23F0 期限付き = ロック解除日に注意（180日以上推奨）' +
+      '</div>'
+    },
+    sell_tax: {
+      icon: '\u{1F4B8}', title: '売却Tax（手数料）',
+      html: '<div style="font-size:11px;color:#94a3b8;line-height:1.5">' +
+        '売却時に自動で徴収される手数料の割合。' +
+        '<br><br><span style="color:#22c55e">0-1%</span> = 一般的な範囲' +
+        '<br><span style="color:#f59e0b">5-10%</span> = 利益に大きく影響' +
+        '<br><span style="color:#ef4444">10%超</span> = 非常に高い — 利益がほぼ消える可能性' +
+      '</div>'
+    },
+    top10: {
+      icon: '\u{1F465}', title: 'Top10保有率',
+      html: '<div style="font-size:11px;color:#94a3b8;line-height:1.5">' +
+        '上位10アドレスが全体の何%を持っているか。' +
+        '<br><br><span style="color:#22c55e">30%未満</span> = 分散している（安全）' +
+        '<br><span style="color:#f59e0b">30-50%</span> = やや集中（大口売りに注意）' +
+        '<br><span style="color:#ef4444">50%超</span> = 大口が売ると暴落する恐れ' +
+      '</div>'
+    },
+    mint: {
+      icon: '\u{1F3ED}', title: 'Mint権限（追加発行）',
+      html: '<div style="font-size:11px;color:#94a3b8;line-height:1.5">' +
+        '運営がコインを新たに無限発行できる権限。' +
+        '<br><br><span style="color:#22c55e">\u2705 なし</span> = 供給量が固定（安心）' +
+        '<br><span style="color:#ef4444">\u26A0\uFE0F あり</span> = 大量発行で価値が希薄化する恐れ' +
+      '</div>'
+    },
+    freeze: {
+      icon: '\u{1F9CA}', title: 'Freeze権限（資産凍結）',
+      html: '<div style="font-size:11px;color:#94a3b8;line-height:1.5">' +
+        '運営が特定のウォレットの残高を凍結できる権限。' +
+        '<br><br><span style="color:#22c55e">\u2705 なし</span> = 自由に売買できる（安心）' +
+        '<br><span style="color:#ef4444">\u26A0\uFE0F あり</span> = あなたのコインが売れなくなる恐れ' +
+      '</div>'
+    },
+    holders: {
+      icon: '\u{1F50D}', title: '保有者数',
+      html: '<div style="font-size:11px;color:#94a3b8;line-height:1.5">' +
+        'このトークンを保有しているユニークなウォレット数。' +
+        '<br><br><span style="color:#22c55e">500人超</span> = コミュニティあり（安定）' +
+        '<br><span style="color:#f59e0b">100-500人</span> = やや少なめ' +
+        '<br><span style="color:#ef4444">100人未満</span> = 操作リスクが高い' +
+      '</div>'
+    },
+    creator: {
+      icon: '\u{1F464}', title: '作成者保有率',
+      html: '<div style="font-size:11px;color:#94a3b8;line-height:1.5">' +
+        'トークン作成者が全体の何%を保有しているか。' +
+        '<br><br><span style="color:#22c55e">10%未満</span> = 作成者保有少ない（安心）' +
+        '<br><span style="color:#f59e0b">10-30%</span> = やや多め（注意）' +
+        '<br><span style="color:#ef4444">30%超</span> = 大量売却リスク' +
+      '</div>'
+    }
+  };
+
+  function openTermPopup(termKey) {
+    var existing = document.getElementById('term-popup');
     if (existing) existing.remove();
 
-    var hasData = data && data.s != null && data.s >= 0;
-    var hasGoplus = data && (data.hp != null || data.hc > 0);
-
-    // 現在のコインの状態を信号機で表示
-    var signalHtml = '';
-
-    // クロス検証ステータスバナー
-    if (data && (hasData || hasGoplus)) {
-      var cvColor = data.cv ? '#22c55e' : '#f59e0b';
-      var cvBg = data.cv ? 'rgba(34,197,94,0.08)' : 'rgba(245,158,11,0.08)';
-      var cvText = data.cv ? '\u2713 2ソース検証済（Rugcheck + GoPlus）' : (data.src || 0) + 'ソースのみ';
-      var trustLabel = {high: '\u{1F7E2} 信頼度: 高', medium: '\u{1F7E1} 信頼度: 中', low: '\u{1F7E0} 信頼度: 低', danger: '\u{1F534} 信頼度: 危険'}[data.trust || 'low'] || '\u{1F7E0} 信頼度: 低';
-      signalHtml +=
-        '<div style="padding:10px 12px;background:' + cvBg + ';border-radius:8px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;border:1px solid ' + cvColor + '33">' +
-          '<span style="font-size:11px;font-weight:600;color:' + cvColor + '">' + cvText + '</span>' +
-          '<span style="font-size:11px;color:#e2e8f0">' + trustLabel + '</span>' +
-        '</div>';
-    }
-
-    // ハニーポット警告（最優先）
-    if (data && data.hp) {
-      signalHtml +=
-        '<div style="padding:14px;background:rgba(239,68,68,0.15);border-radius:12px;margin-bottom:16px;border:2px solid #ef4444">' +
-          '<div style="text-align:center">' +
-            '<div style="font-size:28px;margin-bottom:6px">\u{1F6AB}</div>' +
-            '<div style="font-size:16px;font-weight:700;color:#ef4444">ハニーポット検出</div>' +
-            '<div style="font-size:12px;color:#f87171;margin-top:6px;line-height:1.5">このトークンは<b>売却できない</b>可能性が高いです。<br>買っても売れず、資金が失われるトラップです。<br><b>絶対に購入しないでください。</b></div>' +
-          '</div>' +
-        '</div>';
-    }
-
-    if (hasData) {
-      var s = data.s;
-      var signalColor = s >= 70 ? '#22c55e' : s >= 40 ? '#f59e0b' : '#ef4444';
-      var signalBg = s >= 70 ? 'rgba(34,197,94,0.12)' : s >= 40 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)';
-      var signalEmoji = s >= 70 ? '\u{1F7E2}' : s >= 40 ? '\u{1F7E1}' : '\u{1F534}';
-      var signalMsg = s >= 70 ? 'このコインは比較的安全と判定されています' : s >= 40 ? 'このコインにはいくつかの注意点があります' : 'このコインは高リスクです。十分注意してください';
-      if (data.hp) { signalColor = '#ef4444'; signalBg = 'rgba(239,68,68,0.12)'; signalEmoji = '\u{1F534}'; signalMsg = 'ハニーポット検出 — 絶対に購入しないでください'; }
-      signalHtml +=
-        '<div style="padding:16px;background:' + signalBg + ';border-radius:12px;margin-bottom:16px;border:1px solid ' + signalColor + '33">' +
-          '<div style="text-align:center;margin-bottom:8px">' +
-            '<span style="font-size:32px">' + signalEmoji + '</span>' +
-            '<div style="font-size:18px;font-weight:700;color:' + signalColor + ';margin-top:4px">安全度 ' + s + ' / 100</div>' +
-          '</div>' +
-          '<div style="text-align:center;font-size:13px;color:' + signalColor + '">' + signalMsg + '</div>' +
-        '</div>';
-
-      // 各項目の診断結果
-      var items = [];
-      if (data.lp != null && data.lp >= 0) {
-        var lpOk = data.lp > 50;
-        var lpWarn = data.lp > 0 && data.lp <= 50;
-        var lpMsg = lpOk ? '流動性がロックされています' : lpWarn ? '一部のみロック — 引き抜きの可能性あり' : '未ロック — ラグプル注意';
-        // LP期限情報追加
-        if (data.lpPerm) {
-          lpMsg += '\n\u{1F525} 永久ロック（バーンアドレス）';
-        } else if (data.lpExp) {
-          var nowS = Math.floor(Date.now() / 1000);
-          var dl = Math.floor((data.lpExp - nowS) / 86400);
-          if (dl > 0) {
-            lpMsg += '\n\u23F0 ' + dl + '日後にロック解除';
-          } else {
-            lpMsg += '\n\u{1F6A8} ロック期限切れ！';
-          }
-        }
-        items.push({
-          icon: lpOk ? '\u{1F512}' : lpWarn ? '\u26A0\uFE0F' : '\u{1F6A8}',
-          label: 'LP Lock: ' + data.lp.toFixed(0) + '%',
-          color: lpOk ? '#22c55e' : lpWarn ? '#f59e0b' : '#ef4444',
-          msg: lpMsg
-        });
-      }
-      if (data.top10 != null && data.top10 >= 0) {
-        var t10Ok = data.top10 < 30;
-        var t10Warn = data.top10 >= 30 && data.top10 <= 50;
-        items.push({
-          icon: t10Ok ? '\u{1F465}' : t10Warn ? '\u26A0\uFE0F' : '\u{1F6A8}',
-          label: 'Top10保有: ' + data.top10.toFixed(0) + '%',
-          color: t10Ok ? '#22c55e' : t10Warn ? '#f59e0b' : '#ef4444',
-          msg: t10Ok ? '保有が分散しています' : t10Warn ? 'やや集中 — 大口売りに注意' : '保有が集中 — 暴落リスク高'
-        });
-      }
-      if (data.mint != null) {
-        items.push({
-          icon: data.mint ? '\u{1F6A8}' : '\u2705',
-          label: 'Mint権限: ' + (data.mint ? 'あり' : 'なし'),
-          color: data.mint ? '#ef4444' : '#22c55e',
-          msg: data.mint ? '運営がコインを無限に増やせます' : '新規発行はできません'
-        });
-      }
-      if (data.freeze != null) {
-        items.push({
-          icon: data.freeze ? '\u{1F6A8}' : '\u2705',
-          label: 'Freeze権限: ' + (data.freeze ? 'あり' : 'なし'),
-          color: data.freeze ? '#ef4444' : '#22c55e',
-          msg: data.freeze ? '運営があなたの資産を凍結できます' : '資産凍結の権限はありません'
-        });
-      }
-
-      // GoPlus項目
-      if (hasGoplus) {
-        if (data.hp != null) {
-          items.push({
-            icon: data.hp ? '\u{1F6AB}' : '\u2705',
-            label: 'ハニーポット: ' + (data.hp ? '検出' : 'なし'),
-            color: data.hp ? '#ef4444' : '#22c55e',
-            msg: data.hp ? '売却できないトラップ — 購入禁止' : 'GoPlus: 売買ブロックなし'
-          });
-        }
-        if (data.st != null && data.st > 0) {
-          var stOk = data.st <= 1;
-          items.push({
-            icon: stOk ? '\u2705' : '\u26A0\uFE0F',
-            label: '売却Tax: ' + data.st.toFixed(1) + '%',
-            color: data.st > 10 ? '#ef4444' : data.st > 5 ? '#f59e0b' : '#22c55e',
-            msg: data.st > 10 ? '売却時に10%以上のTaxが発生 — 利益が大幅に減少' : data.st > 5 ? '売却時にTaxあり — 利益に影響' : '売却Tax低い'
-          });
-        }
-        if (data.hc > 0) {
-          items.push({
-            icon: data.hc > 500 ? '\u2705' : data.hc > 100 ? '\u{1F7E1}' : '\u26A0\uFE0F',
-            label: '保有者数: ' + data.hc.toLocaleString(),
-            color: data.hc > 500 ? '#22c55e' : data.hc > 100 ? '#f59e0b' : '#ef4444',
-            msg: data.hc > 500 ? '多くの人が保有 — コミュニティあり' : data.hc > 100 ? '保有者数はやや少なめ' : '保有者数が非常に少ない — 操作リスク'
-          });
-        }
-        if (data.cp > 0) {
-          items.push({
-            icon: data.cp > 30 ? '\u{1F6A8}' : data.cp > 10 ? '\u26A0\uFE0F' : '\u2705',
-            label: '作成者保有: ' + data.cp.toFixed(1) + '%',
-            color: data.cp > 30 ? '#ef4444' : data.cp > 10 ? '#f59e0b' : '#22c55e',
-            msg: data.cp > 30 ? '作成者が30%以上保有 — 大量売却リスク' : data.cp > 10 ? '作成者保有やや多め' : '作成者保有少ない'
-          });
-        }
-      }
-
-      if (items.length > 0) {
-        signalHtml += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">';
-        items.forEach(function(it) {
-          signalHtml +=
-            '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.04);border-radius:8px;border-left:3px solid ' + it.color + '">' +
-              '<span style="font-size:18px">' + it.icon + '</span>' +
-              '<div style="flex:1">' +
-                '<div style="font-size:12px;font-weight:600;color:' + it.color + '">' + it.label + '</div>' +
-                '<div style="font-size:11px;color:#94a3b8;margin-top:2px;white-space:pre-line">' + it.msg + '</div>' +
-              '</div>' +
-            '</div>';
-        });
-        signalHtml += '</div>';
-      }
-
-      // リスクフラグ
-      if (data.risks && data.risks.length > 0) {
-        signalHtml += '<div style="padding:10px 12px;background:rgba(239,68,68,0.08);border-radius:8px;margin-bottom:16px">' +
-          '<div style="font-size:11px;font-weight:600;color:#ef4444;margin-bottom:6px">\u{1F6A9} 検出されたリスク</div>';
-        data.risks.forEach(function(r) {
-          signalHtml += '<div style="font-size:11px;color:#f87171;padding:2px 0">\u30FB' + r + '</div>';
-        });
-        signalHtml += '</div>';
-      }
-    } else if (!hasGoplus) {
-      signalHtml +=
-        '<div style="text-align:center;padding:20px 0;margin-bottom:16px;background:rgba(255,255,255,0.04);border-radius:12px">' +
-          '<div style="font-size:32px;margin-bottom:8px">\u{1F512}</div>' +
-          '<div style="font-size:14px;color:#94a3b8">このコインのセキュリティデータはありません</div>' +
-          '<div style="font-size:11px;color:#64748b;margin-top:4px">Rugcheck.xyzはSolanaチェーンのトークンのみ対応しています</div>' +
-        '</div>';
-    }
-
-    // 用語ガイド（常に表示）
-    var guideHtml =
-      '<div style="margin-top:4px">' +
-        '<div style="font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:10px">\u{1F4D6} セキュリティ用語ガイド</div>' +
-
-        // 信号機の見方
-        '<div style="padding:12px;background:rgba(255,255,255,0.04);border-radius:10px;margin-bottom:10px">' +
-          '<div style="font-size:12px;font-weight:600;color:#e2e8f0;margin-bottom:8px">安全度スコアの見方</div>' +
-          '<div style="display:flex;gap:6px;margin-bottom:4px">' +
-            '<div style="flex:1;text-align:center;padding:8px 4px;background:rgba(34,197,94,0.12);border-radius:6px">' +
-              '<div style="font-size:16px">\u{1F7E2}</div>' +
-              '<div style="font-size:11px;font-weight:600;color:#22c55e">70\u301C100</div>' +
-              '<div style="font-size:10px;color:#94a3b8">安全</div>' +
-            '</div>' +
-            '<div style="flex:1;text-align:center;padding:8px 4px;background:rgba(245,158,11,0.12);border-radius:6px">' +
-              '<div style="font-size:16px">\u{1F7E1}</div>' +
-              '<div style="font-size:11px;font-weight:600;color:#f59e0b">40\u301C69</div>' +
-              '<div style="font-size:10px;color:#94a3b8">注意</div>' +
-            '</div>' +
-            '<div style="flex:1;text-align:center;padding:8px 4px;background:rgba(239,68,68,0.12);border-radius:6px">' +
-              '<div style="font-size:16px">\u{1F534}</div>' +
-              '<div style="font-size:11px;font-weight:600;color:#ef4444">0\u301C39</div>' +
-              '<div style="font-size:10px;color:#94a3b8">危険</div>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-
-        // 各用語の解説
-        '<div style="display:flex;flex-direction:column;gap:8px">' +
-          // ハニーポット
-          '<div style="padding:12px;background:rgba(255,255,255,0.04);border-radius:10px">' +
-            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
-              '<span style="font-size:16px">\u{1F6AB}</span>' +
-              '<span style="font-size:12px;font-weight:600;color:#e2e8f0">ハニーポット</span>' +
-            '</div>' +
-            '<div style="font-size:11px;color:#94a3b8;line-height:1.5">' +
-              '買えるが売れないようにプログラムされたトラップトークン。' +
-              '<br><span style="color:#ef4444">検出</span> = 絶対に購入しないでください' +
-              '<br><span style="color:#22c55e">なし</span> = 売買に制限なし' +
-            '</div>' +
-          '</div>' +
-
-          // LP Lock
-          '<div style="padding:12px;background:rgba(255,255,255,0.04);border-radius:10px">' +
-            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
-              '<span style="font-size:16px">\u{1F512}</span>' +
-              '<span style="font-size:12px;font-weight:600;color:#e2e8f0">LP Lock（流動性ロック）</span>' +
-            '</div>' +
-            '<div style="font-size:11px;color:#94a3b8;line-height:1.5">' +
-              'コインを売買するための資金プール（LP）が引き出せないようロックされているかどうか。' +
-              '<br><span style="color:#22c55e">高い</span> = 運営が資金を持ち逃げしにくい' +
-              '<br><span style="color:#ef4444">0%</span> = いつでも資金を引き抜ける（ラグプル危険）' +
-              '<br>\u{1F525} 永久ロック = バーンアドレスに送付済み（最も安全）' +
-              '<br>\u23F0 期限付き = ロック解除日に注意（180日以上推奨）' +
-            '</div>' +
-          '</div>' +
-
-          // 売却Tax
-          '<div style="padding:12px;background:rgba(255,255,255,0.04);border-radius:10px">' +
-            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
-              '<span style="font-size:16px">\u{1F4B8}</span>' +
-              '<span style="font-size:12px;font-weight:600;color:#e2e8f0">売却Tax（手数料）</span>' +
-            '</div>' +
-            '<div style="font-size:11px;color:#94a3b8;line-height:1.5">' +
-              '売却時に自動で徴収される手数料の割合。' +
-              '<br><span style="color:#22c55e">0-1%</span> = 一般的な範囲' +
-              '<br><span style="color:#f59e0b">5-10%</span> = 利益に大きく影響' +
-              '<br><span style="color:#ef4444">10%超</span> = 非常に高い — 利益がほぼ消える可能性' +
-            '</div>' +
-          '</div>' +
-
-          // Top10保有率
-          '<div style="padding:12px;background:rgba(255,255,255,0.04);border-radius:10px">' +
-            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
-              '<span style="font-size:16px">\u{1F465}</span>' +
-              '<span style="font-size:12px;font-weight:600;color:#e2e8f0">Top10保有率</span>' +
-            '</div>' +
-            '<div style="font-size:11px;color:#94a3b8;line-height:1.5">' +
-              '上位10アドレスが全体の何%を持っているか。' +
-              '<br><span style="color:#22c55e">30%未満</span> = 分散している（安全）' +
-              '<br><span style="color:#ef4444">50%超</span> = 大口が売ると暴落する恐れ' +
-            '</div>' +
-          '</div>' +
-
-          // Mint権限
-          '<div style="padding:12px;background:rgba(255,255,255,0.04);border-radius:10px">' +
-            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
-              '<span style="font-size:16px">\u{1F3ED}</span>' +
-              '<span style="font-size:12px;font-weight:600;color:#e2e8f0">Mint権限（追加発行）</span>' +
-            '</div>' +
-            '<div style="font-size:11px;color:#94a3b8;line-height:1.5">' +
-              '運営がコインを新たに無限発行できる権限。' +
-              '<br><span style="color:#22c55e">なし</span> = 供給量が固定（安心）' +
-              '<br><span style="color:#ef4444">あり</span> = 大量発行で価値が希薄化する恐れ' +
-            '</div>' +
-          '</div>' +
-
-          // Freeze権限
-          '<div style="padding:12px;background:rgba(255,255,255,0.04);border-radius:10px">' +
-            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
-              '<span style="font-size:16px">\u{1F9CA}</span>' +
-              '<span style="font-size:12px;font-weight:600;color:#e2e8f0">Freeze権限（資産凍結）</span>' +
-            '</div>' +
-            '<div style="font-size:11px;color:#94a3b8;line-height:1.5">' +
-              '運営が特定のウォレットの残高を凍結できる権限。' +
-              '<br><span style="color:#22c55e">なし</span> = 自由に売買できる（安心）' +
-              '<br><span style="color:#ef4444">あり</span> = あなたのコインが売れなくなる恐れ' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-
-        // 注意書き
-        '<div style="margin-top:12px;padding:10px 12px;background:rgba(212,168,83,0.08);border-radius:8px;border:1px solid rgba(212,168,83,0.2)">' +
-          '<div style="font-size:11px;color:#d4a853;line-height:1.5">' +
-            '\u{1F4A1} <b>判断のコツ:</b> 2ソース検証済み(\u2713)のコインは信頼度が高いです。安全度が高くても他の要素（出来高・コミュニティ・開発状況）を必ず確認してください。' +
-          '</div>' +
-        '</div>' +
-      '</div>';
+    var term = _termGuideData[termKey];
+    if (!term) return;
 
     var popup = document.createElement('div');
-    popup.id = 'security-guide-popup';
-    popup.className = 'security-guide-overlay';
+    popup.id = 'term-popup';
+    popup.className = 'term-popup-overlay';
     popup.innerHTML =
-      '<div class="security-guide-modal">' +
-        '<div class="security-guide-header">' +
-          '<span style="font-size:16px;font-weight:600">\u{1F6E1}\uFE0F セキュリティチェック</span>' +
-          '<button onclick="document.getElementById(\'security-guide-popup\').remove()" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;padding:4px 8px">\u2715</button>' +
+      '<div class="term-popup-modal">' +
+        '<div class="term-popup-header">' +
+          '<span style="font-size:14px;font-weight:600;color:#e2e8f0">' + term.icon + ' ' + term.title + '</span>' +
+          '<button onclick="document.getElementById(\'term-popup\').remove()" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer;padding:4px 8px">\u2715</button>' +
         '</div>' +
-        '<div class="security-guide-body">' +
-          signalHtml +
-          guideHtml +
+        '<div class="term-popup-body">' +
+          term.html +
+        '</div>' +
+        '<div class="term-popup-footer">' +
+          '<button onclick="document.getElementById(\'term-popup\').remove()" class="term-popup-close-btn">\u9589\u3058\u308B</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(popup);
@@ -5843,7 +5654,7 @@
       if (e.target === popup) popup.remove();
     });
   }
-  window.openSecurityGuidePopup = openSecurityGuidePopup;
+  window.openTermPopup = openTermPopup;
 
   // ===== DEXコイン専用詳細画面 =====
 
@@ -6092,22 +5903,20 @@
           }).join('') + '</div>';
         })() +
 
-        // セキュリティ（Rugcheck + GoPlus）
+        // セキュリティ（Rugcheck + GoPlus）— 縦リスト形式
         (function() {
           var srcCount = coin.security_sources || 0;
           var crossVerified = coin.security_cross_verified || false;
           var combinedTrust = coin.combined_trust || 'low';
 
           if (coin.rugcheck_score == null || coin.rugcheck_score === -1) {
-            // GoPlusのみの場合もチェック
             if (!coin.goplus_honeypot && !coin.goplus_holder_count) {
-              return '<div class="dex-detail__security-section" onclick="window.openSecurityGuidePopup(null)" style="cursor:pointer">' +
+              return '<div class="dex-detail__security-section">' +
                 '<div class="dex-detail__section-title">\u{1F6E1}\uFE0F セキュリティ <span style="font-size:10px;color:#64748b">(Rugcheck + GoPlus)</span></div>' +
                 '<div style="text-align:center;padding:16px 0;color:#64748b;font-size:13px">' +
                   '<div style="font-size:24px;margin-bottom:6px">\u{1F512}</div>' +
                   '<div>セキュリティデータなし</div>' +
                   '<div style="font-size:11px;color:#475569;margin-top:4px">Solanaチェーンのトークンのみ対応</div>' +
-                  '<div style="font-size:11px;color:#d4a853;margin-top:8px">タップでセキュリティの見方を確認 \u203A</div>' +
                 '</div>' +
               '</div>';
             }
@@ -6117,26 +5926,10 @@
           var safeColor = safeScore >= 70 ? '#22c55e' : safeScore >= 40 ? '#f59e0b' : safeScore >= 0 ? '#ef4444' : '#94a3b8';
           var safeLabel = safeScore >= 70 ? 'Safe' : safeScore >= 40 ? 'Caution' : safeScore >= 0 ? 'Danger' : 'N/A';
 
-          // ハニーポット検出で強制danger
           if (coin.goplus_honeypot) {
             safeColor = '#ef4444';
             safeLabel = 'HONEYPOT';
           }
-
-          var lpLock = coin.lp_locked_pct;
-          var lpStr = lpLock >= 0 ? lpLock.toFixed(1) + '%' : 'N/A';
-          var lpColor = lpLock > 50 ? '#22c55e' : lpLock > 0 ? '#f59e0b' : '#ef4444';
-
-          // LP Lock期限表示（遅延取得で更新される）
-          var lpExpiryHtml = '<span id="dex-lp-expiry-lazy"></span>';
-
-          var top10 = coin.holder_top10_pct;
-          var top10Str = top10 >= 0 ? top10.toFixed(1) + '%' : 'N/A';
-          var top10Color = top10 >= 0 ? (top10 > 50 ? '#ef4444' : top10 > 30 ? '#f59e0b' : '#22c55e') : '#94a3b8';
-          var mintIcon = coin.has_mint_authority ? '\u26A0\uFE0F あり' : '\u2705 なし';
-          var mintColor = coin.has_mint_authority ? '#ef4444' : '#22c55e';
-          var freezeIcon = coin.has_freeze_authority ? '\u26A0\uFE0F あり' : '\u2705 なし';
-          var freezeColor = coin.has_freeze_authority ? '#ef4444' : '#22c55e';
 
           // クロス検証バッジ
           var verifyBadge = crossVerified ?
@@ -6151,78 +5944,131 @@
             '</div>';
           }
 
-          // Rugcheckリスクタグ
+          // 安全度スコア表示
+          var scoreHtml = '';
+          if (safeScore >= 0) {
+            scoreHtml = '<div class="dex-detail__security-score" onclick="window.openTermPopup(\'safety_score\')" style="cursor:pointer">' +
+              '<div class="dex-detail__security-score-circle" style="border-color:' + safeColor + '">' +
+                '<span class="dex-detail__security-score-value" style="color:' + safeColor + '">' + (coin.goplus_honeypot ? '!' : safeScore) + '</span>' +
+              '</div>' +
+              '<div class="dex-detail__security-score-label" style="color:' + safeColor + '">' + safeLabel + ' <span style="font-size:10px;color:#64748b">?</span></div>' +
+            '</div>';
+          }
+
+          // 項目リスト構築
+          var itemsHtml = '';
+          var hasGoplus = coin.goplus_holder_count > 0 || coin.goplus_honeypot;
+
+          // 1. LP Lock
+          if (coin.lp_locked_pct != null && coin.lp_locked_pct >= 0) {
+            var lp = coin.lp_locked_pct;
+            var lpOk = lp > 50;
+            var lpColor = lpOk ? '#22c55e' : lp > 0 ? '#f59e0b' : '#ef4444';
+            var lpMsg = lpOk ? '流動性がロックされています' : lp > 0 ? '一部のみロック — 引き抜きの可能性あり' : '未ロック — ラグプル注意';
+            var lpExtra = '<span id="dex-lp-expiry-lazy"></span>';
+            itemsHtml += '<div class="dex-detail__security-row" onclick="window.openTermPopup(\'lp_lock\')">' +
+              '<div class="dex-detail__security-row-label">\u{1F512} LP Lock <span style="font-size:10px;color:#64748b">?</span></div>' +
+              '<div class="dex-detail__security-row-value"><span style="color:' + lpColor + ';font-weight:600">' + lp.toFixed(1) + '%</span> <span class="dex-detail__security-row-desc">' + lpMsg + '</span></div>' +
+              '<div class="dex-detail__security-row-extra">' + lpExtra + '</div>' +
+            '</div>';
+          }
+
+          // 2. ハニーポット（GoPlus）
+          if (hasGoplus && coin.goplus_honeypot != null) {
+            var hpColor = coin.goplus_honeypot ? '#ef4444' : '#22c55e';
+            var hpVal = coin.goplus_honeypot ? '\u26A0\uFE0F 検出' : '\u2705 なし';
+            var hpMsg = coin.goplus_honeypot ? '売却できないトラップ — 購入禁止' : '売買ブロックなし';
+            itemsHtml += '<div class="dex-detail__security-row" onclick="window.openTermPopup(\'honeypot\')">' +
+              '<div class="dex-detail__security-row-label">\u{1F6AB} ハニーポット <span style="font-size:10px;color:#64748b">?</span></div>' +
+              '<div class="dex-detail__security-row-value"><span style="color:' + hpColor + ';font-weight:600">' + hpVal + '</span> <span class="dex-detail__security-row-desc">' + hpMsg + '</span></div>' +
+            '</div>';
+          }
+
+          // 3. 売却Tax（GoPlus）
+          if (hasGoplus && coin.goplus_sell_tax != null && coin.goplus_sell_tax >= 0) {
+            var st = coin.goplus_sell_tax;
+            var stColor = st > 10 ? '#ef4444' : st > 5 ? '#f59e0b' : '#22c55e';
+            var stMsg = st > 10 ? '売却時に10%以上のTax — 利益が大幅に減少' : st > 5 ? '売却時にTaxあり — 利益に影響' : '売却Tax低い';
+            itemsHtml += '<div class="dex-detail__security-row" onclick="window.openTermPopup(\'sell_tax\')">' +
+              '<div class="dex-detail__security-row-label">\u{1F4B8} 売却Tax <span style="font-size:10px;color:#64748b">?</span></div>' +
+              '<div class="dex-detail__security-row-value"><span style="color:' + stColor + ';font-weight:600">' + st.toFixed(1) + '%</span> <span class="dex-detail__security-row-desc">' + stMsg + '</span></div>' +
+            '</div>';
+          }
+
+          // 4. Top10保有
+          if (coin.holder_top10_pct != null && coin.holder_top10_pct >= 0) {
+            var t10 = coin.holder_top10_pct;
+            var t10Color = t10 > 50 ? '#ef4444' : t10 > 30 ? '#f59e0b' : '#22c55e';
+            var t10Msg = t10 < 30 ? '保有が分散しています' : t10 <= 50 ? 'やや集中 — 大口売りに注意' : '保有が集中 — 暴落リスク高';
+            itemsHtml += '<div class="dex-detail__security-row" onclick="window.openTermPopup(\'top10\')">' +
+              '<div class="dex-detail__security-row-label">\u{1F465} Top10保有 <span style="font-size:10px;color:#64748b">?</span></div>' +
+              '<div class="dex-detail__security-row-value"><span style="color:' + t10Color + ';font-weight:600">' + t10.toFixed(1) + '%</span> <span class="dex-detail__security-row-desc">' + t10Msg + '</span></div>' +
+            '</div>';
+          }
+
+          // 5. Mint権限
+          if (coin.has_mint_authority != null) {
+            var mintColor = coin.has_mint_authority ? '#ef4444' : '#22c55e';
+            var mintVal = coin.has_mint_authority ? '\u26A0\uFE0F あり' : '\u2705 なし';
+            var mintMsg = coin.has_mint_authority ? '運営がコインを無限に増やせます' : '新規発行はできません';
+            itemsHtml += '<div class="dex-detail__security-row" onclick="window.openTermPopup(\'mint\')">' +
+              '<div class="dex-detail__security-row-label">\u{1F3ED} Mint権限 <span style="font-size:10px;color:#64748b">?</span></div>' +
+              '<div class="dex-detail__security-row-value"><span style="color:' + mintColor + ';font-weight:600">' + mintVal + '</span> <span class="dex-detail__security-row-desc">' + mintMsg + '</span></div>' +
+            '</div>';
+          }
+
+          // 6. Freeze権限
+          if (coin.has_freeze_authority != null) {
+            var frzColor = coin.has_freeze_authority ? '#ef4444' : '#22c55e';
+            var frzVal = coin.has_freeze_authority ? '\u26A0\uFE0F あり' : '\u2705 なし';
+            var frzMsg = coin.has_freeze_authority ? '運営があなたの資産を凍結できます' : '資産凍結の権限はありません';
+            itemsHtml += '<div class="dex-detail__security-row" onclick="window.openTermPopup(\'freeze\')">' +
+              '<div class="dex-detail__security-row-label">\u{1F9CA} Freeze権限 <span style="font-size:10px;color:#64748b">?</span></div>' +
+              '<div class="dex-detail__security-row-value"><span style="color:' + frzColor + ';font-weight:600">' + frzVal + '</span> <span class="dex-detail__security-row-desc">' + frzMsg + '</span></div>' +
+            '</div>';
+          }
+
+          // 7. 保有者数（GoPlus）
+          if (hasGoplus && coin.goplus_holder_count > 0) {
+            var hc = coin.goplus_holder_count;
+            var hcColor = hc > 500 ? '#22c55e' : hc > 100 ? '#f59e0b' : '#ef4444';
+            var hcMsg = hc > 500 ? '多くの人が保有 — コミュニティあり' : hc > 100 ? '保有者数はやや少なめ' : '保有者数が非常に少ない — 操作リスク';
+            itemsHtml += '<div class="dex-detail__security-row" onclick="window.openTermPopup(\'holders\')">' +
+              '<div class="dex-detail__security-row-label">\u{1F50D} 保有者数 <span style="font-size:10px;color:#64748b">?</span></div>' +
+              '<div class="dex-detail__security-row-value"><span style="color:' + hcColor + ';font-weight:600">' + hc.toLocaleString() + '</span> <span class="dex-detail__security-row-desc">' + hcMsg + '</span></div>' +
+            '</div>';
+          }
+
+          // 8. 作成者保有（GoPlus）
+          if (hasGoplus && coin.goplus_creator_percent > 0) {
+            var cp = coin.goplus_creator_percent;
+            var cpColor = cp > 30 ? '#ef4444' : cp > 10 ? '#f59e0b' : '#22c55e';
+            var cpMsg = cp > 30 ? '作成者が30%以上保有 — 大量売却リスク' : cp > 10 ? '作成者保有やや多め' : '作成者保有少ない';
+            itemsHtml += '<div class="dex-detail__security-row" onclick="window.openTermPopup(\'creator\')">' +
+              '<div class="dex-detail__security-row-label">\u{1F464} 作成者保有 <span style="font-size:10px;color:#64748b">?</span></div>' +
+              '<div class="dex-detail__security-row-value"><span style="color:' + cpColor + ';font-weight:600">' + cp.toFixed(1) + '%</span> <span class="dex-detail__security-row-desc">' + cpMsg + '</span></div>' +
+            '</div>';
+          }
+
+          // リスクタグ
           var risksHtml = '';
           if (coin.rugcheck_risks && coin.rugcheck_risks.length > 0) {
-            risksHtml = '<div class="dex-detail__security-risks">';
+            risksHtml = '<div class="dex-detail__security-risks">' +
+              '<div style="font-size:11px;font-weight:600;color:#ef4444;margin-bottom:6px">\u{1F6A9} 検出されたリスク</div>';
             coin.rugcheck_risks.forEach(function(r) {
               risksHtml += '<span class="dex-detail__security-risk-tag">\u{1F6A9} ' + r + '</span>';
             });
             risksHtml += '</div>';
           }
 
-          // GoPlus 2x2グリッド
-          var goplusHtml = '';
-          if (coin.goplus_holder_count > 0 || coin.goplus_honeypot) {
-            var hpColor = coin.goplus_honeypot ? '#ef4444' : '#22c55e';
-            var hpLabel = coin.goplus_honeypot ? '\u26A0\uFE0F YES' : '\u2705 NO';
-            var stColor = coin.goplus_sell_tax > 10 ? '#ef4444' : coin.goplus_sell_tax > 5 ? '#f59e0b' : '#22c55e';
-            var cpColor = coin.goplus_creator_percent > 30 ? '#ef4444' : coin.goplus_creator_percent > 10 ? '#f59e0b' : '#22c55e';
-            goplusHtml =
-              '<div style="font-size:11px;font-weight:600;color:#94a3b8;margin:12px 0 6px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06)">\u{1F50D} GoPlus Security</div>' +
-              '<div class="dex-detail__security-grid">' +
-                '<div class="dex-detail__security-item">' +
-                  '<div class="dex-detail__security-item-label">ハニーポット</div>' +
-                  '<div class="dex-detail__security-item-value" style="color:' + hpColor + '">' + hpLabel + '</div>' +
-                '</div>' +
-                '<div class="dex-detail__security-item">' +
-                  '<div class="dex-detail__security-item-label">売却Tax</div>' +
-                  '<div class="dex-detail__security-item-value" style="color:' + stColor + '">' + coin.goplus_sell_tax.toFixed(1) + '%</div>' +
-                '</div>' +
-                '<div class="dex-detail__security-item">' +
-                  '<div class="dex-detail__security-item-label">保有者数</div>' +
-                  '<div class="dex-detail__security-item-value">' + (coin.goplus_holder_count || 0).toLocaleString() + '</div>' +
-                '</div>' +
-                '<div class="dex-detail__security-item">' +
-                  '<div class="dex-detail__security-item-label">作成者保有</div>' +
-                  '<div class="dex-detail__security-item-value" style="color:' + cpColor + '">' + coin.goplus_creator_percent.toFixed(1) + '%</div>' +
-                '</div>' +
-              '</div>';
-          }
-
-          var guideData = JSON.stringify({s:safeScore,lbl:safeLabel,lp:lpLock,top10:top10,mint:coin.has_mint_authority,freeze:coin.has_freeze_authority,risks:coin.rugcheck_risks,hp:coin.goplus_honeypot,st:coin.goplus_sell_tax,hc:coin.goplus_holder_count,cp:coin.goplus_creator_percent,cv:crossVerified,src:srcCount,trust:combinedTrust,lpExp:coin.lp_lock_expiry_ts,lpPerm:coin.lp_has_permanent_lock}).replace(/"/g,'&quot;');
-
-          return '<div class="dex-detail__security-section" onclick="window.openSecurityGuidePopup(' + guideData + ')" style="cursor:pointer">' +
-            '<div class="dex-detail__section-title">\u{1F6E1}\uFE0F セキュリティ <span style="font-size:10px;color:#64748b">(Rugcheck + GoPlus)</span> <span style="font-size:10px;color:#d4a853;float:right">タップで解説 \u203A</span></div>' +
+          return '<div class="dex-detail__security-section">' +
+            '<div class="dex-detail__section-title">\u{1F6E1}\uFE0F セキュリティ <span style="font-size:10px;color:#64748b">(Rugcheck + GoPlus)</span></div>' +
             verifyBadge +
             honeypotBanner +
-            (safeScore >= 0 ?
-            '<div class="dex-detail__security-score">' +
-              '<div class="dex-detail__security-score-circle" style="border-color:' + safeColor + '">' +
-                '<span class="dex-detail__security-score-value" style="color:' + safeColor + '">' + (coin.goplus_honeypot ? '!' : safeScore) + '</span>' +
-              '</div>' +
-              '<div class="dex-detail__security-score-label" style="color:' + safeColor + '">' + safeLabel + '</div>' +
-            '</div>' : '') +
-            '<div class="dex-detail__security-grid">' +
-              '<div class="dex-detail__security-item">' +
-                '<div class="dex-detail__security-item-label">LP Lock' + (lpExpiryHtml ? '' : '') + '</div>' +
-                '<div class="dex-detail__security-item-value" style="color:' + lpColor + '">' + lpStr + '</div>' +
-                lpExpiryHtml +
-              '</div>' +
-              '<div class="dex-detail__security-item">' +
-                '<div class="dex-detail__security-item-label">Top10保有</div>' +
-                '<div class="dex-detail__security-item-value" style="color:' + top10Color + '">' + top10Str + '</div>' +
-              '</div>' +
-              '<div class="dex-detail__security-item">' +
-                '<div class="dex-detail__security-item-label">Mint権限</div>' +
-                '<div class="dex-detail__security-item-value" style="color:' + mintColor + '">' + mintIcon + '</div>' +
-              '</div>' +
-              '<div class="dex-detail__security-item">' +
-                '<div class="dex-detail__security-item-label">Freeze権限</div>' +
-                '<div class="dex-detail__security-item-value" style="color:' + freezeColor + '">' + freezeIcon + '</div>' +
-              '</div>' +
+            scoreHtml +
+            '<div class="dex-detail__security-items">' +
+              itemsHtml +
             '</div>' +
-            goplusHtml +
             risksHtml +
           '</div>';
         })() +

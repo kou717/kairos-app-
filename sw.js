@@ -1,5 +1,5 @@
 // KAIROS Service Worker v19.16 - Urgent Moonshot Alert + Worker Integration
-const CACHE_NAME = 'kairos-v19-29';
+const CACHE_NAME = 'kairos-v19-30';
 const STATIC_CACHE = 'kairos-static-v19-29';
 const DYNAMIC_CACHE = 'kairos-dynamic-v19-29';
 
