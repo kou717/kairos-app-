@@ -5958,7 +5958,10 @@
                 '</svg>' +
                 '<span class="dex-detail__security-score-value" style="color:' + safeColor + '">' + (coin.goplus_honeypot ? '!' : safeScore) + '</span>' +
               '</div>' +
-              '<div class="dex-detail__security-score-label" style="color:' + safeColor + '">' + safeLabel + ' <span style="font-size:10px;color:#64748b">?</span></div>' +
+              '<div class="dex-detail__security-score-right">' +
+                '<div class="dex-detail__security-score-label" style="color:' + safeColor + '">' + safeLabel + ' <span style="font-size:10px;color:#64748b">?</span></div>' +
+                '<div class="dex-detail__security-score-msg">' + (coin.goplus_honeypot ? '売却不可のトラップ — 絶対に購入禁止' : safeScore >= 70 ? '比較的安全なトークンです' : safeScore >= 40 ? 'いくつかの注意点があります' : '高リスク — 十分注意してください') + '</div>' +
+              '</div>' +
             '</div>';
           }
 

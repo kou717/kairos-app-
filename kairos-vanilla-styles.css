@@ -12748,9 +12748,21 @@ body.has-ticker-bar {
   font-weight: 700;
 }
 
+.dex-detail__security-score-right {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .dex-detail__security-score-label {
   font-size: 14px;
   font-weight: 600;
+}
+
+.dex-detail__security-score-msg {
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.4;
 }
 
 /* セキュリティ項目 2列グリッド（3段セル） */
