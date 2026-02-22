@@ -13624,6 +13624,13 @@
 
     document.body.appendChild(toast);
 
+    // スライドインアニメーション完了後にanimationを解除（JSのtransformが効くように）
+    toast.addEventListener('animationend', function(e) {
+      if (e.animationName === 'alertSlideIn') {
+        toast.style.animation = 'none';
+      }
+    });
+
     // 8秒後に自動消去 → 次のキュー
     var autoTimer = setTimeout(function() {
       _dismissActiveToast(_showNextToast);
