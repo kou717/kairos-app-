@@ -12765,6 +12765,30 @@ body.has-ticker-bar {
   line-height: 1.4;
 }
 
+/* シェブロン（開閉矢印） */
+.dex-detail__security-chevron {
+  font-size: 10px;
+  color: #64748b;
+  margin-left: auto;
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+}
+
+.dex-detail__security-chevron.open {
+  transform: rotate(180deg);
+}
+
+/* アコーディオン */
+.dex-detail__sec-accordion {
+  height: 0;
+  overflow: hidden;
+  transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dex-detail__sec-accordion.open {
+  overflow: visible;
+}
+
 /* セキュリティ項目 2列グリッド（3段セル） */
 .dex-detail__sec-grid {
   display: grid;

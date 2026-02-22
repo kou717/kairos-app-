@@ -5656,6 +5656,29 @@
   }
   window.openTermPopup = openTermPopup;
 
+  // セキュリティ詳細アコーディオン開閉
+  function _toggleSecAccordion() {
+    var body = document.getElementById('sec-accordion-body');
+    var chevron = document.getElementById('sec-accordion-chevron');
+    if (!body) return;
+    var isOpen = body.classList.contains('open');
+    if (isOpen) {
+      body.style.height = body.scrollHeight + 'px';
+      requestAnimationFrame(function() { body.style.height = '0px'; });
+      body.classList.remove('open');
+      if (chevron) chevron.classList.remove('open');
+    } else {
+      body.style.height = body.scrollHeight + 'px';
+      body.classList.add('open');
+      if (chevron) chevron.classList.add('open');
+      body.addEventListener('transitionend', function handler() {
+        body.style.height = 'auto';
+        body.removeEventListener('transitionend', handler);
+      });
+    }
+  }
+  window._toggleSecAccordion = _toggleSecAccordion;
+
   // ===== DEXコイン専用詳細画面 =====
 
   function isDexCoin() {
@@ -5944,13 +5967,13 @@
             '</div>';
           }
 
-          // 安全度スコア表示（SVG円形ゲージ）
+          // 安全度スコア表示（SVG円形ゲージ） — タップでアコーディオン開閉
           var scoreHtml = '';
           if (safeScore >= 0) {
             var gaugeR = 28, gaugeC = 2 * Math.PI * gaugeR;
             var gaugePct = coin.goplus_honeypot ? 0 : safeScore / 100;
             var gaugeOffset = gaugeC * (1 - gaugePct);
-            scoreHtml = '<div class="dex-detail__security-score" onclick="window.openTermPopup(\'safety_score\')" style="cursor:pointer">' +
+            scoreHtml = '<div class="dex-detail__security-score" onclick="window._toggleSecAccordion()" style="cursor:pointer">' +
               '<div class="dex-detail__security-gauge">' +
                 '<svg viewBox="0 0 64 64" class="dex-detail__security-gauge-svg">' +
                   '<circle cx="32" cy="32" r="' + gaugeR + '" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="4"/>' +
@@ -5959,9 +5982,10 @@
                 '<span class="dex-detail__security-score-value" style="color:' + safeColor + '">' + (coin.goplus_honeypot ? '!' : safeScore) + '</span>' +
               '</div>' +
               '<div class="dex-detail__security-score-right">' +
-                '<div class="dex-detail__security-score-label" style="color:' + safeColor + '">' + safeLabel + ' <span style="font-size:10px;color:#64748b">?</span></div>' +
+                '<div class="dex-detail__security-score-label" style="color:' + safeColor + '">' + safeLabel + '</div>' +
                 '<div class="dex-detail__security-score-msg">' + (coin.goplus_honeypot ? '売却不可のトラップ — 絶対に購入禁止' : safeScore >= 70 ? '比較的安全なトークンです' : safeScore >= 40 ? 'いくつかの注意点があります' : '高リスク — 十分注意してください') + '</div>' +
               '</div>' +
+              '<div class="dex-detail__security-chevron" id="sec-accordion-chevron">\u25BC</div>' +
             '</div>';
           }
 
@@ -6059,8 +6083,10 @@
             verifyBadge +
             honeypotBanner +
             scoreHtml +
-            itemsHtml +
-            risksHtml +
+            '<div class="dex-detail__sec-accordion" id="sec-accordion-body">' +
+              itemsHtml +
+              risksHtml +
+            '</div>' +
           '</div>';
         })() +
 
