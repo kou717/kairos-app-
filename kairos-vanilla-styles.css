@@ -13588,6 +13588,514 @@ body.has-ticker-bar {
   font-family: monospace;
   word-break: break-all;
 }
+
+/* === Collector Tabs === */
+.collector-monitor__tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.collector-monitor__tab {
+  flex: 1;
+  padding: 10px 0;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.collector-monitor__tab--active {
+  color: #f5a623;
+  border-bottom-color: #f5a623;
+}
+
+/* === Collector Trades === */
+.collector-trades__filters {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.collector-trades__filter-btn {
+  padding: 6px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.collector-trades__filter-btn--active {
+  background: rgba(245, 166, 35, 0.15);
+  border-color: rgba(245, 166, 35, 0.4);
+  color: #f5a623;
+}
+
+.collector-trade-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.collector-trade-card__left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 60px;
+}
+
+.collector-trade-card__symbol {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.collector-trade-card__timing {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.collector-trade-card__center {
+  flex: 1;
+  min-width: 0;
+}
+
+.collector-trade-card__prices {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.collector-trade-card__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.collector-trade-card__pnl {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.collector-trade-card__pnl--profit {
+  color: #10b981;
+}
+
+.collector-trade-card__pnl--loss {
+  color: #ef4444;
+}
+
+.collector-trade-card__status {
+  font-size: 10px;
+  padding: 1px 8px;
+  border-radius: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.collector-trade-card__status--open {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.collector-trade-card__status--closed {
+  background: rgba(107, 114, 128, 0.2);
+  color: #9ca3af;
+}
+
+.collector-trade-card__status--pending {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.collector-trade-card__exit {
+  width: 100%;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  margin-top: 4px;
+}
+
+/* === Collector Coins === */
+.collector-coin-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.collector-coin-card:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.collector-coin-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.collector-coin-card__left {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.collector-coin-card__symbol {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.collector-coin-card__name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.collector-coin-card__right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.collector-coin-card__score {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.collector-coin-card__trust {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.collector-coin-card__trust--high {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.collector-coin-card__trust--medium {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.collector-coin-card__trust--low {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+}
+
+.collector-coin-card__trust--danger {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.collector-coin-card__bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.collector-coin-card__price {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.collector-coin-card__time {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.collector-coin-card__ai {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+.collector-coin-card__risk {
+  font-size: 10px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.collector-coin-card__risk--high {
+  color: #ef4444;
+}
+
+.collector-coin-card__risk--medium {
+  color: #f59e0b;
+}
+
+.collector-coin-card__risk--low {
+  color: #10b981;
+}
+
+/* === Collector Detail Modal === */
+.collector-detail-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 9999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.collector-detail-modal__content {
+  background: var(--bg-primary, #0f0f14);
+  border-radius: 16px 16px 0 0;
+  width: 100%;
+  max-width: 500px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 20px 16px;
+  padding-bottom: 40px;
+}
+
+.collector-detail__header {
+  margin-bottom: 16px;
+}
+
+.collector-detail__header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.collector-detail__symbol {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-right: 8px;
+}
+
+.collector-detail__name {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.collector-detail__close {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: var(--text-primary);
+  font-size: 20px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collector-detail__header-sub {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.collector-detail__detected {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.collector-detail__section {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+/* Snapshot table */
+.collector-detail__snapshots {
+  overflow-x: auto;
+}
+
+.collector-detail__snapshot-header {
+  display: grid;
+  grid-template-columns: 50px 1fr 1fr 1fr 1fr;
+  gap: 4px;
+  padding: 6px 0;
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.collector-detail__snapshot-row {
+  display: grid;
+  grid-template-columns: 50px 1fr 1fr 1fr 1fr;
+  gap: 4px;
+  padding: 7px 0;
+  font-size: 12px;
+  color: var(--text-primary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.collector-detail__snapshot-row--empty {
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+.collector-detail__snapshot-interval {
+  font-weight: 600;
+  color: #60a5fa;
+}
+
+.collector-detail__change--up {
+  color: #10b981;
+}
+
+.collector-detail__change--down {
+  color: #ef4444;
+}
+
+/* Trades table */
+.collector-detail__trades-header {
+  display: grid;
+  grid-template-columns: 60px 1fr 1fr 70px 60px;
+  gap: 4px;
+  padding: 6px 0;
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.collector-detail__trades-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 1fr 70px 60px;
+  gap: 4px;
+  padding: 7px 0;
+  font-size: 12px;
+  color: var(--text-primary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  align-items: center;
+}
+
+/* AI section */
+.collector-detail__ai-summary {
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.collector-detail__ai-reason {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* Security section */
+.collector-detail__security {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.collector-detail__security-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+/* Links */
+.collector-detail__links {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.collector-detail__link {
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #60a5fa;
+  font-size: 12px;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+/* === Collector Pagination === */
+.collector-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 14px 0 4px;
+}
+
+.collector-pagination__btn {
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.collector-pagination__btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.collector-pagination__info {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
 /* ============================================
    通貨別ストラテジーUI（長期/短期の2択）
    ============================================ */

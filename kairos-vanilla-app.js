@@ -1208,6 +1208,32 @@
             .then(resolve).catch(reject);
         });
       });
+    },
+
+    getCollectorCoins: function(page, trust) {
+      var self = this;
+      var url = self.baseUrl + '/api/collector/coins?per_page=20&page=' + (page || 1);
+      if (trust) url += '&trust=' + trust;
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) { reject(new Error('Backend not available')); return; }
+          fetch(url)
+            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
+            .then(resolve).catch(reject);
+        });
+      });
+    },
+
+    getCollectorCoinDetail: function(coinId) {
+      var self = this;
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) { reject(new Error('Backend not available')); return; }
+          fetch(self.baseUrl + '/api/collector/coins/' + coinId)
+            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
+            .then(resolve).catch(reject);
+        });
+      });
     }
   };
 
@@ -7045,18 +7071,30 @@
   // ============================================================
 
   var _collectorAutoRefresh = null;
+  window._collectorTab = 'dashboard';
+  var _collectorTradesPage = 1;
+  var _collectorTradesFilter = '';
+  var _collectorCoinsPage = 1;
+  var _collectorCoinsTrust = '';
 
   function renderCollectorMonitor() {
     // Auto-refresh setup
     if (_collectorAutoRefresh) clearInterval(_collectorAutoRefresh);
     _collectorAutoRefresh = setInterval(function() {
-      if (appState.currentScreen === 'collector') _refreshCollectorData();
+      if (appState.currentScreen === 'collector') {
+        if (window._collectorTab === 'dashboard') _refreshCollectorData();
+      }
     }, 30000);
 
     return '<div class="collector-monitor">' +
       '<div class="collector-monitor__header">' +
         '<h2 class="collector-monitor__title">Collector Monitor</h2>' +
-        '<button class="collector-monitor__refresh" onclick="_refreshCollectorData()">更新</button>' +
+        '<button class="collector-monitor__refresh" onclick="_refreshCurrentCollectorTab()">更新</button>' +
+      '</div>' +
+      '<div class="collector-monitor__tabs">' +
+        '<button class="collector-monitor__tab' + (window._collectorTab === 'dashboard' ? ' collector-monitor__tab--active' : '') + '" onclick="switchCollectorTab(\'dashboard\')">Dashboard</button>' +
+        '<button class="collector-monitor__tab' + (window._collectorTab === 'trades' ? ' collector-monitor__tab--active' : '') + '" onclick="switchCollectorTab(\'trades\')">Trades</button>' +
+        '<button class="collector-monitor__tab' + (window._collectorTab === 'coins' ? ' collector-monitor__tab--active' : '') + '" onclick="switchCollectorTab(\'coins\')">Coins</button>' +
       '</div>' +
       '<div id="collector-monitor-content">' +
         '<div class="collector-monitor__loading">読み込み中...</div>' +
@@ -7064,9 +7102,36 @@
     '</div>';
   }
 
+  function switchCollectorTab(tab) {
+    window._collectorTab = tab;
+    // Update tab buttons
+    var tabs = document.querySelectorAll('.collector-monitor__tab');
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].classList.remove('collector-monitor__tab--active');
+      if (tabs[i].textContent.toLowerCase().indexOf(tab) !== -1 ||
+          (tab === 'dashboard' && tabs[i].textContent === 'Dashboard') ||
+          (tab === 'trades' && tabs[i].textContent === 'Trades') ||
+          (tab === 'coins' && tabs[i].textContent === 'Coins')) {
+        tabs[i].classList.add('collector-monitor__tab--active');
+      }
+    }
+    _refreshCurrentCollectorTab();
+  }
+
+  function _refreshCurrentCollectorTab() {
+    if (window._collectorTab === 'dashboard') {
+      _refreshCollectorData();
+    } else if (window._collectorTab === 'trades') {
+      _loadCollectorTrades();
+    } else if (window._collectorTab === 'coins') {
+      _loadCollectorCoins();
+    }
+  }
+
   function _refreshCollectorData() {
     var container = document.getElementById('collector-monitor-content');
     if (!container) return;
+    container.innerHTML = '<div class="collector-monitor__loading">読み込み中...</div>';
 
     Promise.all([
       BackendAPI.getCollectorHealth(),
@@ -7077,7 +7142,7 @@
       container.innerHTML = _renderCollectorContent(health, stats);
     }).catch(function(err) {
       container.innerHTML = '<div class="collector-monitor__error">' +
-        '<div style="font-size:24px;margin-bottom:8px">⚠️</div>' +
+        '<div style="font-size:24px;margin-bottom:8px">!</div>' +
         '<div>バックエンドに接続できません</div>' +
         '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">' + (err.message || err) + '</div>' +
       '</div>';
@@ -7266,6 +7331,449 @@
       '<span class="collector-monitor__api-calls">' + calls + '</span>' +
       '<span class="collector-monitor__api-errors' + (errors > 0 ? ' collector-monitor__api-errors--active' : '') + '">' + errors + ' err</span>' +
     '</div>';
+  }
+
+  // ============================================================
+  // COLLECTOR: Trades Tab
+  // ============================================================
+
+  function _loadCollectorTrades() {
+    var container = document.getElementById('collector-monitor-content');
+    if (!container) return;
+    container.innerHTML = '<div class="collector-monitor__loading">読み込み中...</div>';
+
+    BackendAPI.getCollectorPaperTrades(_collectorTradesFilter, _collectorTradesPage)
+      .then(function(data) {
+        container.innerHTML = _renderTradesTab(data);
+      })
+      .catch(function(err) {
+        container.innerHTML = '<div class="collector-monitor__error">' +
+          '<div>データ取得エラー</div>' +
+          '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">' + (err.message || err) + '</div>' +
+        '</div>';
+      });
+  }
+
+  function _renderTradesTab(data) {
+    var trades = data.trades || [];
+    var total = data.total || 0;
+    var page = data.page || 1;
+    var pages = data.pages || 1;
+
+    var html = '<div class="collector-trades">';
+
+    // Filter bar
+    html += '<div class="collector-trades__filters">';
+    var filters = [
+      { key: '', label: '全て' },
+      { key: 'open', label: 'Open' },
+      { key: 'closed', label: 'Closed' },
+      { key: 'pending', label: 'Pending' }
+    ];
+    for (var i = 0; i < filters.length; i++) {
+      var f = filters[i];
+      var active = _collectorTradesFilter === f.key;
+      html += '<button class="collector-trades__filter-btn' + (active ? ' collector-trades__filter-btn--active' : '') + '" ' +
+        'onclick="_setCollectorTradesFilter(\'' + f.key + '\')">' + f.label + '</button>';
+    }
+    html += '</div>';
+
+    // Trade cards
+    if (trades.length === 0) {
+      html += '<div class="collector-monitor__error" style="padding:30px 0">トレードデータがありません</div>';
+    } else {
+      for (var j = 0; j < trades.length; j++) {
+        html += _renderTradeCard(trades[j]);
+      }
+    }
+
+    // Pagination
+    html += _renderCollectorPagination(page, pages, total, '_setCollectorTradesPage');
+
+    html += '</div>';
+    return html;
+  }
+
+  function _renderTradeCard(trade) {
+    var pnl = trade.current_pnl_pct != null ? trade.current_pnl_pct : (trade.exit_pnl_pct || 0);
+    var pnlClass = pnl >= 0 ? 'collector-trade-card__pnl--profit' : 'collector-trade-card__pnl--loss';
+    var pnlStr = (pnl >= 0 ? '+' : '') + pnl.toFixed(1) + '%';
+    var status = trade.status || 'pending';
+    var statusClass = status === 'open' ? 'open' : status === 'closed' ? 'closed' : 'pending';
+
+    var entryPrice = trade.entry_price_usd || 0;
+    var currentPrice = trade.current_price_usd || trade.exit_price_usd || entryPrice;
+
+    var html = '<div class="collector-trade-card">' +
+      '<div class="collector-trade-card__left">' +
+        '<span class="collector-trade-card__symbol">' + (trade.symbol || '???') + '</span>' +
+        '<span class="collector-trade-card__timing">' + (trade.timing || '--') + '</span>' +
+      '</div>' +
+      '<div class="collector-trade-card__center">' +
+        '<span class="collector-trade-card__prices">' +
+          '$' + _formatCollectorPrice(entryPrice) + ' → $' + _formatCollectorPrice(currentPrice) +
+        '</span>' +
+      '</div>' +
+      '<div class="collector-trade-card__right">' +
+        '<span class="collector-trade-card__pnl ' + pnlClass + '">' + pnlStr + '</span>' +
+        '<span class="collector-trade-card__status collector-trade-card__status--' + statusClass + '">' + status + '</span>' +
+      '</div>';
+
+    if (status === 'closed' && trade.exit_reason) {
+      var exitLabels = {
+        'emergency_stop': '緊急脱出',
+        'time_limit': '時間切れ',
+        'profit_100x': '100x利確',
+        'profit_10x': '10x売却',
+        'no_liquidity': 'ラグプル',
+        'no_price_data': '価格不可'
+      };
+      html += '<div class="collector-trade-card__exit">' + (exitLabels[trade.exit_reason] || trade.exit_reason) + '</div>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  function _setCollectorTradesFilter(filter) {
+    _collectorTradesFilter = filter;
+    _collectorTradesPage = 1;
+    _loadCollectorTrades();
+  }
+
+  function _setCollectorTradesPage(page) {
+    _collectorTradesPage = page;
+    _loadCollectorTrades();
+  }
+
+  // ============================================================
+  // COLLECTOR: Coins Tab
+  // ============================================================
+
+  function _loadCollectorCoins() {
+    var container = document.getElementById('collector-monitor-content');
+    if (!container) return;
+    container.innerHTML = '<div class="collector-monitor__loading">読み込み中...</div>';
+
+    BackendAPI.getCollectorCoins(_collectorCoinsPage, _collectorCoinsTrust)
+      .then(function(data) {
+        container.innerHTML = _renderCoinsTab(data);
+      })
+      .catch(function(err) {
+        container.innerHTML = '<div class="collector-monitor__error">' +
+          '<div>データ取得エラー</div>' +
+          '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">' + (err.message || err) + '</div>' +
+        '</div>';
+      });
+  }
+
+  function _renderCoinsTab(data) {
+    var coins = data.coins || [];
+    var total = data.total || 0;
+    var page = data.page || 1;
+    var pages = data.pages || 1;
+
+    var html = '<div class="collector-coins">';
+
+    // Filter bar
+    html += '<div class="collector-trades__filters">';
+    var filters = [
+      { key: '', label: '全て' },
+      { key: 'high', label: 'High' },
+      { key: 'medium', label: 'Medium' },
+      { key: 'low', label: 'Low' },
+      { key: 'danger', label: 'Danger' }
+    ];
+    for (var i = 0; i < filters.length; i++) {
+      var f = filters[i];
+      var active = _collectorCoinsTrust === f.key;
+      html += '<button class="collector-trades__filter-btn' + (active ? ' collector-trades__filter-btn--active' : '') + '" ' +
+        'onclick="_setCollectorCoinsTrust(\'' + f.key + '\')">' + f.label + '</button>';
+    }
+    html += '</div>';
+
+    // Coin cards
+    if (coins.length === 0) {
+      html += '<div class="collector-monitor__error" style="padding:30px 0">検出コインがありません</div>';
+    } else {
+      for (var j = 0; j < coins.length; j++) {
+        html += _renderCoinCard(coins[j]);
+      }
+    }
+
+    // Pagination
+    html += _renderCollectorPagination(page, pages, total, '_setCollectorCoinsPage');
+
+    html += '</div>';
+    return html;
+  }
+
+  function _renderCoinCard(coin) {
+    var trust = coin.combined_trust || 'unknown';
+    var trustClass = trust === 'high' ? '--high' : trust === 'medium' ? '--medium' : trust === 'low' ? '--low' : '--danger';
+    var score = coin.moonshot_score != null ? coin.moonshot_score : '--';
+    var risk = coin.ai_risk || coin.risk_level || '';
+    var detectedAt = coin.detected_at ? _formatCollectorTimeAgo(coin.detected_at) : '--';
+    var price = coin.price_usd || coin.entry_price_usd || 0;
+    var aiSummary = coin.ai_summary_ja || coin.ai_summary || '';
+    if (aiSummary.length > 60) aiSummary = aiSummary.substring(0, 60) + '...';
+
+    var html = '<div class="collector-coin-card" onclick="_openCollectorCoinDetail(' + coin.id + ')">' +
+      '<div class="collector-coin-card__top">' +
+        '<div class="collector-coin-card__left">' +
+          '<span class="collector-coin-card__symbol">' + (coin.symbol || '???') + '</span>' +
+          '<span class="collector-coin-card__name">' + (coin.name || '') + '</span>' +
+        '</div>' +
+        '<div class="collector-coin-card__right">' +
+          '<span class="collector-coin-card__score">' + score + '</span>' +
+          '<span class="collector-coin-card__trust collector-coin-card__trust' + trustClass + '">' + trust + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="collector-coin-card__bottom">' +
+        '<span class="collector-coin-card__price">$' + _formatCollectorPrice(price) + '</span>' +
+        '<span class="collector-coin-card__time">' + detectedAt + '</span>' +
+      '</div>';
+
+    if (aiSummary) {
+      html += '<div class="collector-coin-card__ai">' + aiSummary + '</div>';
+    }
+    if (risk) {
+      var riskClass = risk === 'high' ? 'collector-coin-card__risk--high' : risk === 'medium' ? 'collector-coin-card__risk--medium' : 'collector-coin-card__risk--low';
+      html += '<div class="collector-coin-card__risk ' + riskClass + '">Risk: ' + risk + '</div>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  function _setCollectorCoinsTrust(trust) {
+    _collectorCoinsTrust = trust;
+    _collectorCoinsPage = 1;
+    _loadCollectorCoins();
+  }
+
+  function _setCollectorCoinsPage(page) {
+    _collectorCoinsPage = page;
+    _loadCollectorCoins();
+  }
+
+  // ============================================================
+  // COLLECTOR: Coin Detail Modal
+  // ============================================================
+
+  function _openCollectorCoinDetail(coinId) {
+    // Show loading overlay
+    var overlay = document.createElement('div');
+    overlay.className = 'collector-detail-modal';
+    overlay.id = 'collector-detail-overlay';
+    overlay.innerHTML = '<div class="collector-detail-modal__content">' +
+      '<div class="collector-monitor__loading">読み込み中...</div>' +
+    '</div>';
+    overlay.onclick = function(e) {
+      if (e.target === overlay) _closeCollectorCoinDetail();
+    };
+    document.body.appendChild(overlay);
+
+    BackendAPI.getCollectorCoinDetail(coinId)
+      .then(function(data) {
+        var content = overlay.querySelector('.collector-detail-modal__content');
+        if (content) content.innerHTML = _renderCoinDetailContent(data.coin || data);
+      })
+      .catch(function(err) {
+        var content = overlay.querySelector('.collector-detail-modal__content');
+        if (content) content.innerHTML = '<div class="collector-monitor__error">' +
+          '<div>データ取得エラー</div>' +
+          '<div style="font-size:12px;margin-top:4px">' + (err.message || err) + '</div>' +
+          '<button class="collector-monitor__refresh" onclick="_closeCollectorCoinDetail()" style="margin-top:12px">閉じる</button>' +
+        '</div>';
+      });
+  }
+
+  function _closeCollectorCoinDetail() {
+    var overlay = document.getElementById('collector-detail-overlay');
+    if (overlay) overlay.remove();
+  }
+
+  function _renderCoinDetailContent(coin) {
+    var trust = coin.combined_trust || 'unknown';
+    var trustClass = trust === 'high' ? '--high' : trust === 'medium' ? '--medium' : trust === 'low' ? '--low' : '--danger';
+    var detectedAt = coin.detected_at ? new Date(coin.detected_at * 1000).toLocaleString('ja-JP') : '--';
+
+    var html = '<div class="collector-detail__header">' +
+      '<div class="collector-detail__header-top">' +
+        '<div>' +
+          '<span class="collector-detail__symbol">' + (coin.symbol || '???') + '</span>' +
+          '<span class="collector-detail__name">' + (coin.name || '') + '</span>' +
+        '</div>' +
+        '<button class="collector-detail__close" onclick="_closeCollectorCoinDetail()">×</button>' +
+      '</div>' +
+      '<div class="collector-detail__header-sub">' +
+        '<span class="collector-coin-card__trust collector-coin-card__trust' + trustClass + '">' + trust + '</span>' +
+        '<span class="collector-detail__detected">' + detectedAt + '</span>' +
+      '</div>' +
+    '</div>';
+
+    // === Snapshots ===
+    var snapshots = coin.snapshots || [];
+    html += '<div class="collector-detail__section">' +
+      '<div class="collector-monitor__section-title">価格推移スナップショット</div>';
+
+    if (snapshots.length === 0) {
+      html += '<div style="color:var(--text-secondary);font-size:13px;padding:8px 0">スナップショットなし</div>';
+    } else {
+      html += '<div class="collector-detail__snapshots">' +
+        '<div class="collector-detail__snapshot-header">' +
+          '<span>間隔</span><span>価格</span><span>変化%</span><span>出来高</span><span>流動性</span>' +
+        '</div>';
+
+      var intervals = ['1m', '5m', '15m', '30m', '1h', '3h', '6h', '24h'];
+      var snapshotMap = {};
+      for (var s = 0; s < snapshots.length; s++) {
+        snapshotMap[snapshots[s].interval] = snapshots[s];
+      }
+
+      for (var k = 0; k < intervals.length; k++) {
+        var iv = intervals[k];
+        var snap = snapshotMap[iv];
+        if (snap) {
+          var chg = snap.price_change_pct != null ? snap.price_change_pct : null;
+          var chgClass = chg != null ? (chg >= 0 ? 'collector-detail__change--up' : 'collector-detail__change--down') : '';
+          var chgStr = chg != null ? ((chg >= 0 ? '+' : '') + chg.toFixed(1) + '%') : '—';
+          var vol = snap.volume_usd != null ? _formatCollectorVolume(snap.volume_usd) : '—';
+          var liq = snap.liquidity_usd != null ? _formatCollectorVolume(snap.liquidity_usd) : '—';
+          var price = snap.price_usd != null ? '$' + _formatCollectorPrice(snap.price_usd) : '—';
+
+          html += '<div class="collector-detail__snapshot-row">' +
+            '<span class="collector-detail__snapshot-interval">' + iv + '</span>' +
+            '<span>' + price + '</span>' +
+            '<span class="' + chgClass + '">' + chgStr + '</span>' +
+            '<span>' + vol + '</span>' +
+            '<span>' + liq + '</span>' +
+          '</div>';
+        } else {
+          html += '<div class="collector-detail__snapshot-row collector-detail__snapshot-row--empty">' +
+            '<span class="collector-detail__snapshot-interval">' + iv + '</span>' +
+            '<span>—</span><span>—</span><span>—</span><span>—</span>' +
+          '</div>';
+        }
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+
+    // === Paper Trades ===
+    var trades = coin.paper_trades || [];
+    html += '<div class="collector-detail__section">' +
+      '<div class="collector-monitor__section-title">ペーパートレード</div>';
+
+    if (trades.length === 0) {
+      html += '<div style="color:var(--text-secondary);font-size:13px;padding:8px 0">トレードなし</div>';
+    } else {
+      html += '<div class="collector-detail__trades">' +
+        '<div class="collector-detail__trades-header">' +
+          '<span>タイミング</span><span>エントリー</span><span>現在/Exit</span><span>損益%</span><span>状態</span>' +
+        '</div>';
+
+      for (var t = 0; t < trades.length; t++) {
+        var tr = trades[t];
+        var tPnl = tr.current_pnl_pct != null ? tr.current_pnl_pct : (tr.exit_pnl_pct || 0);
+        var tPnlClass = tPnl >= 0 ? 'collector-detail__change--up' : 'collector-detail__change--down';
+        var tPnlStr = (tPnl >= 0 ? '+' : '') + tPnl.toFixed(1) + '%';
+        var tCurrent = tr.current_price_usd || tr.exit_price_usd || 0;
+        var tStatus = tr.status || 'pending';
+
+        html += '<div class="collector-detail__trades-row">' +
+          '<span class="collector-detail__snapshot-interval">' + (tr.timing || '--') + '</span>' +
+          '<span>$' + _formatCollectorPrice(tr.entry_price_usd || 0) + '</span>' +
+          '<span>$' + _formatCollectorPrice(tCurrent) + '</span>' +
+          '<span class="' + tPnlClass + '">' + tPnlStr + '</span>' +
+          '<span class="collector-trade-card__status collector-trade-card__status--' + tStatus + '">' + tStatus + '</span>' +
+        '</div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+
+    // === AI Analysis ===
+    var aiSummary = coin.ai_summary_ja || coin.ai_summary || '';
+    var aiReason = coin.ai_reason_ja || coin.ai_reason || '';
+    if (aiSummary || aiReason) {
+      html += '<div class="collector-detail__section">' +
+        '<div class="collector-monitor__section-title">AI分析</div>' +
+        '<div class="collector-detail__ai">';
+      if (aiSummary) html += '<div class="collector-detail__ai-summary">' + aiSummary + '</div>';
+      if (aiReason) html += '<div class="collector-detail__ai-reason">' + aiReason + '</div>';
+      html += '</div></div>';
+    }
+
+    // === Security ===
+    var rugScore = coin.rugcheck_score != null && coin.rugcheck_score >= 0 ? coin.rugcheck_score : null;
+    var lpLock = coin.lp_locked_pct != null && coin.lp_locked_pct >= 0 ? coin.lp_locked_pct : null;
+    if (trust !== 'unknown' || rugScore != null) {
+      html += '<div class="collector-detail__section">' +
+        '<div class="collector-monitor__section-title">セキュリティ</div>' +
+        '<div class="collector-detail__security">';
+      html += '<div class="collector-detail__security-row"><span>信頼度</span><span class="collector-coin-card__trust collector-coin-card__trust' + trustClass + '">' + trust + '</span></div>';
+      if (rugScore != null) {
+        html += '<div class="collector-detail__security-row"><span>Rugcheck</span><span>' + rugScore + '</span></div>';
+      }
+      if (lpLock != null) {
+        html += '<div class="collector-detail__security-row"><span>LP Lock</span><span>' + lpLock.toFixed(1) + '%</span></div>';
+      }
+      html += '</div></div>';
+    }
+
+    // === External links ===
+    var address = coin.address || coin.contract_address || '';
+    if (address) {
+      html += '<div class="collector-detail__section">' +
+        '<div class="collector-detail__links">' +
+          '<a href="https://dexscreener.com/solana/' + address + '" target="_blank" class="collector-detail__link">DexScreener</a>' +
+          '<a href="https://birdeye.so/token/' + address + '?chain=solana" target="_blank" class="collector-detail__link">Birdeye</a>' +
+          '<a href="https://solscan.io/token/' + address + '" target="_blank" class="collector-detail__link">Solscan</a>' +
+        '</div>' +
+      '</div>';
+    }
+
+    return html;
+  }
+
+  // ============================================================
+  // COLLECTOR: Helpers
+  // ============================================================
+
+  function _renderCollectorPagination(page, pages, total, fnName) {
+    if (pages <= 1) return '';
+    return '<div class="collector-pagination">' +
+      '<button class="collector-pagination__btn" ' + (page <= 1 ? 'disabled' : 'onclick="' + fnName + '(' + (page - 1) + ')"') + '>&lt; 前へ</button>' +
+      '<span class="collector-pagination__info">' + page + ' / ' + pages + ' (' + total + '件)</span>' +
+      '<button class="collector-pagination__btn" ' + (page >= pages ? 'disabled' : 'onclick="' + fnName + '(' + (page + 1) + ')"') + '>次へ &gt;</button>' +
+    '</div>';
+  }
+
+  function _formatCollectorPrice(price) {
+    if (!price || price === 0) return '0';
+    if (price < 0.000001) return price.toExponential(2);
+    if (price < 0.01) return price.toFixed(6);
+    if (price < 1) return price.toFixed(4);
+    if (price < 100) return price.toFixed(2);
+    return price.toFixed(0);
+  }
+
+  function _formatCollectorVolume(val) {
+    if (!val || val === 0) return '$0';
+    if (val >= 1000000) return '$' + (val / 1000000).toFixed(1) + 'M';
+    if (val >= 1000) return '$' + (val / 1000).toFixed(1) + 'K';
+    return '$' + val.toFixed(0);
+  }
+
+  function _formatCollectorTimeAgo(ts) {
+    var now = Date.now() / 1000;
+    var diff = now - ts;
+    if (diff < 60) return Math.floor(diff) + '秒前';
+    if (diff < 3600) return Math.floor(diff / 60) + '分前';
+    if (diff < 86400) return Math.floor(diff / 3600) + '時間前';
+    return Math.floor(diff / 86400) + '日前';
   }
 
   // ============================================
