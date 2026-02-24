@@ -7776,6 +7776,17 @@
     return Math.floor(diff / 86400) + '日前';
   }
 
+  // Expose collector functions to global scope for onclick handlers
+  window.switchCollectorTab = switchCollectorTab;
+  window._refreshCurrentCollectorTab = _refreshCurrentCollectorTab;
+  window._refreshCollectorData = _refreshCollectorData;
+  window._setCollectorTradesFilter = _setCollectorTradesFilter;
+  window._setCollectorTradesPage = _setCollectorTradesPage;
+  window._setCollectorCoinsTrust = _setCollectorCoinsTrust;
+  window._setCollectorCoinsPage = _setCollectorCoinsPage;
+  window._openCollectorCoinDetail = _openCollectorCoinDetail;
+  window._closeCollectorCoinDetail = _closeCollectorCoinDetail;
+
   // ============================================
   // スワイプジェスチャー（v19で廃止 - 通貨別ストラテジー制に移行）
   // ============================================
