@@ -7624,41 +7624,71 @@
     if (snapshots.length === 0) {
       html += '<div style="color:var(--text-secondary);font-size:13px;padding:8px 0">スナップショットなし</div>';
     } else {
-      html += '<div class="collector-detail__snapshots">' +
-        '<div class="collector-detail__snapshot-header">' +
-          '<span>間隔</span><span>価格</span><span>変化%</span><span>出来高</span><span>流動性</span>' +
-        '</div>';
-
       var intervals = ['1m', '5m', '15m', '30m', '1h', '3h', '6h', '24h'];
+      var extendedIntervals = { '15m': 1, '30m': 1, '1h': 1, '3h': 1, '6h': 1, '24h': 1 };
       var snapshotMap = {};
       for (var s = 0; s < snapshots.length; s++) {
         snapshotMap[snapshots[s].interval_label] = snapshots[s];
       }
 
+      html += '<div class="collector-detail__snap-cards">';
       for (var k = 0; k < intervals.length; k++) {
         var iv = intervals[k];
         var snap = snapshotMap[iv];
+        var isExt = extendedIntervals[iv];
+
         if (snap && snap.status === 'completed') {
           var chg = snap.price_change_pct != null ? snap.price_change_pct : null;
           var chgClass = chg != null ? (chg >= 0 ? 'collector-detail__change--up' : 'collector-detail__change--down') : '';
           var chgStr = chg != null ? ((chg >= 0 ? '+' : '') + chg.toFixed(1) + '%') : '—';
-          var vol = snap.volume_24h != null ? _formatCollectorVolume(snap.volume_24h) : '—';
-          var liq = snap.liquidity_usd != null ? _formatCollectorVolume(snap.liquidity_usd) : '—';
           var price = snap.price_usd != null ? '$' + _formatCollectorPrice(snap.price_usd) : '—';
 
-          html += '<div class="collector-detail__snapshot-row">' +
-            '<span class="collector-detail__snapshot-interval">' + iv + '</span>' +
-            '<span>' + price + '</span>' +
-            '<span class="' + chgClass + '">' + chgStr + '</span>' +
-            '<span>' + vol + '</span>' +
-            '<span>' + liq + '</span>' +
-          '</div>';
+          html += '<div class="snap-card">' +
+            '<div class="snap-card__header">' +
+              '<span class="snap-card__interval">' + iv + '</span>' +
+              '<span class="snap-card__price">' + price + '</span>' +
+              '<span class="snap-card__change ' + chgClass + '">' + chgStr + '</span>' +
+            '</div>';
+
+          // Row 1: Market data
+          html += '<div class="snap-card__grid">' +
+            _snapStat('出来高', _formatCollectorVolume(snap.volume_24h || 0)) +
+            _snapStat('流動性', _formatCollectorVolume(snap.liquidity_usd || 0)) +
+            _snapStat('時価総額', snap.market_cap ? _formatCollectorVolume(snap.market_cap) : '—') +
+            _snapStat('B/S比', snap.buy_sell_ratio != null ? snap.buy_sell_ratio.toFixed(2) : '—');
+
+          // Row 2: Holder & transaction data
+          var holderStr = snap.holder_count ? snap.holder_count.toLocaleString() : '—';
+          var holderChgStr = '—';
+          if (snap.holder_change != null) {
+            holderChgStr = (snap.holder_change >= 0 ? '+' : '') + snap.holder_change;
+          }
+          var buySellStr = (snap.txns_buy || 0) + '/' + (snap.txns_sell || 0);
+
+          html += _snapStat('保有者', holderStr) +
+            _snapStat('増減', holderChgStr, snap.holder_change > 0 ? 'up' : snap.holder_change < 0 ? 'down' : '') +
+            _snapStat('売買件数', buySellStr);
+
+          // Extended data (15m+)
+          if (isExt) {
+            html += _snapStat('Top10保有', snap.top10_holder_pct != null ? snap.top10_holder_pct.toFixed(1) + '%' : '—');
+            if (snap.unique_buyers) {
+              html += _snapStat('ユニーク買手', snap.unique_buyers.toLocaleString());
+            }
+            if (snap.avg_tx_size) {
+              html += _snapStat('平均Tx', _formatCollectorVolume(snap.avg_tx_size));
+            }
+          }
+
+          html += '</div></div>';
         } else {
           var snapStatus = snap ? snap.status : '';
           var snapNote = snapStatus === 'failed' ? 'failed' : snapStatus === 'pending' ? '待機中' : '—';
-          html += '<div class="collector-detail__snapshot-row collector-detail__snapshot-row--empty">' +
-            '<span class="collector-detail__snapshot-interval">' + iv + '</span>' +
-            '<span>' + snapNote + '</span><span>—</span><span>—</span><span>—</span>' +
+          html += '<div class="snap-card snap-card--empty">' +
+            '<div class="snap-card__header">' +
+              '<span class="snap-card__interval">' + iv + '</span>' +
+              '<span class="snap-card__status">' + snapNote + '</span>' +
+            '</div>' +
           '</div>';
         }
       }
@@ -7770,6 +7800,16 @@
     if (val >= 1000000) return '$' + (val / 1000000).toFixed(1) + 'M';
     if (val >= 1000) return '$' + (val / 1000).toFixed(1) + 'K';
     return '$' + val.toFixed(0);
+  }
+
+  function _snapStat(label, value, colorHint) {
+    var cls = 'snap-card__stat-value';
+    if (colorHint === 'up') cls += ' collector-detail__change--up';
+    else if (colorHint === 'down') cls += ' collector-detail__change--down';
+    return '<div class="snap-card__stat">' +
+      '<span class="snap-card__stat-label">' + label + '</span>' +
+      '<span class="' + cls + '">' + value + '</span>' +
+    '</div>';
   }
 
   function _formatCollectorTimeAgo(ts) {
