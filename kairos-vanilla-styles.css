@@ -12779,77 +12779,55 @@ body.has-ticker-bar {
   line-height: 1.4;
 }
 
-/* シェブロン（開閉矢印） */
-.dex-detail__security-chevron {
-  font-size: 10px;
-  color: #64748b;
-  margin-left: auto;
-  transition: transform 0.3s ease;
-  flex-shrink: 0;
-}
-
-.dex-detail__security-chevron.open {
-  transform: rotate(180deg);
-}
-
-/* アコーディオン */
-.dex-detail__sec-accordion {
-  height: 0;
-  overflow: hidden;
-  transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* セキュリティ項目 2列グリッド（3段セル） */
-.dex-detail__sec-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
+/* セキュリティ項目 縦リスト */
+.dex-detail__security-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   margin-top: 10px;
 }
 
-.dex-detail__sec-cell {
-  padding: 8px 10px;
+.dex-detail__security-row {
+  padding: 10px 12px;
   background: rgba(0, 0, 0, 0.2);
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
-.dex-detail__sec-cell:active {
+.dex-detail__security-row:active {
   background: rgba(255, 255, 255, 0.08);
 }
 
-.dex-detail__sec-cell-label {
-  font-size: 10px;
+.dex-detail__security-row-label {
+  font-size: 11px;
   font-weight: 600;
   color: #94a3b8;
-  margin-bottom: 3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin-bottom: 4px;
 }
 
-.dex-detail__sec-cell-q {
+.dex-detail__security-row-q {
   font-size: 9px;
   color: #64748b;
+  margin-left: 2px;
 }
 
-.dex-detail__sec-cell-val {
-  font-size: 14px;
+.dex-detail__security-row-value {
+  font-size: 13px;
   font-weight: 700;
-  line-height: 1.2;
-  margin-bottom: 2px;
+  line-height: 1.4;
 }
 
-.dex-detail__sec-cell-desc {
-  font-size: 10px;
-  color: #64748b;
-  line-height: 1.3;
+.dex-detail__security-row-desc {
+  font-weight: 400;
+  font-size: 12px;
+  color: #94a3b8;
+  margin-left: 4px;
 }
 
-.dex-detail__sec-cell-extra {
-  margin-top: 3px;
-  font-size: 10px;
+.dex-detail__security-row-extra {
+  margin-top: 4px;
+  font-size: 11px;
 }
 
 .dex-detail__security-risks {

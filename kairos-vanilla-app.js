@@ -5622,6 +5622,16 @@
         '<br><span style="color:#f59e0b">10-30%</span> = やや多め（注意）' +
         '<br><span style="color:#ef4444">30%超</span> = 大量売却リスク' +
       '</div>'
+    },
+    safety_score: {
+      icon: '\u{1F6E1}\uFE0F', title: '安全度スコアの見方',
+      html: '<div style="font-size:11px;color:#94a3b8;line-height:1.5">' +
+        'Rugcheckのリスクスコアを100点満点に変換した安全度。' +
+        '<br><br><span style="color:#22c55e">\u{1F7E2} 70以上</span> = Safe（比較的安全）' +
+        '<br><span style="color:#f59e0b">\u{1F7E1} 40-69</span> = Caution（注意が必要）' +
+        '<br><span style="color:#ef4444">\u{1F534} 40未満</span> = Danger（高リスク）' +
+        '<br><br>2ソース検証済 = Rugcheck + GoPlusの両方でチェック済み（より信頼できる）' +
+      '</div>'
     }
   };
 
@@ -5656,35 +5666,6 @@
   }
   window.openTermPopup = openTermPopup;
 
-  // セキュリティ詳細アコーディオン開閉
-  function _toggleSecAccordion() {
-    var body = document.getElementById('sec-accordion-body');
-    var chevron = document.getElementById('sec-accordion-chevron');
-    if (!body) return;
-    var isOpen = body.classList.contains('open');
-    if (isOpen) {
-      // 閉じる: まずoverflowをhiddenにし、現在の高さを固定してから0へ
-      body.style.overflow = 'hidden';
-      body.style.height = body.scrollHeight + 'px';
-      requestAnimationFrame(function() { body.style.height = '0px'; });
-      body.classList.remove('open');
-      if (chevron) chevron.classList.remove('open');
-    } else {
-      // 開く: overflow hiddenのまま高さをアニメ、完了後にauto+visible
-      body.style.overflow = 'hidden';
-      body.style.height = body.scrollHeight + 'px';
-      body.classList.add('open');
-      if (chevron) chevron.classList.add('open');
-      body.addEventListener('transitionend', function handler(e) {
-        if (e.target !== body) return;
-        if (body.classList.contains('open')) {
-          body.style.height = 'auto';
-        }
-        body.removeEventListener('transitionend', handler);
-      });
-    }
-  }
-  window._toggleSecAccordion = _toggleSecAccordion;
 
   // ===== DEXコイン専用詳細画面 =====
 
@@ -5980,13 +5961,13 @@
             '</div>';
           }
 
-          // 安全度スコア表示（SVG円形ゲージ） — タップでアコーディオン開閉
+          // 安全度スコア表示（SVG円形ゲージ） — タップで安全度スコア解説
           var scoreHtml = '';
           if (safeScore >= 0) {
             var gaugeR = 28, gaugeC = 2 * Math.PI * gaugeR;
             var gaugePct = coin.goplus_honeypot ? 0 : safeScore / 100;
             var gaugeOffset = gaugeC * (1 - gaugePct);
-            scoreHtml = '<div class="dex-detail__security-score" onclick="window._toggleSecAccordion()" style="cursor:pointer">' +
+            scoreHtml = '<div class="dex-detail__security-score" onclick="window.openTermPopup(\'safety_score\')" style="cursor:pointer">' +
               '<div class="dex-detail__security-gauge">' +
                 '<svg viewBox="0 0 64 64" class="dex-detail__security-gauge-svg">' +
                   '<circle cx="32" cy="32" r="' + gaugeR + '" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="4"/>' +
@@ -5998,20 +5979,18 @@
                 '<div class="dex-detail__security-score-label" style="color:' + safeColor + '">' + safeLabel + '</div>' +
                 '<div class="dex-detail__security-score-msg">' + (coin.goplus_honeypot ? '売却不可のトラップ — 絶対に購入禁止' : safeScore >= 70 ? '比較的安全なトークンです' : safeScore >= 40 ? 'いくつかの注意点があります' : '高リスク — 十分注意してください') + '</div>' +
               '</div>' +
-              '<div class="dex-detail__security-chevron" id="sec-accordion-chevron">\u25BC</div>' +
             '</div>';
           }
 
-          // 項目グリッド構築（2列 x 3段セル）
-          var cells = [];
+          // 項目リスト構築（縦1列）
+          var rows = [];
           var hasGoplus = coin.goplus_holder_count > 0 || coin.goplus_honeypot;
 
-          // セルヘルパー: {term, icon, label, val, valColor, desc, extra?}
-          function secCell(c) {
-            return '<div class="dex-detail__sec-cell" onclick="window.openTermPopup(\'' + c.term + '\')">' +
-              '<div class="dex-detail__sec-cell-label">' + c.icon + ' ' + c.label + ' <span class="dex-detail__sec-cell-q">?</span></div>' +
-              '<div class="dex-detail__sec-cell-val" style="color:' + c.valColor + '">' + c.val + '</div>' +
-              '<div class="dex-detail__sec-cell-desc">' + c.desc + '</div>' +
+          // 行ヘルパー: {term, icon, label, val, valColor, desc, extra?}
+          function secRow(c) {
+            return '<div class="dex-detail__security-row" onclick="window.openTermPopup(\'' + c.term + '\')">' +
+              '<div class="dex-detail__security-row-label">' + c.icon + ' ' + c.label + ' <span class="dex-detail__security-row-q">?</span></div>' +
+              '<div class="dex-detail__security-row-value"><span style="color:' + c.valColor + '">' + c.val + '</span> <span class="dex-detail__security-row-desc">' + c.desc + '</span></div>' +
               (c.extra || '') +
             '</div>';
           }
@@ -6021,64 +6000,64 @@
             var lp = coin.lp_locked_pct;
             var lpOk = lp > 50;
             var lpColor = lpOk ? '#22c55e' : lp > 0 ? '#f59e0b' : '#ef4444';
-            var lpDesc = lpOk ? 'ロック済み' : lp > 0 ? '一部ロック' : '未ロック';
-            cells.push(secCell({term:'lp_lock', icon:'\u{1F512}', label:'LP Lock', val:lp.toFixed(1)+'%', valColor:lpColor, desc:lpDesc, extra:'<div class="dex-detail__sec-cell-extra"><span id="dex-lp-expiry-lazy"></span></div>'}));
+            var lpDesc = lpOk ? '流動性がロックされています' : lp > 0 ? '一部のみロック — 注意' : '未ロック — ラグプル危険';
+            rows.push(secRow({term:'lp_lock', icon:'\u{1F512}', label:'LP Lock', val:lp.toFixed(1)+'%', valColor:lpColor, desc:lpDesc, extra:'<div class="dex-detail__security-row-extra"><span id="dex-lp-expiry-lazy"></span></div>'}));
           }
 
           // 2. 売却Tax（GoPlus）
           if (hasGoplus && coin.goplus_sell_tax != null && coin.goplus_sell_tax >= 0) {
             var st = coin.goplus_sell_tax;
             var stColor = st > 10 ? '#ef4444' : st > 5 ? '#f59e0b' : '#22c55e';
-            var stDesc = st > 10 ? 'Tax非常に高い' : st > 5 ? 'Taxやや高い' : 'Tax低い';
-            cells.push(secCell({term:'sell_tax', icon:'\u{1F4B8}', label:'売却Tax', val:st.toFixed(1)+'%', valColor:stColor, desc:stDesc}));
+            var stDesc = st > 10 ? '売却Tax非常に高い — 利益がほぼ消える' : st > 5 ? '売却Taxやや高い — 利益に影響' : '売却Tax低い';
+            rows.push(secRow({term:'sell_tax', icon:'\u{1F4B8}', label:'売却Tax', val:st.toFixed(1)+'%', valColor:stColor, desc:stDesc}));
           }
 
           // 3. Top10保有
           if (coin.holder_top10_pct != null && coin.holder_top10_pct >= 0) {
             var t10 = coin.holder_top10_pct;
             var t10Color = t10 > 50 ? '#ef4444' : t10 > 30 ? '#f59e0b' : '#22c55e';
-            var t10Desc = t10 < 30 ? '分散している' : t10 <= 50 ? 'やや集中' : '集中 — 暴落リスク';
-            cells.push(secCell({term:'top10', icon:'\u{1F465}', label:'Top10保有', val:t10.toFixed(1)+'%', valColor:t10Color, desc:t10Desc}));
+            var t10Desc = t10 < 30 ? '保有が分散しています' : t10 <= 50 ? 'やや集中 — 大口売りに注意' : '集中 — 暴落リスク';
+            rows.push(secRow({term:'top10', icon:'\u{1F465}', label:'Top10保有', val:t10.toFixed(1)+'%', valColor:t10Color, desc:t10Desc}));
           }
 
           // 4. Mint権限
           if (coin.has_mint_authority != null) {
             var mintColor = coin.has_mint_authority ? '#ef4444' : '#22c55e';
             var mintVal = coin.has_mint_authority ? '\u26A0\uFE0F あり' : '\u2705 なし';
-            var mintDesc = coin.has_mint_authority ? '無限発行可能' : '発行不可';
-            cells.push(secCell({term:'mint', icon:'\u{1F3ED}', label:'Mint権限', val:mintVal, valColor:mintColor, desc:mintDesc}));
+            var mintDesc = coin.has_mint_authority ? '新規発行が可能 — 価値希薄化の恐れ' : '新規発行はできません';
+            rows.push(secRow({term:'mint', icon:'\u{1F3ED}', label:'Mint権限', val:mintVal, valColor:mintColor, desc:mintDesc}));
           }
 
           // 5. Freeze権限
           if (coin.has_freeze_authority != null) {
             var frzColor = coin.has_freeze_authority ? '#ef4444' : '#22c55e';
             var frzVal = coin.has_freeze_authority ? '\u26A0\uFE0F あり' : '\u2705 なし';
-            var frzDesc = coin.has_freeze_authority ? '資産凍結の恐れ' : '凍結権限なし';
-            cells.push(secCell({term:'freeze', icon:'\u{1F9CA}', label:'Freeze権限', val:frzVal, valColor:frzColor, desc:frzDesc}));
+            var frzDesc = coin.has_freeze_authority ? '資産凍結の権限あり — 売却不可の恐れ' : '資産凍結の権限はありません';
+            rows.push(secRow({term:'freeze', icon:'\u{1F9CA}', label:'Freeze権限', val:frzVal, valColor:frzColor, desc:frzDesc}));
           }
 
           // 6. 保有者数（GoPlus）
           if (hasGoplus && coin.goplus_holder_count > 0) {
             var hc = coin.goplus_holder_count;
             var hcColor = hc > 500 ? '#22c55e' : hc > 100 ? '#f59e0b' : '#ef4444';
-            var hcDesc = hc > 500 ? 'コミュニティあり' : hc > 100 ? 'やや少ない' : '操作リスク高';
-            cells.push(secCell({term:'holders', icon:'\u{1F50D}', label:'保有者数', val:hc.toLocaleString(), valColor:hcColor, desc:hcDesc}));
+            var hcDesc = hc > 500 ? '多くの人が保有' : hc > 100 ? 'やや少ない' : '操作リスクが高い';
+            rows.push(secRow({term:'holders', icon:'\u{1F50D}', label:'保有者数', val:hc.toLocaleString(), valColor:hcColor, desc:hcDesc}));
           }
 
           // 7. 作成者保有（GoPlus）
           if (hasGoplus && coin.goplus_creator_percent > 0) {
             var cp = coin.goplus_creator_percent;
             var cpColor = cp > 30 ? '#ef4444' : cp > 10 ? '#f59e0b' : '#22c55e';
-            var cpDesc = cp > 30 ? '売却リスク高' : cp > 10 ? 'やや多め' : '保有少ない';
-            cells.push(secCell({term:'creator', icon:'\u{1F464}', label:'作成者保有', val:cp.toFixed(1)+'%', valColor:cpColor, desc:cpDesc}));
+            var cpDesc = cp > 30 ? '大量売却リスク' : cp > 10 ? 'やや多め — 注意' : '作成者保有少ない';
+            rows.push(secRow({term:'creator', icon:'\u{1F464}', label:'作成者保有', val:cp.toFixed(1)+'%', valColor:cpColor, desc:cpDesc}));
           }
 
-          // 8. ハニーポット（GoPlus） — バナーがない場合のみセルとして表示
+          // 8. ハニーポット（GoPlus） — バナーがない場合のみ行として表示
           if (hasGoplus && coin.goplus_honeypot != null && !coin.goplus_honeypot) {
-            cells.push(secCell({term:'honeypot', icon:'\u{1F6AB}', label:'ハニーポット', val:'\u2705 なし', valColor:'#22c55e', desc:'売買ブロックなし'}));
+            rows.push(secRow({term:'honeypot', icon:'\u{1F6AB}', label:'ハニーポット', val:'\u2705 なし', valColor:'#22c55e', desc:'売買ブロックなし'}));
           }
 
-          var itemsHtml = '<div class="dex-detail__sec-grid">' + cells.join('') + '</div>';
+          var itemsHtml = '<div class="dex-detail__security-items">' + rows.join('') + '</div>';
 
           // リスクタグ
           var risksHtml = '';
@@ -6096,10 +6075,8 @@
             verifyBadge +
             honeypotBanner +
             scoreHtml +
-            '<div class="dex-detail__sec-accordion" id="sec-accordion-body">' +
-              itemsHtml +
-              risksHtml +
-            '</div>' +
+            itemsHtml +
+            risksHtml +
           '</div>';
         })() +
 
