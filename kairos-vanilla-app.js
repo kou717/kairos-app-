@@ -1170,6 +1170,44 @@
             .catch(reject);
         });
       });
+    },
+
+    getCollectorHealth: function() {
+      var self = this;
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) { reject(new Error('Backend not available')); return; }
+          fetch(self.baseUrl + '/api/collector/health')
+            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
+            .then(resolve).catch(reject);
+        });
+      });
+    },
+
+    getCollectorStats: function() {
+      var self = this;
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) { reject(new Error('Backend not available')); return; }
+          fetch(self.baseUrl + '/api/collector/stats')
+            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
+            .then(resolve).catch(reject);
+        });
+      });
+    },
+
+    getCollectorPaperTrades: function(status, page) {
+      var self = this;
+      var url = self.baseUrl + '/api/collector/paper-trades?per_page=20&page=' + (page || 1);
+      if (status) url += '&status=' + status;
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) { reject(new Error('Backend not available')); return; }
+          fetch(url)
+            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
+            .then(resolve).catch(reject);
+        });
+      });
     }
   };
 
@@ -2219,6 +2257,13 @@
       stopChartAutoUpdate();
       window._pendingMoonshotCoin = null;
     }
+    // Collector Monitor自動更新を停止
+    if (appState.currentScreen === 'collector' && screenId !== 'collector') {
+      if (typeof _collectorAutoRefresh !== 'undefined' && _collectorAutoRefresh) {
+        clearInterval(_collectorAutoRefresh);
+        _collectorAutoRefresh = null;
+      }
+    }
 
     // ポートフォリオ詳細が開いている場合
     if (appState.portfolioDetailOpen) {
@@ -2490,7 +2535,8 @@
       'currencies': '通貨一覧',
       'market': 'マーケット',
       'ai-compare': 'AI アシスタント',
-      'portfolio-detail': 'Portfolio Detail'
+      'portfolio-detail': 'Portfolio Detail',
+      'collector': 'Collector Monitor'
     };
     return titles[screen] || 'Portfolio';
   }
@@ -6630,6 +6676,9 @@
         case 'moonshot':
           screenHtml = renderMoonshotScreen();
           break;
+        case 'collector':
+          screenHtml = renderCollectorMonitor();
+          break;
         default:
           screenHtml = renderHomeScreen();
       }
@@ -6691,6 +6740,11 @@
       } else {
         loadMoonshotCoins();
       }
+    }
+
+    // Collector Monitor: load data
+    if (appState.currentScreen === 'collector') {
+      _refreshCollectorData();
     }
   }
 
@@ -6984,6 +7038,234 @@
     }
 
     // スワイプジェスチャーはv19で廃止（通貨別ストラテジー制に移行）
+  }
+
+  // ============================================================
+  // Collector Monitor Screen
+  // ============================================================
+
+  var _collectorAutoRefresh = null;
+
+  function renderCollectorMonitor() {
+    // Auto-refresh setup
+    if (_collectorAutoRefresh) clearInterval(_collectorAutoRefresh);
+    _collectorAutoRefresh = setInterval(function() {
+      if (appState.currentScreen === 'collector') _refreshCollectorData();
+    }, 30000);
+
+    return '<div class="collector-monitor">' +
+      '<div class="collector-monitor__header">' +
+        '<h2 class="collector-monitor__title">Collector Monitor</h2>' +
+        '<button class="collector-monitor__refresh" onclick="_refreshCollectorData()">更新</button>' +
+      '</div>' +
+      '<div id="collector-monitor-content">' +
+        '<div class="collector-monitor__loading">読み込み中...</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function _refreshCollectorData() {
+    var container = document.getElementById('collector-monitor-content');
+    if (!container) return;
+
+    Promise.all([
+      BackendAPI.getCollectorHealth(),
+      BackendAPI.getCollectorStats()
+    ]).then(function(results) {
+      var health = results[0];
+      var stats = results[1];
+      container.innerHTML = _renderCollectorContent(health, stats);
+    }).catch(function(err) {
+      container.innerHTML = '<div class="collector-monitor__error">' +
+        '<div style="font-size:24px;margin-bottom:8px">⚠️</div>' +
+        '<div>バックエンドに接続できません</div>' +
+        '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">' + (err.message || err) + '</div>' +
+      '</div>';
+    });
+  }
+
+  function _renderCollectorContent(health, stats) {
+    var html = '';
+
+    // === Status Section ===
+    var ok = health.ok;
+    var uptime = health.uptime_seconds || 0;
+    var uptimeStr = uptime >= 3600
+      ? Math.floor(uptime / 3600) + 'h ' + Math.floor((uptime % 3600) / 60) + 'm'
+      : Math.floor(uptime / 60) + 'm ' + (uptime % 60) + 's';
+    var loops = health.loops || {};
+    var lastCollAt = loops.last_collection_at;
+    var lastCollStr = lastCollAt
+      ? new Date(lastCollAt * 1000).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+      : '--:--';
+
+    html += '<div class="collector-monitor__status ' + (ok ? 'collector-monitor__status--ok' : 'collector-monitor__status--down') + '">' +
+      '<span class="collector-monitor__status-dot"></span>' +
+      '<span>' + (ok ? '稼働中' : '停止中') + '</span>' +
+      '<span class="collector-monitor__uptime">' + uptimeStr + '</span>' +
+    '</div>';
+
+    // === Daily Cards ===
+    var daily = health.daily || {};
+    var db = health.db || {};
+    var api = health.api_usage || {};
+    var apiCalls = api.calls || {};
+    var apiErrors = api.errors || {};
+    var filter = health.filter || {};
+
+    html += '<div class="collector-monitor__cards">';
+
+    // Card: Today's coins
+    html += _monitorCard('検出コイン', (db.today_coins || 0) + ' / ' + (daily.daily_cap || 200),
+      daily.cap_hit ? '上限到達' : '収集中', daily.cap_hit ? 'warn' : 'ok');
+
+    // Card: Active trades
+    html += _monitorCard('アクティブ取引', db.active_trades_total || 0,
+      'open: ' + ((db.active_trades || {}).open || 0) + ' / pending: ' + ((db.active_trades || {}).pending || 0), 'info');
+
+    // Card: Collection cycles
+    html += _monitorCard('収集サイクル', loops.collection_cycles || 0,
+      '最終: ' + lastCollStr, 'info');
+
+    // Card: Snapshots
+    var todaySnaps = db.today_snapshots || {};
+    html += _monitorCard('スナップショット',
+      (todaySnaps.completed || 0) + ' 完了',
+      'pending: ' + (todaySnaps.pending || 0) + ' / failed: ' + (todaySnaps.failed || 0),
+      (todaySnaps.failed || 0) > 10 ? 'warn' : 'ok');
+
+    html += '</div>';
+
+    // === API Usage ===
+    var totalCalls = (apiCalls.dexscreener || 0) + (apiCalls.helius || 0) + (apiCalls.geckoterminal || 0);
+    var totalErrors = (apiErrors.dexscreener || 0) + (apiErrors.helius || 0) + (apiErrors.geckoterminal || 0);
+
+    html += '<div class="collector-monitor__section">' +
+      '<div class="collector-monitor__section-title">API使用量 (今日)</div>' +
+      '<div class="collector-monitor__api-grid">' +
+        _apiRow('DexScreener', apiCalls.dexscreener || 0, apiErrors.dexscreener || 0) +
+        _apiRow('Helius', apiCalls.helius || 0, apiErrors.helius || 0) +
+        _apiRow('GeckoTerminal', apiCalls.geckoterminal || 0, apiErrors.geckoterminal || 0) +
+      '</div>' +
+      '<div class="collector-monitor__api-total">合計: ' + totalCalls + ' calls / ' + totalErrors + ' errors</div>' +
+    '</div>';
+
+    // === Filter Log ===
+    var filterReasons = filter.filter_reasons || {};
+    html += '<div class="collector-monitor__section">' +
+      '<div class="collector-monitor__section-title">フィルター結果</div>' +
+      '<div class="collector-monitor__filter-row">' +
+        '<span class="collector-monitor__filter-label">Paper Trade適格</span>' +
+        '<span class="collector-monitor__filter-value" style="color:#10b981">' + (filter.paper_trade_eligible || 0) + '</span>' +
+      '</div>' +
+      '<div class="collector-monitor__filter-row">' +
+        '<span class="collector-monitor__filter-label">除外合計</span>' +
+        '<span class="collector-monitor__filter-value" style="color:#ef4444">' + (filter.paper_trade_filtered || 0) + '</span>' +
+      '</div>';
+
+    var reasonLabels = {
+      'no_security_data': 'セキュリティデータなし',
+      'mint_authority': 'Mint権限あり',
+      'lp_lock_low': 'LP Lock不足 (<30%)',
+      'sell_tax_high': '売Tax高い (>=5%)'
+    };
+    for (var reason in filterReasons) {
+      if (filterReasons[reason] > 0) {
+        html += '<div class="collector-monitor__filter-row collector-monitor__filter-row--sub">' +
+          '<span class="collector-monitor__filter-label">' + (reasonLabels[reason] || reason) + '</span>' +
+          '<span class="collector-monitor__filter-value">' + filterReasons[reason] + '</span>' +
+        '</div>';
+      }
+    }
+    html += '</div>';
+
+    // === Exit Breakdown (today) ===
+    var exits = db.today_exit_breakdown || {};
+    var exitKeys = Object.keys(exits);
+    if (exitKeys.length > 0) {
+      html += '<div class="collector-monitor__section">' +
+        '<div class="collector-monitor__section-title">今日のクローズ理由</div>';
+      var exitLabels = {
+        'emergency_stop': '緊急脱出 (-50%)',
+        'time_limit': '時間切れ (2h)',
+        'profit_100x': '100x利確',
+        'profit_10x': '10x部分売却',
+        'no_liquidity': 'ラグプル (流動性0)',
+        'no_price_data': '価格取得不可'
+      };
+      for (var i = 0; i < exitKeys.length; i++) {
+        var ek = exitKeys[i];
+        var ev = exits[ek];
+        var pnlColor = ev.avg_pnl_pct >= 0 ? '#10b981' : '#ef4444';
+        html += '<div class="collector-monitor__filter-row">' +
+          '<span class="collector-monitor__filter-label">' + (exitLabels[ek] || ek) + '</span>' +
+          '<span class="collector-monitor__filter-value">' + ev.count + '件 ' +
+            '<span style="color:' + pnlColor + '">' + (ev.avg_pnl_pct >= 0 ? '+' : '') + ev.avg_pnl_pct + '%</span>' +
+          '</span>' +
+        '</div>';
+      }
+      html += '</div>';
+    }
+
+    // === Performance by Timing ===
+    var perfByTiming = stats.performance_by_timing || {};
+    var timingKeys = Object.keys(perfByTiming);
+    if (timingKeys.length > 0) {
+      html += '<div class="collector-monitor__section">' +
+        '<div class="collector-monitor__section-title">タイミング別成績</div>' +
+        '<div class="collector-monitor__table">' +
+          '<div class="collector-monitor__table-header">' +
+            '<span>タイミング</span><span>勝率</span><span>平均PnL</span><span>件数</span>' +
+          '</div>';
+      var sortedTimings = ['1m', '15m', '30m', '45m', '1h'];
+      for (var ti = 0; ti < sortedTimings.length; ti++) {
+        var tk = sortedTimings[ti];
+        var tv = perfByTiming[tk];
+        if (!tv) continue;
+        var wrColor = tv.win_rate >= 50 ? '#10b981' : tv.win_rate >= 30 ? '#f59e0b' : '#ef4444';
+        var pnlC = tv.avg_pnl_pct >= 0 ? '#10b981' : '#ef4444';
+        html += '<div class="collector-monitor__table-row">' +
+          '<span class="collector-monitor__table-cell--bold">' + tk + '</span>' +
+          '<span style="color:' + wrColor + '">' + tv.win_rate + '%</span>' +
+          '<span style="color:' + pnlC + '">' + (tv.avg_pnl_pct >= 0 ? '+' : '') + tv.avg_pnl_pct + '%</span>' +
+          '<span>' + tv.total + '</span>' +
+        '</div>';
+      }
+      html += '</div></div>';
+    }
+
+    // === Last Error ===
+    if (loops.last_error) {
+      html += '<div class="collector-monitor__section collector-monitor__section--error">' +
+        '<div class="collector-monitor__section-title">最新エラー</div>' +
+        '<div class="collector-monitor__error-text">' + loops.last_error + '</div>' +
+      '</div>';
+    }
+
+    // === Failed Runs ===
+    if (db.failed_runs_24h > 0) {
+      html += '<div class="collector-monitor__section collector-monitor__section--error">' +
+        '<div class="collector-monitor__error-text">過去24hの失敗サイクル: ' + db.failed_runs_24h + '件</div>' +
+      '</div>';
+    }
+
+    return html;
+  }
+
+  function _monitorCard(label, value, sub, variant) {
+    return '<div class="collector-monitor__card collector-monitor__card--' + variant + '">' +
+      '<div class="collector-monitor__card-label">' + label + '</div>' +
+      '<div class="collector-monitor__card-value">' + value + '</div>' +
+      '<div class="collector-monitor__card-sub">' + sub + '</div>' +
+    '</div>';
+  }
+
+  function _apiRow(name, calls, errors) {
+    return '<div class="collector-monitor__api-row">' +
+      '<span class="collector-monitor__api-name">' + name + '</span>' +
+      '<span class="collector-monitor__api-calls">' + calls + '</span>' +
+      '<span class="collector-monitor__api-errors' + (errors > 0 ? ' collector-monitor__api-errors--active' : '') + '">' + errors + ' err</span>' +
+    '</div>';
   }
 
   // ============================================
@@ -10029,6 +10311,14 @@
         '<div class="kairos-side-menu-moonshot-status">' +
           '<span>予算: ' + formatYen(appState.moonshotSpent) + ' / ' + formatYen(appState.moonshotBudget) + '</span>' +
         '</div>' +
+      '</div>' +
+
+      '<div class="kairos-side-menu-section">' +
+        '<div class="kairos-side-menu-section-title">Collector</div>' +
+        '<button class="kairos-side-menu-btn" onclick="navigateTo(\'collector\'); closeSideMenu();">' +
+          '<span class="kairos-side-menu-btn-icon">🗄️</span>' +
+          '<span>データ収集モニター</span>' +
+        '</button>' +
       '</div>' +
 
       '<div class="kairos-side-menu-section">' +
