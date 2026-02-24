@@ -9077,6 +9077,13 @@
         navigateTo('moonshot');
       }
     },
+    showCollector: function() {
+      if (appState.currentScreen === 'collector') {
+        navigateBack();
+      } else {
+        navigateTo('collector');
+      }
+    },
     setMoonshotBudget: function(budget) {
       appState.moonshotBudget = budget;
       localStorage.setItem('kairosMoonshotBudget', budget.toString());
@@ -10315,7 +10322,7 @@
 
       '<div class="kairos-side-menu-section">' +
         '<div class="kairos-side-menu-section-title">Collector</div>' +
-        '<button class="kairos-side-menu-btn" onclick="navigateTo(\'collector\'); closeSideMenu();">' +
+        '<button class="kairos-side-menu-btn" onclick="window.KairosApp.showCollector(); closeSideMenu();">' +
           '<span class="kairos-side-menu-btn-icon">🗄️</span>' +
           '<span>データ収集モニター</span>' +
         '</button>' +
@@ -12261,7 +12268,7 @@
         '<div class="emergency-alert__change">' + sign + changePercent.toFixed(1) + '%</div>' +
         '<div class="emergency-alert__price">$' + price.toFixed(price < 1 ? 4 : 2) + '</div>' +
         '<div class="emergency-alert__actions">' +
-          '<button class="emergency-alert__btn emergency-alert__btn--detail" onclick="document.getElementById(\'emergency-alert\').remove(); appState.selectedCurrency=\'' + ticker + '\'; navigateTo(\'detail\');">詳細を見る</button>' +
+          '<button class="emergency-alert__btn emergency-alert__btn--detail" onclick="document.getElementById(\'emergency-alert\').remove(); window.KairosApp.viewCurrency(\'' + ticker + '\');">詳細を見る</button>' +
           '<button class="emergency-alert__btn emergency-alert__btn--close" onclick="document.getElementById(\'emergency-alert\').remove()">閉じる</button>' +
         '</div>' +
       '</div>';
