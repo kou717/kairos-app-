@@ -5675,10 +5675,10 @@
       body.style.height = body.scrollHeight + 'px';
       body.classList.add('open');
       if (chevron) chevron.classList.add('open');
-      body.addEventListener('transitionend', function handler() {
+      body.addEventListener('transitionend', function handler(e) {
+        if (e.target !== body) return;
         if (body.classList.contains('open')) {
           body.style.height = 'auto';
-          body.style.overflow = 'visible';
         }
         body.removeEventListener('transitionend', handler);
       });
