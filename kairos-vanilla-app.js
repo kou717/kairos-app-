@@ -7078,6 +7078,9 @@
   var _collectorCoinsTrust = '';
 
   function renderCollectorMonitor() {
+    // Always start on dashboard tab
+    window._collectorTab = 'dashboard';
+
     // Auto-refresh setup
     if (_collectorAutoRefresh) clearInterval(_collectorAutoRefresh);
     _collectorAutoRefresh = setInterval(function() {
