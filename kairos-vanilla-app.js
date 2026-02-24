@@ -7398,19 +7398,19 @@
   }
 
   function _renderTradeCard(trade) {
-    var pnl = trade.current_pnl_pct != null ? trade.current_pnl_pct : (trade.exit_pnl_pct || 0);
+    var pnl = trade.unrealized_pnl_pct != null ? trade.unrealized_pnl_pct : (trade.realized_pnl_pct || 0);
     var pnlClass = pnl >= 0 ? 'collector-trade-card__pnl--profit' : 'collector-trade-card__pnl--loss';
     var pnlStr = (pnl >= 0 ? '+' : '') + pnl.toFixed(1) + '%';
     var status = trade.status || 'pending';
     var statusClass = status === 'open' ? 'open' : status === 'closed' ? 'closed' : 'pending';
 
-    var entryPrice = trade.entry_price_usd || 0;
-    var currentPrice = trade.current_price_usd || trade.exit_price_usd || entryPrice;
+    var entryPrice = trade.entry_price || 0;
+    var currentPrice = trade.current_price || trade.exit_price || entryPrice;
 
     var html = '<div class="collector-trade-card">' +
       '<div class="collector-trade-card__left">' +
         '<span class="collector-trade-card__symbol">' + (trade.symbol || '???') + '</span>' +
-        '<span class="collector-trade-card__timing">' + (trade.timing || '--') + '</span>' +
+        '<span class="collector-trade-card__timing">' + (trade.entry_timing || '--') + '</span>' +
       '</div>' +
       '<div class="collector-trade-card__center">' +
         '<span class="collector-trade-card__prices">' +
@@ -7632,17 +7632,17 @@
       var intervals = ['1m', '5m', '15m', '30m', '1h', '3h', '6h', '24h'];
       var snapshotMap = {};
       for (var s = 0; s < snapshots.length; s++) {
-        snapshotMap[snapshots[s].interval] = snapshots[s];
+        snapshotMap[snapshots[s].interval_label] = snapshots[s];
       }
 
       for (var k = 0; k < intervals.length; k++) {
         var iv = intervals[k];
         var snap = snapshotMap[iv];
-        if (snap) {
+        if (snap && snap.status === 'completed') {
           var chg = snap.price_change_pct != null ? snap.price_change_pct : null;
           var chgClass = chg != null ? (chg >= 0 ? 'collector-detail__change--up' : 'collector-detail__change--down') : '';
           var chgStr = chg != null ? ((chg >= 0 ? '+' : '') + chg.toFixed(1) + '%') : '—';
-          var vol = snap.volume_usd != null ? _formatCollectorVolume(snap.volume_usd) : '—';
+          var vol = snap.volume_24h != null ? _formatCollectorVolume(snap.volume_24h) : '—';
           var liq = snap.liquidity_usd != null ? _formatCollectorVolume(snap.liquidity_usd) : '—';
           var price = snap.price_usd != null ? '$' + _formatCollectorPrice(snap.price_usd) : '—';
 
@@ -7654,9 +7654,11 @@
             '<span>' + liq + '</span>' +
           '</div>';
         } else {
+          var snapStatus = snap ? snap.status : '';
+          var snapNote = snapStatus === 'failed' ? 'failed' : snapStatus === 'pending' ? '待機中' : '—';
           html += '<div class="collector-detail__snapshot-row collector-detail__snapshot-row--empty">' +
             '<span class="collector-detail__snapshot-interval">' + iv + '</span>' +
-            '<span>—</span><span>—</span><span>—</span><span>—</span>' +
+            '<span>' + snapNote + '</span><span>—</span><span>—</span><span>—</span>' +
           '</div>';
         }
       }
@@ -7679,15 +7681,15 @@
 
       for (var t = 0; t < trades.length; t++) {
         var tr = trades[t];
-        var tPnl = tr.current_pnl_pct != null ? tr.current_pnl_pct : (tr.exit_pnl_pct || 0);
+        var tPnl = tr.unrealized_pnl_pct != null ? tr.unrealized_pnl_pct : (tr.realized_pnl_pct || 0);
         var tPnlClass = tPnl >= 0 ? 'collector-detail__change--up' : 'collector-detail__change--down';
         var tPnlStr = (tPnl >= 0 ? '+' : '') + tPnl.toFixed(1) + '%';
-        var tCurrent = tr.current_price_usd || tr.exit_price_usd || 0;
+        var tCurrent = tr.current_price || tr.exit_price || 0;
         var tStatus = tr.status || 'pending';
 
         html += '<div class="collector-detail__trades-row">' +
-          '<span class="collector-detail__snapshot-interval">' + (tr.timing || '--') + '</span>' +
-          '<span>$' + _formatCollectorPrice(tr.entry_price_usd || 0) + '</span>' +
+          '<span class="collector-detail__snapshot-interval">' + (tr.entry_timing || '--') + '</span>' +
+          '<span>$' + _formatCollectorPrice(tr.entry_price || 0) + '</span>' +
           '<span>$' + _formatCollectorPrice(tCurrent) + '</span>' +
           '<span class="' + tPnlClass + '">' + tPnlStr + '</span>' +
           '<span class="collector-trade-card__status collector-trade-card__status--' + tStatus + '">' + tStatus + '</span>' +
