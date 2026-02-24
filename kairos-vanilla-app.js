@@ -2494,6 +2494,13 @@
   window.addEventListener('popstate', function(e) {
     var state = e.state;
 
+    // Collector詳細モーダルを閉じる
+    var collectorOverlay = document.getElementById('collector-detail-overlay');
+    if (collectorOverlay) {
+      _closeCollectorCoinDetail(true);
+      return;
+    }
+
     // モーダルの状態処理
     if (state && state.modal === 'addCurrency') {
       if (state.view === 'categories') {
@@ -7565,6 +7572,9 @@
   // ============================================================
 
   function _openCollectorCoinDetail(coinId) {
+    // Push history state so back button closes modal
+    history.pushState({ modal: 'collectorCoinDetail' }, '');
+
     // Show loading overlay
     var overlay = document.createElement('div');
     overlay.className = 'collector-detail-modal';
@@ -7592,9 +7602,12 @@
       });
   }
 
-  function _closeCollectorCoinDetail() {
+  function _closeCollectorCoinDetail(skipHistory) {
     var overlay = document.getElementById('collector-detail-overlay');
-    if (overlay) overlay.remove();
+    if (overlay) {
+      overlay.remove();
+      if (!skipHistory) history.back();
+    }
   }
 
   function _renderCoinDetailContent(coin) {
