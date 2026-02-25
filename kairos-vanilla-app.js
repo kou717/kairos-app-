@@ -7605,8 +7605,13 @@
   function _closeCollectorCoinDetail(skipHistory) {
     var overlay = document.getElementById('collector-detail-overlay');
     if (overlay) {
-      overlay.remove();
-      if (!skipHistory) history.back();
+      if (skipHistory) {
+        // Called from popstate handler — just remove overlay
+        overlay.remove();
+      } else {
+        // Called from X button — let popstate handler remove overlay
+        history.back();
+      }
     }
   }
 
