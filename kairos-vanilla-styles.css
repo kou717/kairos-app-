@@ -881,7 +881,8 @@
 /* ===== ベーススタイル ===== */
 html, body {
   overflow-x: hidden;
-  overscroll-behavior: none;
+  overscroll-behavior-y: contain;
+  overscroll-behavior-x: none;
   scrollbar-width: none;           /* Firefox */
   -ms-overflow-style: none;        /* IE/Edge */
 }
