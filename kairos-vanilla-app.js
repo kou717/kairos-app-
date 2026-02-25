@@ -1234,6 +1234,13 @@
             .then(resolve).catch(reject);
         });
       });
+    },
+
+    downloadExport: function(type, format, since, until) {
+      var url = this.baseUrl + '/api/collector/export/' + type + '?format=' + format;
+      if (since) url += '&since=' + encodeURIComponent(since);
+      if (until) url += '&until=' + encodeURIComponent(until);
+      window.open(url, '_blank');
     }
   };
 
@@ -7324,8 +7331,36 @@
       '</div>';
     }
 
+    // === Data Export Section ===
+    html += '<div class="collector-monitor__section">' +
+      '<div class="collector-monitor__section-title">Data Export</div>' +
+      '<div class="collector-export__dates">' +
+        '<label class="collector-export__label">開始' +
+          '<input type="date" id="export-since" class="collector-export__input" />' +
+        '</label>' +
+        '<label class="collector-export__label">終了' +
+          '<input type="date" id="export-until" class="collector-export__input" />' +
+        '</label>' +
+      '</div>' +
+      '<div class="collector-export__buttons">' +
+        '<button class="collector-export__btn" onclick="_kairosExport(\'trades\',\'csv\')">Trades CSV</button>' +
+        '<button class="collector-export__btn" onclick="_kairosExport(\'snapshots\',\'csv\')">Snapshots CSV</button>' +
+        '<button class="collector-export__btn" onclick="_kairosExport(\'coins\',\'csv\')">Coins CSV</button>' +
+        '<button class="collector-export__btn collector-export__btn--json" onclick="_kairosExport(\'trades\',\'json\')">Trades JSON</button>' +
+        '<button class="collector-export__btn collector-export__btn--json" onclick="_kairosExport(\'snapshots\',\'json\')">Snapshots JSON</button>' +
+        '<button class="collector-export__btn collector-export__btn--json" onclick="_kairosExport(\'coins\',\'json\')">Coins JSON</button>' +
+      '</div>' +
+    '</div>';
+
     return html;
   }
+
+  // Global export handler for onclick
+  window._kairosExport = function(type, format) {
+    var since = document.getElementById('export-since') ? document.getElementById('export-since').value : '';
+    var until = document.getElementById('export-until') ? document.getElementById('export-until').value : '';
+    BackendAPI.downloadExport(type, format, since, until);
+  };
 
   function _monitorCard(label, value, sub, variant) {
     return '<div class="collector-monitor__card collector-monitor__card--' + variant + '">' +

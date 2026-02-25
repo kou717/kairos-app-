@@ -13588,6 +13588,54 @@ body.has-ticker-bar {
   word-break: break-all;
 }
 
+/* === Collector Export === */
+.collector-export__dates {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.collector-export__label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.collector-export__input {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  color: var(--text-primary);
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.collector-export__buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.collector-export__btn {
+  padding: 8px 4px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(245,166,35,0.15);
+  color: #f5a623;
+  transition: background 0.2s;
+}
+.collector-export__btn:active {
+  background: rgba(245,166,35,0.3);
+}
+.collector-export__btn--json {
+  background: rgba(99,102,241,0.12);
+  color: #818cf8;
+}
+.collector-export__btn--json:active {
+  background: rgba(99,102,241,0.25);
+}
+
 /* === Collector Tabs === */
 .collector-monitor__tabs {
   display: flex;
