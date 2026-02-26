@@ -1210,10 +1210,11 @@
       });
     },
 
-    getCollectorCoins: function(page, trust) {
+    getCollectorCoins: function(page, trust, sort) {
       var self = this;
       var url = self.baseUrl + '/api/collector/coins?per_page=20&page=' + (page || 1);
       if (trust) url += '&trust=' + trust;
+      if (sort) url += '&sort=' + sort;
       return new Promise(function(resolve, reject) {
         self.healthCheck().then(function(available) {
           if (!available) { reject(new Error('Backend not available')); return; }
@@ -7348,6 +7349,7 @@
   var _collectorTradesFilter = '';
   var _collectorCoinsPage = 1;
   var _collectorCoinsTrust = '';
+  var _collectorCoinsSort = '';
 
   function renderCollectorMonitor() {
     // Always start on dashboard tab
@@ -7758,7 +7760,7 @@
     if (!container) return;
     container.innerHTML = '<div class="collector-monitor__loading">読み込み中...</div>';
 
-    BackendAPI.getCollectorCoins(_collectorCoinsPage, _collectorCoinsTrust)
+    BackendAPI.getCollectorCoins(_collectorCoinsPage, _collectorCoinsTrust, _collectorCoinsSort)
       .then(function(data) {
         container.innerHTML = _renderCoinsTab(data);
       })
@@ -7781,17 +7783,18 @@
     // Filter bar
     html += '<div class="collector-trades__filters">';
     var filters = [
-      { key: '', label: '全て' },
-      { key: 'high', label: 'High' },
-      { key: 'medium', label: 'Medium' },
-      { key: 'low', label: 'Low' },
-      { key: 'danger', label: 'Danger' }
+      { key: '', sort: '', label: '全て' },
+      { key: '', sort: 'gainers', label: '急騰順' },
+      { key: 'high', sort: '', label: 'High' },
+      { key: 'medium', sort: '', label: 'Medium' },
+      { key: 'low', sort: '', label: 'Low' },
+      { key: 'danger', sort: '', label: 'Danger' }
     ];
     for (var i = 0; i < filters.length; i++) {
       var f = filters[i];
-      var active = _collectorCoinsTrust === f.key;
+      var active = _collectorCoinsTrust === f.key && _collectorCoinsSort === f.sort;
       html += '<button class="collector-trades__filter-btn' + (active ? ' collector-trades__filter-btn--active' : '') + '" ' +
-        'onclick="_setCollectorCoinsTrust(\'' + f.key + '\')">' + f.label + '</button>';
+        'onclick="_setCollectorCoinsFilter(\'' + f.key + '\',\'' + f.sort + '\')">' + f.label + '</button>';
     }
     html += '</div>';
 
@@ -7834,6 +7837,7 @@
       '</div>' +
       '<div class="collector-coin-card__bottom">' +
         '<span class="collector-coin-card__price">$' + _formatCollectorPrice(price) + '</span>' +
+        (coin.max_gain != null ? '<span class="collector-coin-card__gain' + (coin.max_gain >= 0 ? ' collector-coin-card__gain--positive' : ' collector-coin-card__gain--negative') + '">' + (coin.max_gain >= 0 ? '+' : '') + coin.max_gain.toFixed(1) + '%</span>' : '') +
         '<span class="collector-coin-card__time">' + detectedAt + '</span>' +
       '</div>';
 
@@ -7851,9 +7855,18 @@
 
   function _setCollectorCoinsTrust(trust) {
     _collectorCoinsTrust = trust;
+    _collectorCoinsSort = '';
     _collectorCoinsPage = 1;
     _loadCollectorCoins();
   }
+
+  function _setCollectorCoinsFilter(trust, sort) {
+    _collectorCoinsTrust = trust;
+    _collectorCoinsSort = sort || '';
+    _collectorCoinsPage = 1;
+    _loadCollectorCoins();
+  }
+  window._setCollectorCoinsFilter = _setCollectorCoinsFilter;
 
   function _setCollectorCoinsPage(page) {
     _collectorCoinsPage = page;
