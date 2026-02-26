@@ -11213,19 +11213,19 @@
 
       '<div class="kairos-side-menu-section">' +
         '<div class="kairos-side-menu-section-title">CEXツール</div>' +
-        '<button class="kairos-side-menu-btn" onclick="navigateTo(\'home\'); closeSideMenu();">' +
+        '<button class="kairos-side-menu-btn" onclick="window.KairosApp.navigate(\'home\'); closeSideMenu();">' +
           '<span class="kairos-side-menu-btn-icon">🏠</span>' +
           '<span>メイン（ポートフォリオ）</span>' +
         '</button>' +
-        '<button class="kairos-side-menu-btn" onclick="navigateTo(\'currencies\'); closeSideMenu();">' +
+        '<button class="kairos-side-menu-btn" onclick="window.KairosApp.navigate(\'currencies\'); closeSideMenu();">' +
           '<span class="kairos-side-menu-btn-icon">💰</span>' +
           '<span>通貨一覧</span>' +
         '</button>' +
-        '<button class="kairos-side-menu-btn" onclick="navigateTo(\'market\'); closeSideMenu();">' +
+        '<button class="kairos-side-menu-btn" onclick="window.KairosApp.navigate(\'market\'); closeSideMenu();">' +
           '<span class="kairos-side-menu-btn-icon">📊</span>' +
           '<span>マーケット</span>' +
         '</button>' +
-        '<button class="kairos-side-menu-btn" onclick="navigateTo(\'ai-compare\'); closeSideMenu();">' +
+        '<button class="kairos-side-menu-btn" onclick="window.KairosApp.navigate(\'ai-compare\'); closeSideMenu();">' +
           '<span class="kairos-side-menu-btn-icon">🤖</span>' +
           '<span>AI 比較</span>' +
         '</button>' +
@@ -11233,7 +11233,7 @@
 
       '<div class="kairos-side-menu-section">' +
         '<div class="kairos-side-menu-section-title">🔥 Trending</div>' +
-        '<button class="kairos-side-menu-btn" onclick="navigateTo(\'moonshot\'); closeSideMenu();">' +
+        '<button class="kairos-side-menu-btn" onclick="window.KairosApp.navigate(\'moonshot\'); closeSideMenu();">' +
           '<span class="kairos-side-menu-btn-icon">🔥</span>' +
           '<span>CoinGecko Trending</span>' +
         '</button>' +
@@ -14104,7 +14104,7 @@
           coinsHtml +
         '</div>' +
         '<div class="urgent-alert__actions">' +
-          '<button class="urgent-alert__btn urgent-alert__btn--primary" onclick="dismissUrgentAlert(); navigateTo(\'detection\');">Early検出を見る</button>' +
+          '<button class="urgent-alert__btn urgent-alert__btn--primary" onclick="dismissUrgentAlert(); window.KairosApp.navigate(\'detection\');">Early検出を見る</button>' +
           '<button class="urgent-alert__btn urgent-alert__btn--secondary" onclick="dismissUrgentAlert();">閉じる</button>' +
         '</div>' +
       '</div>';
@@ -14247,7 +14247,7 @@
         '</div>' +
 
         // 検出画面へ
-        '<button onclick="closeUrgentCoinDetailModal(); navigateTo(\'detection\');" style="width:100%;padding:12px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:600;border:none;border-radius:8px;font-size:14px;cursor:pointer">🚀 Early Detection画面で詳しく見る</button>' +
+        '<button onclick="closeUrgentCoinDetailModal(); window.KairosApp.navigate(\'detection\');" style="width:100%;padding:12px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:600;border:none;border-radius:8px;font-size:14px;cursor:pointer">🚀 Early Detection画面で詳しく見る</button>' +
       '</div>' +
     '</div>';
 
