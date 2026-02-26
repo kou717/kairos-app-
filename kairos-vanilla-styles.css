@@ -1845,13 +1845,14 @@ body {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  padding: 8px 14px;
+  padding: 8px 20px;
   background: transparent;
   border: none;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
   -webkit-tap-highlight-color: transparent;
+  position: relative;
 }
 
 .nav-item:active {
@@ -1882,6 +1883,29 @@ body {
 .nav-item--active .nav-item__label {
   color: var(--text-primary, #fff);
   font-weight: 600;
+}
+
+.nav-item__badge {
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  animation: earlyBadgePulse 2s infinite;
+}
+
+@keyframes earlyBadgePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
 }
 
 /* 右：モード切替ボタン */
@@ -14189,6 +14213,275 @@ body.has-ticker-bar {
 .collector-pagination__info {
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+/* ===== Detection Screen ===== */
+.detection-screen {
+  padding: 0 16px 100px;
+}
+
+.detection-header {
+  text-align: center;
+  padding: 16px 0 8px;
+}
+
+.detection-header__title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary, #fff);
+  margin: 0 0 4px;
+}
+
+.detection-header__subtitle {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.detection-updated {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-secondary, #64748b);
+  padding: 4px 0 8px;
+}
+
+/* ===== Performance Screen ===== */
+.performance-screen {
+  padding: 0 16px 100px;
+}
+
+.performance-hero {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(212,168,83,0.15), rgba(168,85,247,0.1));
+  border: 1px solid rgba(212,168,83,0.2);
+  border-radius: 16px;
+  padding: 24px 16px;
+  margin-bottom: 16px;
+  animation: slideUp 0.3s ease-out;
+}
+
+.performance-hero__shine {
+  position: absolute;
+  inset: -50%;
+  background: conic-gradient(from 0deg, transparent 0%, rgba(212,168,83,0.06) 25%, transparent 50%);
+  animation: heroShine 8s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes heroShine {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.performance-hero__stats {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  text-align: center;
+}
+
+.performance-hero__stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary, #fff);
+  margin-bottom: 4px;
+}
+
+.performance-hero__stat-value.positive {
+  color: #10b981;
+  text-shadow: 0 0 20px rgba(16,185,129,0.3);
+}
+
+.performance-hero__stat-value.negative {
+  color: #ef4444;
+  text-shadow: 0 0 20px rgba(239,68,68,0.3);
+}
+
+.performance-hero__stat-label {
+  font-size: 11px;
+  color: var(--text-secondary, #94a3b8);
+  font-weight: 500;
+}
+
+.performance-section {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  animation: slideUp 0.3s ease-out both;
+}
+
+.performance-section__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+  margin: 0 0 12px;
+}
+
+/* Performance table */
+.performance-section__table {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.performance-table-header {
+  display: grid;
+  grid-template-columns: 80px 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary, #94a3b8);
+  text-transform: uppercase;
+}
+
+.performance-table-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 13px;
+  color: var(--text-primary, #e2e8f0);
+}
+
+.performance-table-cell--timing {
+  font-weight: 600;
+  color: #d4a853;
+}
+
+/* Exit reason grid */
+.performance-exit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.performance-exit-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+
+.performance-exit-card__label {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+  margin-bottom: 6px;
+}
+
+.performance-exit-card__count {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary, #fff);
+  margin-bottom: 2px;
+}
+
+.performance-exit-card__pnl {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.performance-exit-card__pnl.positive { color: #10b981; }
+.performance-exit-card__pnl.negative { color: #ef4444; }
+
+/* Accordion */
+.performance-accordion {
+  overflow: hidden;
+}
+
+.performance-accordion__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.performance-accordion__header:active {
+  transform: scale(0.98);
+}
+
+.performance-accordion__chevron {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+  transition: transform 0.3s ease;
+}
+
+.performance-accordion__body {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.32,0.72,0,1), opacity 0.25s ease;
+}
+
+.performance-accordion--expanded .performance-accordion__chevron {
+  transform: rotate(180deg);
+}
+
+.performance-accordion--expanded .performance-accordion__body {
+  max-height: 500px;
+  opacity: 1;
+  margin-top: 12px;
+}
+
+/* Trade items */
+.performance-trade-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 13px;
+}
+
+.performance-trade-item__symbol {
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+  flex: 1;
+}
+
+.performance-trade-item__timing {
+  color: var(--text-secondary, #94a3b8);
+  font-size: 12px;
+  margin: 0 8px;
+}
+
+.performance-trade-item__pnl {
+  font-weight: 600;
+  min-width: 70px;
+  text-align: right;
+}
+
+.performance-trade-item__pnl.positive { color: #10b981; }
+.performance-trade-item__pnl.negative { color: #ef4444; }
+
+/* Export buttons */
+.performance-export-btn {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--text-primary, #e2e8f0);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.performance-export-btn:active {
+  transform: scale(0.95);
+  background: rgba(255,255,255,0.1);
 }
 /* ============================================
    通貨別ストラテジーUI（長期/短期の2択）

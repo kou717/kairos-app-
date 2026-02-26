@@ -1344,9 +1344,7 @@
     portfolioDetailOpen: false,
     returnToPortfolioDetail: false,
     // 通貨一覧の表示モード（null=個別設定依存, 'swing', 'longterm'）
-    currenciesViewMode: null,
-    // Moonshotタブ（early / trending）
-    moonshotTab: 'early'
+    currenciesViewMode: null
   };
 
   // ニュースキャッシュ
@@ -2261,7 +2259,7 @@
   }
 
   // ===== ナビゲーション =====
-  var navigationHistory = ['home']; // 画面履歴
+  var navigationHistory = ['detection']; // 画面履歴
 
   function navigateTo(screenId, options) {
     options = options || {};
@@ -2367,12 +2365,15 @@
 
   // 階層ナビゲーションマップ: 各画面の親画面を定義
   var screenHierarchy = {
-    'detail': 'currencies',
-    'currencies': 'home',
-    'market': 'home',
-    'ai-compare': 'home',
-    'moonshot': 'home',
-    'home': null  // ホームが最上位 → アプリ終了
+    'detail': 'detection',
+    'currencies': 'detection',
+    'market': 'detection',
+    'ai-compare': 'detection',
+    'moonshot': 'detection',
+    'home': 'detection',
+    'performance': 'detection',
+    'collector': 'detection',
+    'detection': null  // 検出画面が最上位 → アプリ終了
   };
 
   function navigateBack() {
@@ -2487,10 +2488,10 @@
 
     appState.currentScreen = parentScreen;
     // ナビゲーション履歴も階層に合わせてリセット
-    if (parentScreen === 'home') {
-      navigationHistory = ['home'];
+    if (parentScreen === 'detection') {
+      navigationHistory = ['detection'];
     } else {
-      navigationHistory = ['home', parentScreen];
+      navigationHistory = ['detection', parentScreen];
     }
     updateGlobalHeaderTitle(parentScreen);
     renderApp();
@@ -2571,6 +2572,8 @@
 
   function getScreenTitle(screen) {
     var titles = {
+      'detection': 'Early Detection',
+      'performance': 'Performance',
       'home': 'Portfolio',
       'currencies': '通貨一覧',
       'market': 'マーケット',
@@ -2578,7 +2581,7 @@
       'portfolio-detail': 'Portfolio Detail',
       'collector': 'Collector Monitor'
     };
-    return titles[screen] || 'Portfolio';
+    return titles[screen] || 'Early Detection';
   }
 
   function isCoinFavorite(ticker) {
@@ -2724,10 +2727,9 @@
 
   function renderBottomNav() {
     var items = [
-      { id: 'home', icon: '🏠', label: 'メイン' },
-      { id: 'currencies', icon: '💰', label: '通貨' },
-      { id: 'market', icon: '📊', label: '市場' },
-      { id: 'ai-compare', icon: '🤖', label: 'AI' }
+      { id: 'detection', icon: '🚀', label: '検出' },
+      { id: 'performance', icon: '📈', label: '成績' },
+      { id: 'collector', icon: '🗄️', label: 'Monitor' }
     ];
 
     var html = '<div class="bottom-nav-container">' +
@@ -2736,7 +2738,7 @@
         '<span class="menu-btn__icon">☰</span>' +
         '<span class="menu-btn__label">メニュー</span>' +
       '</button>' +
-      // 中央：ナビゲーション
+      // 中央：ナビゲーション（3アイテム）
       '<nav class="bottom-nav">';
 
     items.forEach(function(item) {
@@ -2748,16 +2750,8 @@
       '</button>';
     });
 
-    html += '</nav>';
-
-    // 右：Moonshotボタン
-    var isMoonshotActive = appState.currentScreen === 'moonshot';
-    html += '<button class="moonshot-btn' + (isMoonshotActive ? ' moonshot-btn--active' : '') + '" onclick="window.KairosApp.showMoonshot()">' +
-      '<span class="moonshot-btn__icon">🎰</span>' +
-      '<span class="moonshot-btn__label">Moon</span>' +
-    '</button>';
-
-    html += '</div>';
+    html += '</nav>' +
+    '</div>';
 
     return html;
   }
@@ -4988,6 +4982,286 @@
     '</div>';
   }
 
+  // ===== Detection画面（Early Detection独立画面） =====
+  function renderDetectionScreen() {
+    var earlyAlertCount = getEarlyMoverAlertCount();
+    var html = '<div class="detection-screen">' +
+      '<header class="detection-header">' +
+        '<h1 class="detection-header__title">🚀 Early Detection</h1>' +
+        '<div class="detection-header__subtitle">DexScreener + GeckoTerminal + LunarCrush SNS → AI評価</div>' +
+      '</header>' +
+      '<div class="moonshot-warning">' +
+        '<div class="moonshot-warning__icon">⚠️</div>' +
+        '<div class="moonshot-warning__text">' +
+          '<strong>ミームコイン</strong> — 98%以上がラグプル。AI判定+セキュリティチェック済みのみ表示。' +
+        '</div>' +
+      '</div>' +
+      '<div class="detection-updated" id="detection-updated"></div>' +
+      '<div id="early-mover-coins" class="moonshot-coins">' +
+        '<div class="moonshot-loading">' +
+          '<div class="moonshot-loading__spinner"></div>' +
+          '<div class="moonshot-loading__text">DEX初動 + SNS話題度を検索中...</div>' +
+        '</div>' +
+      '</div>' +
+      // スコア説明
+      '<div class="moonshot-filters">' +
+        '<div class="moonshot-filters__title">📊 スコア内訳（5次元 / 100点満点）</div>' +
+        '<div class="moonshot-filters__list">' +
+          '<div class="moonshot-filter">' +
+            '<span class="moonshot-filter__name">Volume</span>' +
+            '<span class="moonshot-filter__condition">0-20</span>' +
+            '<span class="moonshot-filter__desc">24h出来高（対数スケール）</span>' +
+          '</div>' +
+          '<div class="moonshot-filter">' +
+            '<span class="moonshot-filter__name">Velocity</span>' +
+            '<span class="moonshot-filter__condition">0-20</span>' +
+            '<span class="moonshot-filter__desc">5m/1h/24h価格変動</span>' +
+          '</div>' +
+          '<div class="moonshot-filter">' +
+            '<span class="moonshot-filter__name">Buy圧</span>' +
+            '<span class="moonshot-filter__condition">0-20</span>' +
+            '<span class="moonshot-filter__desc">買い/売りトランザクション比率</span>' +
+          '</div>' +
+          '<div class="moonshot-filter">' +
+            '<span class="moonshot-filter__name">鮮度</span>' +
+            '<span class="moonshot-filter__condition">0-15</span>' +
+            '<span class="moonshot-filter__desc">プール作成からの経過時間</span>' +
+          '</div>' +
+          '<div class="moonshot-filter">' +
+            '<span class="moonshot-filter__name">📱 SNS</span>' +
+            '<span class="moonshot-filter__condition" style="color:#a78bfa">0-25</span>' +
+            '<span class="moonshot-filter__desc">X/Reddit/YouTube反応数+感情+トレンド</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+    return html;
+  }
+
+  // ===== Performance画面（ペーパートレード成績） =====
+  function renderPerformanceScreen() {
+    return '<div class="performance-screen">' +
+      '<header class="detection-header">' +
+        '<h1 class="detection-header__title">📈 ペーパートレード成績</h1>' +
+        '<div class="detection-header__subtitle">Collector自動売買のシミュレーション結果</div>' +
+      '</header>' +
+      '<div id="performance-content">' +
+        '<div class="moonshot-loading">' +
+          '<div class="moonshot-loading__spinner"></div>' +
+          '<div class="moonshot-loading__text">成績データを読み込み中...</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function _loadPerformanceData() {
+    var container = document.getElementById('performance-content');
+    if (!container) return;
+    BackendAPI.getCollectorStats()
+      .then(function(stats) {
+        container.innerHTML = _renderPerformanceContent(stats);
+        // アコーディオン初期化
+        _initPerformanceAccordions();
+        // エクスポートイベント
+        _initPerformanceExport();
+      })
+      .catch(function(err) {
+        container.innerHTML = '<div class="moonshot-empty">' +
+          '<div class="moonshot-empty__icon">⚠️</div>' +
+          '<div class="moonshot-empty__text">データ取得に失敗しました</div>' +
+          '<div class="moonshot-empty__hint">' + (err.message || 'バックエンドが起動しているか確認してください') + '</div>' +
+        '</div>';
+      });
+  }
+
+  function _renderPerformanceContent(stats) {
+    var os = stats.overall_summary || {};
+    var timingStats = stats.performance_by_timing || {};
+    var exitBreakdown = stats.exit_reason_breakdown || {};
+    var trustStats = stats.performance_by_trust || {};
+    var bestTrades = stats.best_trades || [];
+    var worstTrades = stats.worst_trades || [];
+
+    var totalTrades = os.total || 0;
+    var winRate = os.win_rate || 0;
+    var avgPnl = os.avg_pnl_pct || 0;
+    var pnlClass = avgPnl >= 0 ? 'positive' : 'negative';
+    var pnlSign = avgPnl >= 0 ? '+' : '';
+
+    var html = '';
+
+    // ヒーローカード
+    html += '<div class="performance-hero">' +
+      '<div class="performance-hero__shine"></div>' +
+      '<div class="performance-hero__stats">' +
+        '<div class="performance-hero__stat">' +
+          '<div class="performance-hero__stat-value">' + totalTrades + '</div>' +
+          '<div class="performance-hero__stat-label">取引数</div>' +
+        '</div>' +
+        '<div class="performance-hero__stat">' +
+          '<div class="performance-hero__stat-value" style="color:' + (winRate >= 50 ? '#10b981' : '#ef4444') + '">' + winRate.toFixed(1) + '%</div>' +
+          '<div class="performance-hero__stat-label">勝率</div>' +
+        '</div>' +
+        '<div class="performance-hero__stat">' +
+          '<div class="performance-hero__stat-value ' + pnlClass + '">' + pnlSign + avgPnl.toFixed(2) + '%</div>' +
+          '<div class="performance-hero__stat-label">平均PnL</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+    // タイミング別成績テーブル
+    var timingOrder = ['1m', '5m', '15m', '30m', '1h'];
+    html += '<div class="performance-section" style="animation-delay:0.1s">' +
+      '<h3 class="performance-section__title">⏱️ エントリータイミング別</h3>' +
+      '<div class="performance-section__table">' +
+        '<div class="performance-table-header">' +
+          '<span>タイミング</span><span>取引</span><span>勝率</span><span>平均PnL</span>' +
+        '</div>';
+    timingOrder.forEach(function(t) {
+      var s = timingStats[t];
+      if (!s) return;
+      var tPnlClass = (s.avg_pnl_pct || 0) >= 0 ? 'positive' : 'negative';
+      var tPnlSign = (s.avg_pnl_pct || 0) >= 0 ? '+' : '';
+      html += '<div class="performance-table-row">' +
+        '<span class="performance-table-cell--timing">' + t + '</span>' +
+        '<span>' + s.total + '</span>' +
+        '<span style="color:' + (s.win_rate >= 50 ? '#10b981' : '#ef4444') + '">' + s.win_rate.toFixed(1) + '%</span>' +
+        '<span class="' + tPnlClass + '">' + tPnlSign + (s.avg_pnl_pct || 0).toFixed(2) + '%</span>' +
+      '</div>';
+    });
+    html += '</div></div>';
+
+    // クローズ理由グリッド
+    var exitKeys = Object.keys(exitBreakdown);
+    if (exitKeys.length > 0) {
+      html += '<div class="performance-section" style="animation-delay:0.15s">' +
+        '<h3 class="performance-section__title">🏁 クローズ理由</h3>' +
+        '<div class="performance-exit-grid">';
+      var exitLabels = {
+        'stop_loss': '🛑 損切り', 'take_profit': '🎯 利確',
+        'trailing_stop': '📉 トレーリング', 'time_limit': '⏰ 時間制限',
+        'no_liquidity': '💀 流動性喪失', 'partial_10x': '🚀 10x利確',
+        'partial_100x': '🌙 100x利確', 'unknown': '❓ 不明'
+      };
+      exitKeys.forEach(function(key) {
+        var e = exitBreakdown[key];
+        var label = exitLabels[key] || key;
+        var ePnlClass = (e.avg_pnl_pct || 0) >= 0 ? 'positive' : 'negative';
+        var ePnlSign = (e.avg_pnl_pct || 0) >= 0 ? '+' : '';
+        html += '<div class="performance-exit-card">' +
+          '<div class="performance-exit-card__label">' + label + '</div>' +
+          '<div class="performance-exit-card__count">' + e.count + '件</div>' +
+          '<div class="performance-exit-card__pnl ' + ePnlClass + '">' + ePnlSign + e.avg_pnl_pct.toFixed(2) + '%</div>' +
+        '</div>';
+      });
+      html += '</div></div>';
+    }
+
+    // ベスト/ワースト取引（アコーディオン）
+    if (bestTrades.length > 0) {
+      html += '<div class="performance-section" style="animation-delay:0.2s">' +
+        '<div class="performance-accordion">' +
+          '<div class="performance-accordion__header" onclick="this.parentElement.classList.toggle(\'performance-accordion--expanded\')">' +
+            '<span>🏆 ベスト取引 (Top 5)</span>' +
+            '<span class="performance-accordion__chevron">▼</span>' +
+          '</div>' +
+          '<div class="performance-accordion__body">';
+      bestTrades.forEach(function(t) {
+        var sign = (t.realized_pnl_pct || 0) >= 0 ? '+' : '';
+        html += '<div class="performance-trade-item">' +
+          '<span class="performance-trade-item__symbol">' + t.symbol + '</span>' +
+          '<span class="performance-trade-item__timing">' + t.entry_timing + '</span>' +
+          '<span class="performance-trade-item__pnl positive">' + sign + (t.realized_pnl_pct || 0).toFixed(2) + '%</span>' +
+        '</div>';
+      });
+      html += '</div></div></div>';
+    }
+
+    if (worstTrades.length > 0) {
+      html += '<div class="performance-section" style="animation-delay:0.25s">' +
+        '<div class="performance-accordion">' +
+          '<div class="performance-accordion__header" onclick="this.parentElement.classList.toggle(\'performance-accordion--expanded\')">' +
+            '<span>💀 ワースト取引 (Top 5)</span>' +
+            '<span class="performance-accordion__chevron">▼</span>' +
+          '</div>' +
+          '<div class="performance-accordion__body">';
+      worstTrades.forEach(function(t) {
+        var sign = (t.realized_pnl_pct || 0) >= 0 ? '+' : '';
+        html += '<div class="performance-trade-item">' +
+          '<span class="performance-trade-item__symbol">' + t.symbol + '</span>' +
+          '<span class="performance-trade-item__timing">' + t.entry_timing + '</span>' +
+          '<span class="performance-trade-item__pnl negative">' + sign + (t.realized_pnl_pct || 0).toFixed(2) + '%</span>' +
+        '</div>';
+      });
+      html += '</div></div></div>';
+    }
+
+    // 信頼度別成績（アコーディオン）
+    var trustKeys = Object.keys(trustStats);
+    if (trustKeys.length > 0) {
+      html += '<div class="performance-section" style="animation-delay:0.3s">' +
+        '<div class="performance-accordion">' +
+          '<div class="performance-accordion__header" onclick="this.parentElement.classList.toggle(\'performance-accordion--expanded\')">' +
+            '<span>🛡️ 信頼度別成績</span>' +
+            '<span class="performance-accordion__chevron">▼</span>' +
+          '</div>' +
+          '<div class="performance-accordion__body">';
+      var trustOrder = ['high', 'medium', 'low', 'danger'];
+      var trustLabels = { 'high': '🟢 High', 'medium': '🟡 Medium', 'low': '🟠 Low', 'danger': '🔴 Danger', 'unknown': '⚪ Unknown' };
+      trustOrder.forEach(function(key) {
+        var ts = trustStats[key];
+        if (!ts) return;
+        var tsPnlClass = (ts.avg_pnl_pct || 0) >= 0 ? 'positive' : 'negative';
+        var tsPnlSign = (ts.avg_pnl_pct || 0) >= 0 ? '+' : '';
+        html += '<div class="performance-trade-item">' +
+          '<span class="performance-trade-item__symbol">' + (trustLabels[key] || key) + '</span>' +
+          '<span class="performance-trade-item__timing">' + ts.total + '件 / ' + ts.win_rate.toFixed(1) + '%</span>' +
+          '<span class="performance-trade-item__pnl ' + tsPnlClass + '">' + tsPnlSign + ts.avg_pnl_pct.toFixed(2) + '%</span>' +
+        '</div>';
+      });
+      html += '</div></div></div>';
+    }
+
+    // データエクスポート
+    html += '<div class="performance-section" style="animation-delay:0.35s">' +
+      '<h3 class="performance-section__title">📦 データエクスポート</h3>' +
+      '<div style="display:flex;gap:8px;margin-bottom:12px">' +
+        '<input type="date" id="perf-export-since" style="flex:1;padding:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:12px">' +
+        '<input type="date" id="perf-export-until" style="flex:1;padding:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:12px">' +
+      '</div>' +
+      '<div class="performance-exit-grid">' +
+        '<button class="performance-export-btn" data-type="trades" data-fmt="csv">📊 Trades CSV</button>' +
+        '<button class="performance-export-btn" data-type="trades" data-fmt="json">📊 Trades JSON</button>' +
+        '<button class="performance-export-btn" data-type="snapshots" data-fmt="csv">📸 Snapshots CSV</button>' +
+        '<button class="performance-export-btn" data-type="snapshots" data-fmt="json">📸 Snapshots JSON</button>' +
+        '<button class="performance-export-btn" data-type="coins" data-fmt="csv">🪙 Coins CSV</button>' +
+        '<button class="performance-export-btn" data-type="coins" data-fmt="json">🪙 Coins JSON</button>' +
+      '</div>' +
+    '</div>';
+
+    return html;
+  }
+
+  function _initPerformanceAccordions() {
+    // Accordions are handled via onclick in HTML — no additional JS needed
+  }
+
+  function _initPerformanceExport() {
+    document.querySelectorAll('.performance-export-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var type = btn.getAttribute('data-type');
+        var fmt = btn.getAttribute('data-fmt');
+        var sinceEl = document.getElementById('perf-export-since');
+        var untilEl = document.getElementById('perf-export-until');
+        var params = 'format=' + fmt;
+        if (sinceEl && sinceEl.value) params += '&since=' + sinceEl.value;
+        if (untilEl && untilEl.value) params += '&until=' + untilEl.value;
+        var url = BACKEND_URL + '/api/collector/export/' + type + '?' + params;
+        window.open(url, '_blank');
+      });
+    });
+  }
+
   function renderMoonshotCoinsIntoDOM(coins) {
     var container = document.getElementById('moonshot-coins');
     if (!container) return;
@@ -6698,6 +6972,12 @@
         case 'splash':
           screenHtml = renderSplashScreen();
           break;
+        case 'detection':
+          screenHtml = renderDetectionScreen();
+          break;
+        case 'performance':
+          screenHtml = renderPerformanceScreen();
+          break;
         case 'home':
           screenHtml = renderHomeScreen();
           break;
@@ -6720,7 +7000,7 @@
           screenHtml = renderCollectorMonitor();
           break;
         default:
-          screenHtml = renderHomeScreen();
+          screenHtml = renderDetectionScreen();
       }
     }
 
@@ -6773,13 +7053,19 @@
       }
     }
 
+    // Detection: load early movers
+    if (appState.currentScreen === 'detection') {
+      loadEarlyMovers();
+    }
+
+    // Performance: load stats
+    if (appState.currentScreen === 'performance') {
+      _loadPerformanceData();
+    }
+
     // Moonshot: load data based on active tab
     if (appState.currentScreen === 'moonshot') {
-      if (appState.moonshotTab === 'early') {
-        loadEarlyMovers();
-      } else {
-        loadMoonshotCoins();
-      }
+      loadMoonshotCoins();
     }
 
     // Collector Monitor: load data
@@ -10926,27 +11212,40 @@
       '</div>' +
 
       '<div class="kairos-side-menu-section">' +
-        '<div class="kairos-side-menu-section-title">🎰 Moonshot</div>' +
-        '<button class="kairos-side-menu-btn" onclick="window.KairosApp.showMoonshot(); closeSideMenu();">' +
-          '<span class="kairos-side-menu-btn-icon">🎰</span>' +
-          '<span>トレンド + Early検出</span>' +
-          '<span id="early-mover-menu-badge" class="early-mover-menu-badge" style="display:none"></span>' +
+        '<div class="kairos-side-menu-section-title">CEXツール</div>' +
+        '<button class="kairos-side-menu-btn" onclick="navigateTo(\'home\'); closeSideMenu();">' +
+          '<span class="kairos-side-menu-btn-icon">🏠</span>' +
+          '<span>メイン（ポートフォリオ）</span>' +
         '</button>' +
-        '<div class="kairos-side-menu-moonshot-status">' +
-          '<span>予算: ' + formatYen(appState.moonshotSpent) + ' / ' + formatYen(appState.moonshotBudget) + '</span>' +
-        '</div>' +
+        '<button class="kairos-side-menu-btn" onclick="navigateTo(\'currencies\'); closeSideMenu();">' +
+          '<span class="kairos-side-menu-btn-icon">💰</span>' +
+          '<span>通貨一覧</span>' +
+        '</button>' +
+        '<button class="kairos-side-menu-btn" onclick="navigateTo(\'market\'); closeSideMenu();">' +
+          '<span class="kairos-side-menu-btn-icon">📊</span>' +
+          '<span>マーケット</span>' +
+        '</button>' +
+        '<button class="kairos-side-menu-btn" onclick="navigateTo(\'ai-compare\'); closeSideMenu();">' +
+          '<span class="kairos-side-menu-btn-icon">🤖</span>' +
+          '<span>AI 比較</span>' +
+        '</button>' +
       '</div>' +
 
       '<div class="kairos-side-menu-section">' +
-        '<div class="kairos-side-menu-section-title">Collector</div>' +
-        '<button class="kairos-side-menu-btn" onclick="window.KairosApp.showCollector(); closeSideMenu();">' +
-          '<span class="kairos-side-menu-btn-icon">🗄️</span>' +
-          '<span>データ収集モニター</span>' +
+        '<div class="kairos-side-menu-section-title">🔥 Trending</div>' +
+        '<button class="kairos-side-menu-btn" onclick="navigateTo(\'moonshot\'); closeSideMenu();">' +
+          '<span class="kairos-side-menu-btn-icon">🔥</span>' +
+          '<span>CoinGecko Trending</span>' +
         '</button>' +
       '</div>' +
 
       '<div class="kairos-side-menu-section">' +
         '<div class="kairos-side-menu-section-title">設定</div>' +
+        '<button class="kairos-side-menu-btn" onclick="openMoonshotSettingsModal(); closeSideMenu();">' +
+          '<span class="kairos-side-menu-btn-icon">💰</span>' +
+          '<span>Moonshot予算設定</span>' +
+          '<span class="kairos-side-menu-btn-toggle">' + formatYen(appState.moonshotBudget) + '</span>' +
+        '</button>' +
         '<button class="kairos-side-menu-btn kairos-side-menu-btn--currency" onclick="togglePriceCurrency(); closeSideMenu();">' +
           '<span class="kairos-side-menu-btn-icon">💱</span>' +
           '<span>通貨: ' + (appState.priceCurrency === 'JPY' ? '¥ JPY' : '$ USD') + '</span>' +
@@ -13805,7 +14104,7 @@
           coinsHtml +
         '</div>' +
         '<div class="urgent-alert__actions">' +
-          '<button class="urgent-alert__btn urgent-alert__btn--primary" onclick="dismissUrgentAlert(); window.KairosApp.showMoonshot();">Early検出を見る</button>' +
+          '<button class="urgent-alert__btn urgent-alert__btn--primary" onclick="dismissUrgentAlert(); navigateTo(\'detection\');">Early検出を見る</button>' +
           '<button class="urgent-alert__btn urgent-alert__btn--secondary" onclick="dismissUrgentAlert();">閉じる</button>' +
         '</div>' +
       '</div>';
@@ -13947,8 +14246,8 @@
             '</a>' : '') +
         '</div>' +
 
-        // Moonshot画面へ
-        '<button onclick="closeUrgentCoinDetailModal(); window.KairosApp.showMoonshot();" style="width:100%;padding:12px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:600;border:none;border-radius:8px;font-size:14px;cursor:pointer">🎰 Moonshot画面で詳しく見る</button>' +
+        // 検出画面へ
+        '<button onclick="closeUrgentCoinDetailModal(); navigateTo(\'detection\');" style="width:100%;padding:12px;background:linear-gradient(135deg,#d4a853,#b8902e);color:#000;font-weight:600;border:none;border-radius:8px;font-size:14px;cursor:pointer">🚀 Early Detection画面で詳しく見る</button>' +
       '</div>' +
     '</div>';
 
@@ -16972,9 +17271,9 @@
     // ティッカーバー初期化
     initTickerBar();
 
-    // 1秒後にホーム画面へ（高速化）
+    // 1秒後に検出画面へ（高速化）
     setTimeout(function() {
-      appState.currentScreen = 'home';
+      appState.currentScreen = 'detection';
       renderApp();
     }, 1000);
   }
@@ -17064,12 +17363,12 @@
             icon: coin.image_url || undefined,
             tag: 'early-mover-' + addr,
           });
-          // クリックでMoonshot画面→コイン詳細を自動オープン
+          // クリックで検出画面→コイン詳細を自動オープン
           (function(coinAddr) {
             n.onclick = function() {
               window.focus();
               window._pendingEarlyMoverOpen = coinAddr;
-              if (window.KairosApp) window.KairosApp.showMoonshot();
+              navigateTo('detection');
             };
           })(coin.token_address || coin.symbol);
         } catch(e) {
@@ -17101,20 +17400,18 @@
 
   function updateEarlyMoverBadge() {
     var count = getEarlyMoverAlertCount();
-    // ナビボタンのバッジ
-    var navBtns = document.querySelectorAll('.kairos-nav-btn');
-    navBtns.forEach(function(btn) {
-      if (btn.textContent.indexOf('Moonshot') >= 0 || btn.textContent.indexOf('🎰') >= 0) {
-        var existing = btn.querySelector('.moonshot-btn__badge');
-        if (existing) existing.remove();
-        if (count > 0) {
-          var badge = document.createElement('span');
-          badge.className = 'moonshot-btn__badge';
-          badge.textContent = count;
-          btn.appendChild(badge);
-        }
+    // ボトムナビの検出タブにバッジ付与
+    var detectionNav = document.querySelector('.nav-item[data-screen="detection"]');
+    if (detectionNav) {
+      var existing = detectionNav.querySelector('.nav-item__badge');
+      if (existing) existing.remove();
+      if (count > 0) {
+        var badge = document.createElement('span');
+        badge.className = 'nav-item__badge';
+        badge.textContent = count;
+        detectionNav.appendChild(badge);
       }
-    });
+    }
     // サイドメニューのバッジ
     var menuBadge = document.getElementById('early-mover-menu-badge');
     if (menuBadge) {
