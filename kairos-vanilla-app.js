@@ -1493,14 +1493,8 @@
     if (!container) return;
 
     var now = Date.now();
-    // 3 Flash AI付きキャッシュがあればそのまま表示
-    if (earlyMoverCache.data && earlyMoverCache.hasAI === 'full' && (now - earlyMoverCache.timestamp) < earlyMoverCache.TTL) {
-      renderEarlyMoversIntoDOM(earlyMoverCache.data);
-      checkEarlyMoverNotifications(earlyMoverCache.data);
-      return;
-    }
-    // Flash Lite AI付きキャッシュがあれば表示（バックグラウンドで3 Flash取得中）
-    if (earlyMoverCache.data && earlyMoverCache.hasAI === 'lite' && (now - earlyMoverCache.timestamp) < earlyMoverCache.TTL) {
+    // キャッシュが有効ならそのまま表示
+    if (earlyMoverCache.data && (now - earlyMoverCache.timestamp) < earlyMoverCache.TTL) {
       renderEarlyMoversIntoDOM(earlyMoverCache.data);
       checkEarlyMoverNotifications(earlyMoverCache.data);
       return;
@@ -1508,42 +1502,20 @@
 
     container.innerHTML = '<div class="moonshot-loading">' +
       '<div class="moonshot-loading__spinner"></div>' +
-      '<div class="moonshot-loading__text">DEX初動を検索中...</div>' +
+      '<div class="moonshot-loading__text">検出コインを読み込み中...</div>' +
     '</div>';
 
-    // Phase 1: Flash Lite AI込みで取得 (~9秒) → 即表示
-    fetch(BACKEND_URL + '/api/moonshot/early?skip_ai=true')
+    // DB-backed: Collectorが蓄積したデータを即座に返却
+    fetch(BACKEND_URL + '/api/moonshot/early')
       .then(function(res) { return res.json(); })
       .then(function(data) {
         var coins = data.coins || [];
         earlyMoverCache.data = coins;
         earlyMoverCache.timestamp = Date.now();
-        earlyMoverCache.hasAI = 'lite';
+        earlyMoverCache.hasAI = 'full';
         renderEarlyMoversIntoDOM(coins);
         checkEarlyMoverNotifications(coins);
         updateEarlyMoverBadge();
-
-        // Phase 2: 3 Flash高精度AIをバックグラウンドで取得 → 差し替え
-        fetch(BACKEND_URL + '/api/moonshot/early/ai')
-          .then(function(res2) { return res2.json(); })
-          .then(function(aiData) {
-            var aiCoins = aiData.coins || [];
-            if (aiCoins.length > 0 && aiData.has_ai) {
-              earlyMoverCache.data = aiCoins;
-              earlyMoverCache.timestamp = Date.now();
-              earlyMoverCache.hasAI = 'full';
-              // 現在Early画面が表示中なら更新
-              var stillVisible = document.getElementById('early-mover-coins');
-              if (stillVisible) {
-                renderEarlyMoversIntoDOM(aiCoins);
-              }
-              checkEarlyMoverNotifications(aiCoins);
-              updateEarlyMoverBadge();
-            }
-          })
-          .catch(function(err) {
-            console.error('Early mover AI upgrade error:', err);
-          });
       })
       .catch(function(err) {
         console.error('Early mover fetch error:', err);
