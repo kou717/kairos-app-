@@ -7458,7 +7458,7 @@
     html += '<div class="collector-monitor__cards">';
 
     // Card: Today's coins
-    html += _monitorCard('検出コイン', (db.today_coins || 0) + ' / ' + (daily.daily_cap || 200),
+    html += _monitorCard('検出コイン', (db.today_coins || 0) + ' / ' + (daily.daily_cap || 500),
       daily.cap_hit ? '上限到達' : '収集中', daily.cap_hit ? 'warn' : 'ok');
 
     // Card: Active trades
