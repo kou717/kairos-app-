@@ -5111,10 +5111,15 @@
         '<h3 class="performance-section__title">🏁 クローズ理由</h3>' +
         '<div class="performance-exit-grid">';
       var exitLabels = {
-        'stop_loss': '🛑 損切り', 'take_profit': '🎯 利確',
-        'trailing_stop': '📉 トレーリング', 'time_limit': '⏰ 時間制限',
-        'no_liquidity': '💀 流動性喪失', 'partial_10x': '🚀 10x利確',
-        'partial_100x': '🌙 100x利確', 'unknown': '❓ 不明'
+        'emergency_stop': '🛑 緊急損切り', 'trailing_stop': '📉 トレーリング',
+        'moonshot_crash_signal': '💥 暴落検知', 'time_limit': '⏰ 時間制限',
+        'no_liquidity': '💀 流動性喪失', 'historical_data_unavailable': '📭 データ欠損',
+        'no_price_data': '📭 価格なし',
+        'profit_50pct_partial': '🎯 +50%利確', 'profit_100pct_partial': '🚀 +100%利確',
+        'profit_500pct_partial': '🌙 +500%利確',
+        'profit_10x_partial': '🚀 10x利確', 'profit_100x_partial': '🌙 100x利確',
+        'profit_1000x': '✨ 1000x', 'dream_exit_crash_signal': '💥 夢枠暴落',
+        'unknown': '❓ 不明'
       };
       exitKeys.forEach(function(key) {
         var e = exitBreakdown[key];
@@ -5212,6 +5217,15 @@
       '</div>' +
     '</div>';
 
+    // リセットボタン
+    html += '<div class="performance-section" style="animation-delay:0.4s">' +
+      '<h3 class="performance-section__title">🔄 データリセット</h3>' +
+      '<p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0 0 12px">ルール変更後に古い集計をクリアし、新ルールで再スタートできます。</p>' +
+      '<button id="perf-reset-btn" class="performance-export-btn" style="background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.3);color:#ef4444;width:100%">' +
+        '🗑️ ペーパートレードをリセット' +
+      '</button>' +
+    '</div>';
+
     return html;
   }
 
@@ -5224,6 +5238,7 @@
       btn.addEventListener('click', function() {
         var type = btn.getAttribute('data-type');
         var fmt = btn.getAttribute('data-fmt');
+        if (!type || !fmt) return;
         var sinceEl = document.getElementById('perf-export-since');
         var untilEl = document.getElementById('perf-export-until');
         var params = 'format=' + fmt;
@@ -5233,6 +5248,26 @@
         window.open(url, '_blank');
       });
     });
+    // Reset button
+    var resetBtn = document.getElementById('perf-reset-btn');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', function() {
+        if (!confirm('ペーパートレードの全データを削除しますか？\n（検出コイン・スナップショットは残ります）')) return;
+        resetBtn.textContent = 'リセット中...';
+        resetBtn.disabled = true;
+        fetch(BACKEND_URL + '/api/collector/paper-trades/reset', { method: 'POST' })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            alert('リセット完了: ' + (data.deleted || 0) + '件のトレードを削除しました。');
+            _loadPerformanceData();
+          })
+          .catch(function(err) {
+            alert('リセット失敗: ' + (err.message || 'エラー'));
+            resetBtn.textContent = '🗑️ ペーパートレードをリセット';
+            resetBtn.disabled = false;
+          });
+      });
+    }
   }
 
   function renderMoonshotCoinsIntoDOM(coins) {
@@ -17413,6 +17448,162 @@
   }
 
 })();
+
+  // ============================================
+  // 通貨別ストラテジー管理（長期/短期の2択）
+  // ============================================
+
+  var STRATEGY_TYPES = {
+    longterm: 'longterm',
+    swing: 'swing'
+  };
+
+  var STRATEGY_CONFIG = {
+    longterm: {
+      label: '長期',
+      icon: '🎯',
+      color: '#3b82f6',
+      colorBg: 'rgba(59,130,246,0.15)',
+      chartPeriods: ['1D', '1W', '1M', '1Y', '5Y', 'MAX'],
+      defaultPeriod: '1M',
+      apiMode: 'longterm',
+      signalInterval: '4h'
+    },
+    swing: {
+      label: '短期',
+      icon: '⚡',
+      color: '#f59e0b',
+      colorBg: 'rgba(245,158,11,0.15)',
+      chartPeriods: ['1H', '4H', '1D', '1W', '1M', '1Y'],
+      defaultPeriod: '1D',
+      apiMode: 'swing',
+      signalInterval: '1h'
+    }
+  };
+
+  var StrategyManager = {
+    _storageKey: 'kairos_coin_strategies',
+    _migratedKey: 'kairos_strategy_migrated',
+
+    _load: function() {
+      try {
+        var raw = localStorage.getItem(this._storageKey);
+        return raw ? JSON.parse(raw) : {};
+      } catch(e) {
+        return {};
+      }
+    },
+
+    _save: function(data) {
+      localStorage.setItem(this._storageKey, JSON.stringify(data));
+    },
+
+    getStrategy: function(ticker) {
+      var data = this._load();
+      var val = data[ticker];
+      // 旧4択→2択への互換: hodl/accumulate/watching → longterm
+      if (val === 'hodl' || val === 'accumulate' || val === 'watching') return STRATEGY_TYPES.longterm;
+      if (val === 'swing') return STRATEGY_TYPES.swing;
+      if (val === 'longterm') return STRATEGY_TYPES.longterm;
+      // デフォルト: 長期
+      return STRATEGY_TYPES.longterm;
+    },
+
+    setStrategy: function(ticker, type) {
+      if (!STRATEGY_CONFIG[type]) {
+        console.warn('[StrategyManager] Unknown strategy type:', type);
+        return;
+      }
+      var data = this._load();
+      data[ticker] = type;
+      this._save(data);
+    },
+
+    getConfig: function(ticker) {
+      var type = this.getStrategy(ticker);
+      return STRATEGY_CONFIG[type] || STRATEGY_CONFIG.longterm;
+    },
+
+    getApiMode: function(ticker) {
+      return this.getConfig(ticker).apiMode;
+    },
+
+    getChartPeriods: function(ticker) {
+      return this.getConfig(ticker).chartPeriods;
+    },
+
+    getDefaultPeriod: function(ticker) {
+      return this.getConfig(ticker).defaultPeriod;
+    },
+
+    getSignalInterval: function(ticker) {
+      return this.getConfig(ticker).signalInterval;
+    },
+
+    // 保有通貨の多数派APIモードを返す（rank-all API用）
+    getDominantApiMode: function() {
+      var data = this._load();
+      var self = this;
+      var longCount = 0;
+      var swingCount = 0;
+
+      Object.keys(data).forEach(function(ticker) {
+        var strat = self.getStrategy(ticker);
+        if (strat === 'longterm') longCount++;
+        else if (strat === 'swing') swingCount++;
+      });
+
+      return swingCount > longCount ? 'swing' : 'longterm';
+    },
+
+    // 旧グローバルモードからのマイグレーション（一回限り）
+    migrateFromGlobalMode: function() {
+      if (localStorage.getItem(this._migratedKey)) return;
+
+      var oldMode = localStorage.getItem('kairosMode') || 'core';
+      var defaultType = oldMode === 'satellite' ? STRATEGY_TYPES.swing : STRATEGY_TYPES.longterm;
+
+      // 保有通貨にデフォルトストラテジーを設定
+      var records = [];
+      try { records = JSON.parse(localStorage.getItem('kairosInvestmentRecords') || '[]'); } catch(e) {}
+
+      var data = this._load();
+      var holdingTickers = {};
+      records.forEach(function(r) {
+        if (r.currencyId && r.type === 'buy') {
+          holdingTickers[r.currencyId] = true;
+        }
+      });
+
+      Object.keys(holdingTickers).forEach(function(ticker) {
+        if (!data[ticker]) {
+          data[ticker] = defaultType;
+        }
+      });
+
+      // ウォッチリストの通貨も設定
+      var watchlistStr = localStorage.getItem('kairos-watchlist');
+      var watchlist = watchlistStr ? JSON.parse(watchlistStr) : [];
+      watchlist.forEach(function(ticker) {
+        if (!data[ticker]) {
+          data[ticker] = STRATEGY_TYPES.longterm;
+        }
+      });
+
+      this._save(data);
+      localStorage.setItem(this._migratedKey, '1');
+      console.log('[StrategyManager] Migrated from global mode:', oldMode, '→ default:', defaultType);
+    },
+
+    // 全ストラテジーを取得（UIリスト用）
+    getAllStrategies: function() {
+      return this._load();
+    }
+  };
+
+  window.KAIROS = window.KAIROS || {};
+  window.KAIROS.StrategyManager = StrategyManager;
+
 
   // ============================================
   // 通貨別ストラテジー管理（長期/短期の2択）
