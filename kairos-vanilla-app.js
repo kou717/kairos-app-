@@ -4978,31 +4978,36 @@
       '</div>' +
       // スコア説明
       '<div class="moonshot-filters">' +
-        '<div class="moonshot-filters__title">📊 スコア内訳（5次元 / 100点満点）</div>' +
+        '<div class="moonshot-filters__title">📊 スコア内訳（7次元 / 100点満点）</div>' +
         '<div class="moonshot-filters__list">' +
           '<div class="moonshot-filter">' +
+            '<span class="moonshot-filter__name">👥 ホルダー</span>' +
+            '<span class="moonshot-filter__condition" style="color:#f59e0b">0-50</span>' +
+            '<span class="moonshot-filter__desc">ホルダー数+Top10分散度（最重要）</span>' +
+          '</div>' +
+          '<div class="moonshot-filter">' +
             '<span class="moonshot-filter__name">Volume</span>' +
-            '<span class="moonshot-filter__condition">0-20</span>' +
+            '<span class="moonshot-filter__condition">0-10</span>' +
             '<span class="moonshot-filter__desc">24h出来高（対数スケール）</span>' +
           '</div>' +
           '<div class="moonshot-filter">' +
             '<span class="moonshot-filter__name">Velocity</span>' +
-            '<span class="moonshot-filter__condition">0-20</span>' +
+            '<span class="moonshot-filter__condition">0-10</span>' +
             '<span class="moonshot-filter__desc">5m/1h/24h価格変動</span>' +
           '</div>' +
           '<div class="moonshot-filter">' +
             '<span class="moonshot-filter__name">Buy圧</span>' +
-            '<span class="moonshot-filter__condition">0-20</span>' +
+            '<span class="moonshot-filter__condition">0-10</span>' +
             '<span class="moonshot-filter__desc">買い/売りトランザクション比率</span>' +
           '</div>' +
           '<div class="moonshot-filter">' +
             '<span class="moonshot-filter__name">鮮度</span>' +
-            '<span class="moonshot-filter__condition">0-15</span>' +
+            '<span class="moonshot-filter__condition">0-8</span>' +
             '<span class="moonshot-filter__desc">プール作成からの経過時間</span>' +
           '</div>' +
           '<div class="moonshot-filter">' +
             '<span class="moonshot-filter__name">📱 SNS</span>' +
-            '<span class="moonshot-filter__condition" style="color:#a78bfa">0-25</span>' +
+            '<span class="moonshot-filter__condition" style="color:#a78bfa">0-12</span>' +
             '<span class="moonshot-filter__desc">X/Reddit/YouTube反応数+感情+トレンド</span>' +
           '</div>' +
         '</div>' +
@@ -5532,40 +5537,47 @@
 
   // スコア指標の説明マップ
   var scoreExplanations = {
+    'ホルダー': {
+      title: 'ホルダー分散度（Holder Distribution）',
+      desc: 'ホルダー数とTop10保有率から「本物のコミュニティがあるか」を評価。勝敗への影響が最も大きい指標です。',
+      good: 'ホルダー500人以上+Top10が50%以下 → 保有が分散 → 実需あり、上昇が持続しやすい',
+      bad: 'ホルダー20人+Top10が100% → 仕手筋の独占 → ラグプル予備軍',
+      max: 50
+    },
     'Volume': {
       title: '出来高（Volume）',
       desc: '24時間の取引量を対数スケールで評価します。取引量が多いほど、そのコインに注目が集まっていることを意味します。',
       good: '出来高が多い → 多くの人が売買している → 注目度が高い',
       bad: '出来高が少ない → まだ誰も気づいていないか、興味がない',
-      max: 20
+      max: 10
     },
     'Velocity': {
       title: '価格変動速度（Velocity）',
       desc: '直近5分・1時間・24時間の価格変動の大きさと方向を評価します。急上昇中のコインほど高スコアになります。',
       good: '急上昇中 → 買いが殺到している可能性。初動を捉えるチャンス',
       bad: '変動が小さい → まだ動き出していない、または停滞中',
-      max: 20
+      max: 10
     },
     'Buy圧': {
       title: '買い圧力（Buy Pressure）',
       desc: '買いトランザクション数と売りトランザクション数の比率です。買いが売りより多ければ、価格が上がりやすい状態です。',
       good: '買い > 売り → 需要が供給を上回っている → 価格上昇圧力',
       bad: '売り > 買い → 利確や損切りが多い → 下落リスク',
-      max: 20
+      max: 10
     },
     '鮮度': {
       title: 'プールの新しさ（Freshness）',
       desc: 'DEXにプールが作られてからの経過時間。新しいプールほど「初動」の可能性が高く、高スコアになります。',
       good: '作成1時間以内 → まさに今始まったばかり。最も早い段階',
       bad: '24時間以上経過 → すでに初動は過ぎている可能性',
-      max: 15
+      max: 8
     },
     'SNS': {
       title: 'SNS話題度（Social Buzz）',
       desc: 'X(Twitter)・Reddit・YouTubeでの言及数・いいね・リプライ・RT数をLunarCrushで計測。「ネットで急に話題になっているか」を数値化します。',
       good: '反応数が急増+ポジティブ感情 → SNSで火がつき始めている → 爆発の前兆',
       bad: 'SNSでの言及なし → まだ誰も知らない。もしくはAPIキー未設定',
-      max: 25
+      max: 12
     }
   };
 
@@ -6262,11 +6274,12 @@
         // スコア内訳バー
         '<div class="dex-detail__score-section">' +
           '<div class="dex-detail__section-title">📊 スコア内訳 <span style="font-size:10px;color:#64748b">（タップで意味を確認）</span></div>' +
-          renderScoreBar('Volume', bd.volume || 0, 20) +
-          renderScoreBar('Velocity', bd.velocity || 0, 20) +
-          renderScoreBar('Buy圧', bd.buy_pressure || 0, 20) +
-          renderScoreBar('鮮度', bd.freshness || 0, 15) +
-          renderScoreBar('SNS', bd.social_buzz || 0, 25) +
+          renderScoreBar('ホルダー', bd.holder_distribution || 0, 50) +
+          renderScoreBar('Volume', bd.volume || 0, 10) +
+          renderScoreBar('Velocity', bd.velocity || 0, 10) +
+          renderScoreBar('Buy圧', bd.buy_pressure || 0, 10) +
+          renderScoreBar('鮮度', bd.freshness || 0, 8) +
+          renderScoreBar('SNS', bd.social_buzz || 0, 12) +
           (bd.safety != null && bd.safety !== 0 ? '<div style="font-size:11px;color:' + (bd.safety > 0 ? '#22c55e' : '#ef4444') + ';margin-top:4px">🛡️ Safety: ' + (bd.safety > 0 ? '+' : '') + bd.safety + '</div>' : '') +
         '</div>' +
 
