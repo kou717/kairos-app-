@@ -2745,23 +2745,24 @@
   // 毎分時計を更新
   setInterval(updateGlobalHeaderTime, 60000);
 
-  function renderBottomNav() {
-    var items = [
-      { id: 'detection', icon: '🚀', label: '検出' },
-      { id: 'sleeping-lion', icon: '🦁', label: '獅子' },
-      { id: 'performance', icon: '📈', label: '成績' },
-      { id: 'collector', icon: '🗄️', label: 'Monitor' }
-    ];
+  var _navMode = 'dex';
 
-    var html = '<div class="bottom-nav-container">' +
-      // 左：メニューボタン
-      '<button class="menu-btn" onclick="window.openSideMenu && window.openSideMenu()">' +
-        '<span class="menu-btn__icon">☰</span>' +
-        '<span class="menu-btn__label">メニュー</span>' +
-      '</button>' +
-      // 中央：ナビゲーション（4アイテム）
-      '<nav class="bottom-nav">';
+  var _dexItems = [
+    { id: 'detection', icon: '🚀', label: '検出' },
+    { id: 'sleeping-lion', icon: '🦁', label: '獅子' },
+    { id: 'performance', icon: '📈', label: '成績' },
+    { id: 'collector', icon: '🗄️', label: 'Monitor' }
+  ];
 
+  var _cexItems = [
+    { id: 'home', icon: '🏠', label: 'メイン' },
+    { id: 'currencies', icon: '💰', label: '通貨' },
+    { id: 'market', icon: '📊', label: '市場' },
+    { id: 'ai', icon: '🤖', label: 'AI' }
+  ];
+
+  function _buildNavItemsHtml(items) {
+    var html = '';
     items.forEach(function(item) {
       var isActive = appState.currentScreen === item.id;
       var activeClass = isActive ? ' nav-item--active' : '';
@@ -2770,12 +2771,77 @@
         '<span class="nav-item__label">' + item.label + '</span>' +
       '</button>';
     });
+    return html;
+  }
 
-    html += '</nav>' +
+  function renderBottomNav() {
+    var items = _navMode === 'dex' ? _dexItems : _cexItems;
+    var btnClass = _navMode === 'dex' ? 'nav-mode-btn--cex' : 'nav-mode-btn--dex';
+    var btnIcon = _navMode === 'dex' ? '💹' : '🎰';
+    var btnLabel = _navMode === 'dex' ? 'CEX' : 'DEX';
+
+    var html = '<div class="bottom-nav-container">' +
+      // 左：メニューボタン
+      '<button class="menu-btn" onclick="window.openSideMenu && window.openSideMenu()">' +
+        '<span class="menu-btn__icon">☰</span>' +
+        '<span class="menu-btn__label">メニュー</span>' +
+      '</button>' +
+      // 中央：ナビゲーション（4アイテム）
+      '<nav class="bottom-nav">' +
+      _buildNavItemsHtml(items) +
+      '</nav>' +
+      // 右：モード切替ボタン
+      '<button class="nav-mode-btn ' + btnClass + '" onclick="window._toggleNavMode()">' +
+        '<span class="nav-mode-btn__icon">' + btnIcon + '</span>' +
+        '<span class="nav-mode-btn__label">' + btnLabel + '</span>' +
+      '</button>' +
     '</div>';
 
     return html;
   }
+
+  window._toggleNavMode = function() {
+    var nav = document.querySelector('.bottom-nav');
+    if (!nav) return;
+
+    // slide out
+    nav.classList.add('bottom-nav--switching');
+
+    setTimeout(function() {
+      // toggle mode
+      _navMode = _navMode === 'dex' ? 'cex' : 'dex';
+      var items = _navMode === 'dex' ? _dexItems : _cexItems;
+
+      // replace nav items
+      nav.innerHTML = _buildNavItemsHtml(items);
+      nav.classList.remove('bottom-nav--switching');
+      nav.classList.add('bottom-nav--entering');
+
+      // re-bind click handlers on new nav items
+      nav.querySelectorAll('.nav-item').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var screen = btn.getAttribute('data-screen');
+          if (screen) navigateTo(screen);
+        });
+      });
+
+      // update mode button
+      var modeBtn = document.querySelector('.nav-mode-btn');
+      if (modeBtn) {
+        var isCex = _navMode === 'cex';
+        modeBtn.className = 'nav-mode-btn ' + (isCex ? 'nav-mode-btn--dex' : 'nav-mode-btn--cex');
+        modeBtn.querySelector('.nav-mode-btn__icon').textContent = isCex ? '🎰' : '💹';
+        modeBtn.querySelector('.nav-mode-btn__label').textContent = isCex ? 'DEX' : 'CEX';
+      }
+
+      setTimeout(function() {
+        nav.classList.remove('bottom-nav--entering');
+      }, 150);
+
+      // navigate to first screen of the new mode
+      navigateTo(_navMode === 'dex' ? 'detection' : 'home');
+    }, 150);
+  };
 
   // ===== ポートフォリオ詳細コンテンツ（ヒーローカードの下に挿入するHTML） =====
 

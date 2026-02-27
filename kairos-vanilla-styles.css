@@ -1788,7 +1788,7 @@ body {
   right: 0;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 6px;
   background: linear-gradient(180deg, rgba(20,20,25,0.95), rgba(10,10,15,1));
   backdrop-filter: blur(20px);
@@ -9865,6 +9865,63 @@ button.moonshot-btn.moonshot-btn--active {
   font-size: 10px;
   font-weight: 600;
   color: #fff;
+}
+
+/* ナビモード切替ボタン */
+.nav-mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.2s ease;
+}
+
+.nav-mode-btn:active {
+  transform: scale(0.95);
+}
+
+.nav-mode-btn--cex {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.nav-mode-btn--dex {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.nav-mode-btn__icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.nav-mode-btn__label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* ナビ切替スライドアニメーション */
+@keyframes navSlideOutLeft {
+  from { transform: translateX(0); opacity: 1; }
+  to   { transform: translateX(-20px); opacity: 0; }
+}
+
+@keyframes navSlideInRight {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+.bottom-nav--switching {
+  animation: navSlideOutLeft 150ms ease-in forwards;
+}
+
+.bottom-nav--entering {
+  animation: navSlideInRight 150ms ease-out forwards;
 }
 
 /* モードインジケーター（Moonshot有効時） */
