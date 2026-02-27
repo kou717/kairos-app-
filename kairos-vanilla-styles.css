@@ -13347,7 +13347,6 @@ body.has-ticker-bar {
 
 .collector-monitor {
   padding: 16px;
-  padding-top: 84px;
   padding-bottom: 80px;
 }
 
@@ -14234,9 +14233,14 @@ body.has-ticker-bar {
   color: var(--text-secondary);
 }
 
+/* ===== Screen Spacer (replaces removed titles, keeps space under fixed header) ===== */
+.screen-spacer {
+  height: 76px; /* ticker(32px) + header(44px) */
+}
+
 /* ===== Detection Screen ===== */
 .detection-screen {
-  padding: 84px 16px 100px 16px;
+  padding: 0 16px 100px;
 }
 
 .detection-header {
@@ -14265,7 +14269,7 @@ body.has-ticker-bar {
 
 /* ===== Performance Screen ===== */
 .performance-screen {
-  padding: 84px 16px 100px 16px;
+  padding: 0 16px 100px;
 }
 
 .performance-date-filter {
@@ -14623,7 +14627,7 @@ body.has-ticker-bar {
    ============================================ */
 
 .sl-screen {
-  padding: 84px 16px 100px 16px;
+  padding: 0 16px 100px;
 }
 
 .sl-header {

@@ -5007,10 +5007,7 @@
   function renderDetectionScreen() {
     var earlyAlertCount = getEarlyMoverAlertCount();
     var html = '<div class="detection-screen">' +
-      '<header class="detection-header">' +
-        '<h1 class="detection-header__title">🚀 Early Detection</h1>' +
-        '<div class="detection-header__subtitle">DexScreener + GeckoTerminal + LunarCrush SNS → AI評価</div>' +
-      '</header>' +
+      '<div class="screen-spacer"></div>' +
       '<div class="moonshot-warning">' +
         '<div class="moonshot-warning__icon">⚠️</div>' +
         '<div class="moonshot-warning__text">' +
@@ -5082,10 +5079,7 @@
 
   function renderPerformanceScreen() {
     return '<div class="performance-screen">' +
-      '<header class="detection-header">' +
-        '<h1 class="detection-header__title" id="perf-title">📈 ペーパートレード成績</h1>' +
-        '<div class="detection-header__subtitle">Collector自動売買のシミュレーション結果</div>' +
-      '</header>' +
+      '<div class="screen-spacer"></div>' +
       '<div class="performance-date-filter">' +
         '<label class="perf-checkbox"><input type="checkbox" id="perf-all-dates" onchange="window._onPerfAllDatesChange()"' + (_perfAllDates ? ' checked' : '') + '><span>すべて</span></label>' +
         '<select id="perf-date-filter" class="performance-date-filter__select" onchange="window._onPerfDateChange()"' + (_perfAllDates ? ' disabled' : '') + '>' +
@@ -7694,10 +7688,7 @@
     }, 30000);
 
     return '<div class="sl-screen">' +
-      '<header class="sl-header">' +
-        '<h1 class="sl-header__title">🦁 眠れる獅子</h1>' +
-        '<button class="sl-header__refresh" onclick="window._loadSleepingLionData()">🔄</button>' +
-      '</header>' +
+      '<div class="screen-spacer"></div>' +
       '<div id="sl-content">' +
         '<div class="moonshot-loading">' +
           '<div class="moonshot-loading__spinner"></div>' +
@@ -8153,10 +8144,7 @@
     }, 30000);
 
     return '<div class="collector-monitor">' +
-      '<div class="collector-monitor__header">' +
-        '<h2 class="collector-monitor__title">Collector Monitor</h2>' +
-        '<button class="collector-monitor__refresh" onclick="_refreshCurrentCollectorTab()">更新</button>' +
-      '</div>' +
+      '<div class="screen-spacer"></div>' +
       '<div class="collector-monitor__tabs">' +
         '<button class="collector-monitor__tab' + (window._collectorTab === 'dashboard' ? ' collector-monitor__tab--active' : '') + '" onclick="switchCollectorTab(\'dashboard\')">Dashboard</button>' +
         '<button class="collector-monitor__tab' + (window._collectorTab === 'trades' ? ' collector-monitor__tab--active' : '') + '" onclick="switchCollectorTab(\'trades\')">Trades</button>' +
