@@ -1366,7 +1366,7 @@
     currentScreen: 'splash',
     selectedCurrency: kairosData.ticker || 'BTC',
     theme: savedSettings.theme || 'kairos',
-    mode: localStorage.getItem('kairosMode') || 'satellite', // DEXモード初期=satellite、CEX切替時=core
+    mode: localStorage.getItem('kairosMode') || 'core', // DEXモード初期=core、CEX切替時=satellite
     chartPeriod: '1W',
     showSplash: true,
     isLoading: false,
@@ -2838,8 +2838,8 @@
         nav.classList.remove('bottom-nav--entering');
       }, 150);
 
-      // apply page color: DEX=satellite, CEX=core
-      var dataMode = _navMode === 'dex' ? 'satellite' : 'core';
+      // apply page color: DEX=core, CEX=satellite
+      var dataMode = _navMode === 'dex' ? 'core' : 'satellite';
       document.documentElement.setAttribute('data-mode', dataMode);
       appState.mode = dataMode;
 
