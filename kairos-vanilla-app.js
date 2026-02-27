@@ -2748,10 +2748,10 @@
   var _navMode = 'dex';
 
   var _dexItems = [
-    { id: 'detection', icon: '🚀', label: '検出' },
-    { id: 'sleeping-lion', icon: '🦁', label: '獅子' },
     { id: 'performance', icon: '📈', label: '成績' },
-    { id: 'collector', icon: '🗄️', label: 'Monitor' }
+    { id: 'detection', icon: '🚀', label: '検出' },
+    { id: 'collector', icon: '🗄️', label: 'Monitor' },
+    { id: 'sleeping-lion', icon: '🦁', label: '獅子' }
   ];
 
   var _cexItems = [
@@ -2844,7 +2844,7 @@
       appState.mode = dataMode;
 
       // navigate to first screen of the new mode
-      navigateTo(_navMode === 'dex' ? 'detection' : 'home');
+      navigateTo(_navMode === 'dex' ? 'performance' : 'home');
     }, 150);
   };
 
@@ -18093,9 +18093,9 @@
     // ティッカーバー初期化
     initTickerBar();
 
-    // 1秒後に検出画面へ（高速化）
+    // 1秒後に成績画面へ（DEXデフォルト）
     setTimeout(function() {
-      appState.currentScreen = 'detection';
+      appState.currentScreen = 'performance';
       renderApp();
     }, 1000);
   }
