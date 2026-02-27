@@ -1184,12 +1184,26 @@
       });
     },
 
-    getCollectorStats: function() {
+    getCollectorStats: function(date) {
+      var self = this;
+      var url = self.baseUrl + '/api/collector/stats';
+      if (date) url += '?date=' + encodeURIComponent(date);
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) { reject(new Error('Backend not available')); return; }
+          fetch(url)
+            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
+            .then(resolve).catch(reject);
+        });
+      });
+    },
+
+    getCollectorStatsDates: function() {
       var self = this;
       return new Promise(function(resolve, reject) {
         self.healthCheck().then(function(available) {
           if (!available) { reject(new Error('Backend not available')); return; }
-          fetch(self.baseUrl + '/api/collector/stats')
+          fetch(self.baseUrl + '/api/collector/stats/dates')
             .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
             .then(resolve).catch(reject);
         });
@@ -5020,9 +5034,14 @@
   function renderPerformanceScreen() {
     return '<div class="performance-screen">' +
       '<header class="detection-header">' +
-        '<h1 class="detection-header__title">📈 ペーパートレード成績</h1>' +
+        '<h1 class="detection-header__title" id="perf-title">📈 ペーパートレード成績</h1>' +
         '<div class="detection-header__subtitle">Collector自動売買のシミュレーション結果</div>' +
       '</header>' +
+      '<div class="performance-date-filter">' +
+        '<select id="perf-date-filter" class="performance-date-filter__select" onchange="window._onPerfDateChange()">' +
+          '<option value="">全期間</option>' +
+        '</select>' +
+      '</div>' +
       '<div id="performance-content">' +
         '<div class="moonshot-loading">' +
           '<div class="moonshot-loading__spinner"></div>' +
@@ -5032,25 +5051,51 @@
     '</div>';
   }
 
-  function _loadPerformanceData() {
+  // Cache for stats date list (avoid re-fetching on every date change)
+  var _perfDatesList = null;
+
+  function _loadPerformanceData(dateFilter) {
     var container = document.getElementById('performance-content');
     if (!container) return;
 
-    // Fetch stats and export dates in parallel
-    var statsP = BackendAPI.getCollectorStats();
-    var datesP = fetch(BACKEND_URL + '/api/collector/export/dates')
+    container.innerHTML = '<div class="moonshot-loading">' +
+      '<div class="moonshot-loading__spinner"></div>' +
+      '<div class="moonshot-loading__text">成績データを読み込み中...</div>' +
+    '</div>';
+
+    // Fetch stats (with optional date) and export dates in parallel
+    var statsP = BackendAPI.getCollectorStats(dateFilter || null);
+    var exportDatesP = fetch(BACKEND_URL + '/api/collector/export/dates')
       .then(function(r) { return r.ok ? r.json() : { dates: [] }; })
       .catch(function() { return { dates: [] }; });
 
-    Promise.all([statsP, datesP])
+    // Only fetch stats dates if not cached
+    var statsDatesP = _perfDatesList
+      ? Promise.resolve({ dates: _perfDatesList })
+      : BackendAPI.getCollectorStatsDates().catch(function() { return { dates: [] }; });
+
+    Promise.all([statsP, exportDatesP, statsDatesP])
       .then(function(results) {
         var stats = results[0];
-        var datesData = results[1];
+        var exportDatesData = results[1];
+        var statsDatesData = results[2];
+
+        // Cache stats dates
+        if (!_perfDatesList) {
+          _perfDatesList = statsDatesData.dates || [];
+        }
+
+        // Populate date filter select (preserve selection)
+        _populatePerfDateFilter(_perfDatesList, dateFilter || '');
+
+        // Update title
+        _updatePerfTitle(dateFilter || '');
+
         container.innerHTML = _renderPerformanceContent(stats);
         _initPerformanceAccordions();
         _initPerformanceExport();
-        // Populate date dropdown
-        _populateExportDates(datesData.dates || []);
+        // Populate export date dropdown
+        _populateExportDates(exportDatesData.dates || []);
       })
       .catch(function(err) {
         container.innerHTML = '<div class="moonshot-empty">' +
@@ -5060,6 +5105,45 @@
         '</div>';
       });
   }
+
+  function _populatePerfDateFilter(dates, selectedValue) {
+    var sel = document.getElementById('perf-date-filter');
+    if (!sel) return;
+    var html = '<option value="">全期間</option>';
+    (dates || []).forEach(function(d) {
+      var label = _formatDateLabel(d);
+      html += '<option value="' + d + '"' + (d === selectedValue ? ' selected' : '') + '>' + label + '</option>';
+    });
+    sel.innerHTML = html;
+  }
+
+  function _formatDateLabel(dateStr) {
+    // "2026-02-28" -> "2/28(金)"
+    try {
+      var parts = dateStr.split('-');
+      var dt = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      var days = ['日', '月', '火', '水', '木', '金', '土'];
+      return (dt.getMonth() + 1) + '/' + dt.getDate() + '(' + days[dt.getDay()] + ')';
+    } catch (e) {
+      return dateStr;
+    }
+  }
+
+  function _updatePerfTitle(dateFilter) {
+    var titleEl = document.getElementById('perf-title');
+    if (!titleEl) return;
+    if (dateFilter) {
+      titleEl.textContent = '📈 ' + _formatDateLabel(dateFilter) + ' の成績';
+    } else {
+      titleEl.textContent = '📈 ペーパートレード成績';
+    }
+  }
+
+  window._onPerfDateChange = function() {
+    var sel = document.getElementById('perf-date-filter');
+    if (!sel) return;
+    _loadPerformanceData(sel.value || null);
+  };
 
   function _populateExportDates(dates) {
     var sel = document.getElementById('perf-export-date');
