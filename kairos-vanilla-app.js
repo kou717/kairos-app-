@@ -5235,6 +5235,7 @@
         '<h3 class="performance-section__title">🏁 クローズ理由</h3>' +
         '<div class="performance-exit-grid">';
       var exitLabels = {
+        'rugpull_detected': '🚨 ラグプル検知',
         'emergency_stop': '🛑 緊急損切り', 'trailing_stop': '📉 トレーリング',
         'moonshot_crash_signal': '💥 暴落検知', 'momentum_death': '📊 勢い消失',
         'max_hold_time': '⏰ 24h上限', 'time_limit': '⏰ 時間切れ (旧)',
@@ -7730,6 +7731,7 @@
       html += '<div class="collector-monitor__section">' +
         '<div class="collector-monitor__section-title">今日のクローズ理由</div>';
       var exitLabels = {
+        'rugpull_detected': '🚨 ラグプル検知',
         'emergency_stop': '緊急脱出 (-30%)',
         'time_limit': '時間切れ (旧)',
         'momentum_death': '勢い消失',
@@ -7911,6 +7913,7 @@
 
     if (status === 'closed' && trade.exit_reason) {
       var exitLabels = {
+        'rugpull_detected': '🚨 ラグプル検知',
         'emergency_stop': '緊急脱出',
         'time_limit': '時間切れ (旧)',
         'momentum_death': '勢い消失',
