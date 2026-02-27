@@ -5282,10 +5282,10 @@
 
     // リセットボタン
     html += '<div class="performance-section" style="animation-delay:0.4s">' +
-      '<h3 class="performance-section__title">🔄 データリセット</h3>' +
-      '<p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0 0 12px">ルール変更後に古い集計をクリアし、新ルールで再スタートできます。</p>' +
+      '<h3 class="performance-section__title">🔄 ペーパートレード リセット</h3>' +
+      '<p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0 0 12px">条件変更後に実行。進行中のトレードをすべてクローズし、新条件で再スタートします。過去データは消えません。</p>' +
       '<button id="perf-reset-btn" class="performance-export-btn" style="background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.3);color:#ef4444;width:100%">' +
-        '🗑️ ペーパートレードをリセット' +
+        '🔄 進行中トレードをリセット' +
       '</button>' +
     '</div>';
 
@@ -5326,18 +5326,18 @@
     var resetBtn = document.getElementById('perf-reset-btn');
     if (resetBtn) {
       resetBtn.addEventListener('click', function() {
-        if (!confirm('ペーパートレードの全データを削除しますか？\n（検出コイン・スナップショットは残ります）')) return;
+        if (!confirm('進行中のペーパートレードをすべてクローズしますか？\n（過去データは保持されます）')) return;
         resetBtn.textContent = 'リセット中...';
         resetBtn.disabled = true;
         fetch(BACKEND_URL + '/api/collector/paper-trades/reset', { method: 'POST' })
           .then(function(r) { return r.json(); })
           .then(function(data) {
-            alert('リセット完了: ' + (data.deleted || 0) + '件のトレードを削除しました。');
+            alert('リセット完了: ' + (data.closed || 0) + '件のトレードをクローズしました。\n過去データは保持されています。');
             _loadPerformanceData();
           })
           .catch(function(err) {
             alert('リセット失敗: ' + (err.message || 'エラー'));
-            resetBtn.textContent = '🗑️ ペーパートレードをリセット';
+            resetBtn.textContent = '🔄 進行中トレードをリセット';
             resetBtn.disabled = false;
           });
       });
