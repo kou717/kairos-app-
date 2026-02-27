@@ -2838,6 +2838,11 @@
         nav.classList.remove('bottom-nav--entering');
       }, 150);
 
+      // apply page color: DEX=core, CEX=satellite
+      var dataMode = _navMode === 'dex' ? 'core' : 'satellite';
+      document.documentElement.setAttribute('data-mode', dataMode);
+      appState.mode = dataMode;
+
       // navigate to first screen of the new mode
       navigateTo(_navMode === 'dex' ? 'detection' : 'home');
     }, 150);
