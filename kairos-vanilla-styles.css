@@ -867,7 +867,7 @@
   --font-display: 'Inter', 'Noto Sans JP', -apple-system, sans-serif;
   --rank-s-bg: linear-gradient(135deg, #ffd700, #d4a853);
   --rank-s-text: #1a1a1a;
-  --rank-s-glow: rgba(212,168,83,0.4);
+  --rank-s-glow: rgba(var(--accent-rgb),0.4);
   --rank-a-bg: linear-gradient(135deg, #e2e8f0, #94a3b8);
   --rank-a-text: #1a1a1a;
   --rank-b-bg: linear-gradient(135deg, #60a5fa, #3b82f6);
@@ -951,7 +951,7 @@ body {
 }
 
 .card--accent {
-  border-color: rgba(212,168,83,0.3);
+  border-color: rgba(var(--accent-rgb),0.3);
   box-shadow: 0 4px 24px rgba(0,0,0,0.1), 0 0 30px var(--accent-glow), inset 0 1px rgba(255,255,255,0.05);
 }
 
@@ -1053,7 +1053,7 @@ body {
   align-items: center;
   padding: 8px 16px;
   background: var(--bg-primary, #0a1628);
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.15);
   min-height: 44px;
   box-sizing: border-box;
 }
@@ -1338,7 +1338,7 @@ body {
   background: var(--accent, #d4a853);
   border-radius: 3px;
   transition: width 0.6s ease-out;
-  box-shadow: 0 0 8px rgba(212,168,83,0.3);
+  box-shadow: 0 0 8px rgba(var(--accent-rgb),0.3);
 }
 
 .stat-card__target {
@@ -1570,7 +1570,7 @@ body {
   background: var(--accent, #d4a853);
   border-radius: 4px;
   transition: width 0.6s ease-out;
-  box-shadow: 0 0 12px rgba(212,168,83,0.3);
+  box-shadow: 0 0 12px rgba(var(--accent-rgb),0.3);
 }
 
 .progress-card__footer {
@@ -1627,12 +1627,12 @@ body {
 /* FIREカード */
 .fire-card {
   background: var(--surface-card, rgba(255,255,255,0.05));
-  border: 1px solid rgba(212,168,83,0.3);
+  border: 1px solid rgba(var(--accent-rgb),0.3);
   border-radius: 16px;
   padding: 20px;
   cursor: pointer;
   transition: transform 0.15s ease;
-  box-shadow: 0 0 30px rgba(212,168,83,0.1);
+  box-shadow: 0 0 30px rgba(var(--accent-rgb),0.1);
 }
 
 .fire-card:active {
@@ -1671,7 +1671,7 @@ body {
   background: var(--accent, #d4a853);
   border-radius: 4px;
   transition: width 0.6s ease-out;
-  box-shadow: 0 0 12px rgba(212,168,83,0.3);
+  box-shadow: 0 0 12px rgba(var(--accent-rgb),0.3);
 }
 
 .fire-card__footer {
@@ -1793,7 +1793,7 @@ body {
   background: linear-gradient(180deg, rgba(20,20,25,0.95), rgba(10,10,15,1));
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(255,255,255,0.08);
+  border-top: 1px solid rgba(var(--accent-rgb), 0.12);
   box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
   padding: 8px 8px;
   padding-bottom: max(12px, env(safe-area-inset-bottom));
@@ -1835,7 +1835,7 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(255,255,255,0.05);
+  background: rgba(var(--accent-rgb), 0.06);
   border-radius: 16px;
   padding: 4px;
 }
@@ -1861,7 +1861,7 @@ body {
 }
 
 .nav-item--active {
-  background: rgba(255,255,255,0.1);
+  background: rgba(var(--accent-rgb), 0.15);
 }
 
 .nav-item__icon {
@@ -1882,7 +1882,7 @@ body {
 }
 
 .nav-item--active .nav-item__label {
-  color: var(--text-primary, #fff);
+  color: var(--accent, #fff);
   font-weight: 600;
 }
 
@@ -4290,7 +4290,7 @@ body {
 
 .checkpoint-add-btn:active {
   transform: scale(0.9);
-  background: rgba(212,168,83,0.2);
+  background: rgba(var(--accent-rgb),0.2);
 }
 
 /* チェックポイント緑/赤ゾーン */
@@ -4306,7 +4306,7 @@ body {
   left: 50%;
   transform: translate(-50%, -50%);
   background: rgba(15,23,42,0.97);
-  border: 1px solid rgba(212,168,83,0.4);
+  border: 1px solid rgba(var(--accent-rgb),0.4);
   border-radius: 14px;
   padding: 0;
   z-index: 200;
@@ -5348,7 +5348,7 @@ body {
 
 .news-detail-modal__link:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(212,168,83,0.4);
+  box-shadow: 0 4px 12px rgba(var(--accent-rgb),0.4);
 }
 
 /* 影響・対策セクション */
@@ -5907,7 +5907,7 @@ body {
 [data-theme="kairos"] .home--detail .portfolio-detail__pnl-item,
 [data-theme="kairos"] .home--detail .portfolio-detail__item {
   background: linear-gradient(135deg, #1c1812 0%, #16130e 100%) !important;
-  border-color: rgba(212,168,83,0.2) !important;
+  border-color: rgba(var(--accent-rgb),0.2) !important;
 }
 
 [data-theme="kairos"][data-mode="core"] .home.home--detail {
@@ -6438,12 +6438,12 @@ body {
 }
 
 .kairos-side-menu-btn--currency {
-  background: linear-gradient(135deg, rgba(212,168,83,0.15), rgba(212,168,83,0.05));
-  border-color: rgba(212,168,83,0.3);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb),0.15), rgba(var(--accent-rgb),0.05));
+  border-color: rgba(var(--accent-rgb),0.3);
 }
 
 .kairos-side-menu-btn--currency:hover {
-  background: linear-gradient(135deg, rgba(212,168,83,0.25), rgba(212,168,83,0.1));
+  background: linear-gradient(135deg, rgba(var(--accent-rgb),0.25), rgba(var(--accent-rgb),0.1));
 }
 
 .kairos-side-menu-btn-toggle {
@@ -6634,7 +6634,7 @@ body {
 
 .kairos-theme-option.active {
   border-color: var(--accent, #d4a853);
-  background: rgba(212,168,83,0.1);
+  background: rgba(var(--accent-rgb),0.1);
 }
 
 .kairos-theme-option-color {
@@ -6669,28 +6669,28 @@ body {
 /* KAIROS - ポートフォリオヒーロー特別仕様 */
 [data-theme="kairos"] .portfolio-hero {
   background: linear-gradient(135deg,
-    rgba(212,168,83,0.12) 0%,
-    rgba(212,168,83,0.04) 50%,
-    rgba(212,168,83,0.08) 100%
+    rgba(var(--accent-rgb),0.12) 0%,
+    rgba(var(--accent-rgb),0.04) 50%,
+    rgba(var(--accent-rgb),0.08) 100%
   );
-  border: 1px solid rgba(212,168,83,0.35);
+  border: 1px solid rgba(var(--accent-rgb),0.35);
   box-shadow:
     0 8px 32px rgba(0,0,0,0.5),
-    0 0 40px rgba(212,168,83,0.1),
+    0 0 40px rgba(var(--accent-rgb),0.1),
     inset 0 1px 0 rgba(255,215,0,0.2);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
 }
 
 [data-theme="kairos"] .portfolio-hero::after {
-  background: conic-gradient(from 0deg, transparent 0%, rgba(212,168,83,0.06) 10%, transparent 20%);
+  background: conic-gradient(from 0deg, transparent 0%, rgba(var(--accent-rgb),0.06) 10%, transparent 20%);
 }
 
 [data-theme="kairos"][data-mode="core"] .portfolio-hero {
   background: linear-gradient(135deg,
     rgba(96,165,250,0.12) 0%,
     rgba(59,130,246,0.04) 40%,
-    rgba(212,168,83,0.06) 100%
+    rgba(var(--accent-rgb),0.06) 100%
   );
   border-color: rgba(96,165,250,0.35);
   box-shadow:
@@ -6707,7 +6707,7 @@ body {
   background: linear-gradient(135deg,
     rgba(244,114,182,0.12) 0%,
     rgba(236,72,153,0.04) 40%,
-    rgba(212,168,83,0.06) 100%
+    rgba(var(--accent-rgb),0.06) 100%
   );
   border-color: rgba(244,114,182,0.35);
   box-shadow:
@@ -6732,11 +6732,11 @@ body {
 [data-theme="kairos"] .portfolio-detail__pnl-item,
 [data-theme="kairos"] .portfolio-detail__item {
   background: linear-gradient(135deg,
-    rgba(212,168,83,0.08) 0%,
-    rgba(212,168,83,0.03) 50%,
-    rgba(212,168,83,0.06) 100%
+    rgba(var(--accent-rgb),0.08) 0%,
+    rgba(var(--accent-rgb),0.03) 50%,
+    rgba(var(--accent-rgb),0.06) 100%
   );
-  border: 1px solid rgba(212,168,83,0.15);
+  border: 1px solid rgba(var(--accent-rgb),0.15);
   box-shadow: var(--card-shadow, 0 4px 24px rgba(0,0,0,0.3));
   backdrop-filter: blur(var(--glass-blur, 24px));
   -webkit-backdrop-filter: blur(var(--glass-blur, 24px));
@@ -6758,7 +6758,7 @@ body {
   background: linear-gradient(135deg,
     rgba(96,165,250,0.08) 0%,
     rgba(59,130,246,0.02) 40%,
-    rgba(212,168,83,0.04) 100%
+    rgba(var(--accent-rgb),0.04) 100%
   );
   border: 1px solid rgba(96,165,250,0.2);
   box-shadow:
@@ -6781,7 +6781,7 @@ body {
   background: linear-gradient(135deg,
     rgba(244,114,182,0.08) 0%,
     rgba(236,72,153,0.02) 40%,
-    rgba(212,168,83,0.04) 100%
+    rgba(var(--accent-rgb),0.04) 100%
   );
   border: 1px solid rgba(244,114,182,0.2);
   box-shadow:
@@ -6806,7 +6806,7 @@ body {
   background: linear-gradient(90deg,
     transparent 0%,
     rgba(255,215,0,0.4) 30%,
-    rgba(212,168,83,0.6) 50%,
+    rgba(var(--accent-rgb),0.6) 50%,
     rgba(255,215,0,0.4) 70%,
     transparent 100%
   );
@@ -6850,14 +6850,14 @@ body {
 /* KAIROS - FIREカードの特別なゴールド輝き */
 [data-theme="kairos"] .fire-card {
   background: linear-gradient(135deg,
-    rgba(212,168,83,0.15) 0%,
+    rgba(var(--accent-rgb),0.15) 0%,
     rgba(255,215,0,0.08) 50%,
-    rgba(212,168,83,0.12) 100%
+    rgba(var(--accent-rgb),0.12) 100%
   );
   border: 1px solid rgba(255,215,0,0.3);
   box-shadow:
     0 4px 32px rgba(0,0,0,0.4),
-    0 0 60px rgba(212,168,83,0.15),
+    0 0 60px rgba(var(--accent-rgb),0.15),
     inset 0 1px 0 rgba(255,215,0,0.2);
 }
 
@@ -6890,14 +6890,14 @@ body {
     #d4a853 70%,
     #b8860b 100%
   );
-  box-shadow: 0 0 20px rgba(212,168,83,0.5);
+  box-shadow: 0 0 20px rgba(var(--accent-rgb),0.5);
 }
 
 /* KAIROS - ランクバッジの豪華スタイル */
 [data-theme="kairos"] .rank-badge--S {
   background: linear-gradient(135deg, #ffd700 0%, #d4a853 50%, #b8860b 100%);
   box-shadow:
-    0 2px 12px rgba(212,168,83,0.5),
+    0 2px 12px rgba(var(--accent-rgb),0.5),
     0 0 30px rgba(255,215,0,0.3),
     inset 0 1px 0 rgba(255,255,255,0.3);
   text-shadow: 0 1px 2px rgba(0,0,0,0.3);
@@ -6914,18 +6914,18 @@ body {
     rgba(13,17,23,0.95) 0%,
     rgba(8,10,15,0.98) 100%
   );
-  border-top: 1px solid rgba(212,168,83,0.2);
+  border-top: 1px solid rgba(var(--accent-rgb),0.2);
   box-shadow:
     0 -4px 30px rgba(0,0,0,0.5),
-    0 -1px 0 rgba(212,168,83,0.1);
+    0 -1px 0 rgba(var(--accent-rgb),0.1);
 }
 
 [data-theme="kairos"] .nav-item--active {
-  background: rgba(212,168,83,0.15);
+  background: rgba(var(--accent-rgb),0.15);
 }
 
 [data-theme="kairos"] .nav-item--active .nav-item__icon {
-  filter: drop-shadow(0 0 8px rgba(212,168,83,0.5));
+  filter: drop-shadow(0 0 8px rgba(var(--accent-rgb),0.5));
 }
 
 /* KAIROS - 価格表示の豪華スタイル */
@@ -6939,7 +6939,7 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 2px 8px rgba(212,168,83,0.4));
+  filter: drop-shadow(0 2px 8px rgba(var(--accent-rgb),0.4));
 }
 
 /* KAIROS - サイドメニューの豪華スタイル */
@@ -6948,7 +6948,7 @@ body {
     rgba(13,17,23,0.98) 0%,
     rgba(8,10,15,0.99) 100%
   );
-  border-right: 1px solid rgba(212,168,83,0.2);
+  border-right: 1px solid rgba(var(--accent-rgb),0.2);
   box-shadow: 4px 0 40px rgba(0,0,0,0.5);
 }
 
@@ -6960,9 +6960,9 @@ body {
 }
 
 [data-theme="kairos"] .kairos-side-menu-coin.active {
-  background: rgba(212,168,83,0.2);
+  background: rgba(var(--accent-rgb),0.2);
   border-color: rgba(255,215,0,0.4);
-  box-shadow: 0 0 15px rgba(212,168,83,0.2);
+  box-shadow: 0 0 15px rgba(var(--accent-rgb),0.2);
 }
 
 /* KAIROS - モーダルの豪華スタイル */
@@ -6972,10 +6972,10 @@ body {
     rgba(20,24,32,0.98) 0%,
     rgba(13,17,23,0.99) 100%
   );
-  border: 1px solid rgba(212,168,83,0.2);
+  border: 1px solid rgba(var(--accent-rgb),0.2);
   box-shadow:
     0 25px 80px rgba(0,0,0,0.6),
-    0 0 100px rgba(212,168,83,0.1),
+    0 0 100px rgba(var(--accent-rgb),0.1),
     inset 0 1px 0 rgba(255,215,0,0.1);
 }
 
@@ -6985,7 +6985,7 @@ body {
   color: #0a0c10;
   font-weight: 700;
   box-shadow:
-    0 4px 20px rgba(212,168,83,0.4),
+    0 4px 20px rgba(var(--accent-rgb),0.4),
     inset 0 1px 0 rgba(255,215,0,0.3);
   text-shadow: 0 1px 0 rgba(255,255,255,0.2);
 }
@@ -6993,7 +6993,7 @@ body {
 [data-theme="kairos"] .quick-buy-modal__submit:hover {
   background: linear-gradient(135deg, #e8c476 0%, #d4a853 100%);
   box-shadow:
-    0 6px 30px rgba(212,168,83,0.5),
+    0 6px 30px rgba(var(--accent-rgb),0.5),
     inset 0 1px 0 rgba(255,255,255,0.4);
 }
 
@@ -7003,34 +7003,34 @@ body {
     rgba(13,17,23,0.95) 0%,
     rgba(8,10,15,0.98) 100%
   );
-  border: 1px solid rgba(212,168,83,0.2);
+  border: 1px solid rgba(var(--accent-rgb),0.2);
   box-shadow:
     0 4px 30px rgba(0,0,0,0.4),
-    0 0 40px rgba(212,168,83,0.08);
+    0 0 40px rgba(var(--accent-rgb),0.08);
 }
 
 /* KAIROS - チャートエリアのスタイル */
 [data-theme="kairos"] .detail__chart-area {
   background: linear-gradient(180deg,
-    rgba(212,168,83,0.08) 0%,
+    rgba(var(--accent-rgb),0.08) 0%,
     transparent 100%
   );
-  border: 1px solid rgba(212,168,83,0.1);
+  border: 1px solid rgba(var(--accent-rgb),0.1);
   border-radius: 12px;
 }
 
 /* KAIROS - スクロールバーのゴールドスタイル */
 [data-theme="kairos"] ::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg,
-    rgba(212,168,83,0.4) 0%,
-    rgba(212,168,83,0.2) 100%
+    rgba(var(--accent-rgb),0.4) 0%,
+    rgba(var(--accent-rgb),0.2) 100%
   );
 }
 
 [data-theme="kairos"] ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg,
-    rgba(212,168,83,0.6) 0%,
-    rgba(212,168,83,0.3) 100%
+    rgba(var(--accent-rgb),0.6) 0%,
+    rgba(var(--accent-rgb),0.3) 100%
   );
 }
 
@@ -7099,7 +7099,7 @@ body {
   transform: translate(-50%, -50%);
   width: 400px;
   height: 400px;
-  background: radial-gradient(circle, rgba(212,168,83,0.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--accent-rgb),0.15) 0%, transparent 70%);
   animation: kairos-pulse 3s ease-in-out infinite;
 }
 
@@ -7113,7 +7113,7 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 4px 20px rgba(212,168,83,0.5));
+  filter: drop-shadow(0 4px 20px rgba(var(--accent-rgb),0.5));
   font-size: 36px;
 }
 
@@ -7129,8 +7129,8 @@ body {
 }
 
 [data-theme="kairos"] .splash__loader {
-  background: rgba(212,168,83,0.1);
-  border: 1px solid rgba(212,168,83,0.2);
+  background: rgba(var(--accent-rgb),0.1);
+  border: 1px solid rgba(var(--accent-rgb),0.2);
 }
 
 [data-theme="kairos"] .splash__loader-bar {
@@ -7161,23 +7161,23 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 2px 10px rgba(212,168,83,0.4));
+  filter: drop-shadow(0 2px 10px rgba(var(--accent-rgb),0.4));
 }
 
 /* KAIROS - 詳細画面のモードバー */
 [data-theme="kairos"] .detail__mode-indicator-fill {
   background: linear-gradient(90deg, #b8860b 0%, #d4a853 50%, #ffd700 100%);
-  box-shadow: 0 0 15px rgba(212,168,83,0.5);
+  box-shadow: 0 0 15px rgba(var(--accent-rgb),0.5);
 }
 
 /* KAIROS - 通貨リストの輝き */
 [data-theme="kairos"] .currencies__list-card:hover {
-  background: linear-gradient(135deg, rgba(212,168,83,0.08) 0%, rgba(212,168,83,0.03) 100%);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb),0.08) 0%, rgba(var(--accent-rgb),0.03) 100%);
 }
 
 /* KAIROS - AI比較リストのスタイル */
 [data-theme="kairos"] .ai-compare-item:hover {
-  background: linear-gradient(135deg, rgba(212,168,83,0.08) 0%, rgba(212,168,83,0.03) 100%);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb),0.08) 0%, rgba(var(--accent-rgb),0.03) 100%);
 }
 
 /* KAIROS - 市場画面のゴールドアクセント */
@@ -7190,7 +7190,7 @@ body {
 
 [data-theme="kairos"] .market__score-bar-fill {
   background: linear-gradient(90deg, #b8860b 0%, #d4a853 50%, #ffd700 100%);
-  box-shadow: 0 0 12px rgba(212,168,83,0.4);
+  box-shadow: 0 0 12px rgba(var(--accent-rgb),0.4);
 }
 
 /* KAIROS - チャート期間ボタン */
@@ -7199,7 +7199,7 @@ body {
   background: linear-gradient(135deg, #d4a853 0%, #b8860b 100%);
   color: #080a0f;
   border-color: #d4a853;
-  box-shadow: 0 2px 10px rgba(212,168,83,0.3);
+  box-shadow: 0 2px 10px rgba(var(--accent-rgb),0.3);
 }
 
 /* KAIROS - トグルボタン */
@@ -11240,7 +11240,7 @@ body.has-ticker-bar {
 }
 
 .moonshot-tab--active {
-  background: rgba(212,168,83,0.15);
+  background: rgba(var(--accent-rgb),0.15);
   color: #d4a853;
 }
 
@@ -11476,13 +11476,13 @@ body.has-ticker-bar {
 }
 
 .early-mover__card-btn--chart {
-  background: rgba(212,168,83,0.1);
-  border-color: rgba(212,168,83,0.25);
+  background: rgba(var(--accent-rgb),0.1);
+  border-color: rgba(var(--accent-rgb),0.25);
   color: #d4a853;
 }
 
 .early-mover__card-btn--chart:active {
-  background: rgba(212,168,83,0.2);
+  background: rgba(var(--accent-rgb),0.2);
 }
 
 .early-mover__card-btn--dex {
@@ -11700,7 +11700,7 @@ body.has-ticker-bar {
   font-size: 12px;
   color: #d4a853;
   padding: 2px 8px;
-  background: rgba(212,168,83,0.15);
+  background: rgba(var(--accent-rgb),0.15);
   border-radius: 6px;
 }
 
@@ -11833,8 +11833,8 @@ body.has-ticker-bar {
 }
 
 .metric-guide-popup__example {
-  background: rgba(212,168,83,0.08);
-  border: 1px solid rgba(212,168,83,0.2);
+  background: rgba(var(--accent-rgb),0.08);
+  border: 1px solid rgba(var(--accent-rgb),0.2);
   border-radius: 10px;
   padding: 12px 14px;
   margin-bottom: 10px;
@@ -12415,8 +12415,8 @@ body.has-ticker-bar {
 
 .urgent-alert__coin-btn--dex {
   flex: 0 0 auto;
-  background: rgba(212,168,83,0.12);
-  border-color: rgba(212,168,83,0.3);
+  background: rgba(var(--accent-rgb),0.12);
+  border-color: rgba(var(--accent-rgb),0.3);
   color: #d4a853;
 }
 
@@ -13314,8 +13314,8 @@ body.has-ticker-bar {
   color: #fff;
   line-height: 1.65;
   margin-bottom: 12px;
-  background: rgba(212,168,83,0.06);
-  border: 1px solid rgba(212,168,83,0.1);
+  background: rgba(var(--accent-rgb),0.06);
+  border: 1px solid rgba(var(--accent-rgb),0.1);
   border-radius: 12px;
   padding: 12px 14px;
 }
@@ -14384,7 +14384,7 @@ body.has-ticker-bar {
 
 .performance-date-filter__select:focus {
   outline: none;
-  border-color: rgba(212,168,83,0.5);
+  border-color: rgba(var(--accent-rgb),0.5);
 }
 
 .performance-date-filter__select:disabled {
@@ -14395,8 +14395,8 @@ body.has-ticker-bar {
 .performance-hero {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, rgba(212,168,83,0.15), rgba(168,85,247,0.1));
-  border: 1px solid rgba(212,168,83,0.2);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb),0.15), rgba(168,85,247,0.1));
+  border: 1px solid rgba(var(--accent-rgb),0.2);
   border-radius: 16px;
   padding: 24px 16px;
   margin-bottom: 16px;
@@ -14406,7 +14406,7 @@ body.has-ticker-bar {
 .performance-hero__shine {
   position: absolute;
   inset: -50%;
-  background: conic-gradient(from 0deg, transparent 0%, rgba(212,168,83,0.06) 25%, transparent 50%);
+  background: conic-gradient(from 0deg, transparent 0%, rgba(var(--accent-rgb),0.06) 25%, transparent 50%);
   animation: heroShine 8s linear infinite;
   pointer-events: none;
 }
