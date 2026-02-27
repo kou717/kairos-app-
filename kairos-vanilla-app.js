@@ -5035,13 +5035,22 @@
   function _loadPerformanceData() {
     var container = document.getElementById('performance-content');
     if (!container) return;
-    BackendAPI.getCollectorStats()
-      .then(function(stats) {
+
+    // Fetch stats and export dates in parallel
+    var statsP = BackendAPI.getCollectorStats();
+    var datesP = fetch(BACKEND_URL + '/api/collector/export/dates')
+      .then(function(r) { return r.ok ? r.json() : { dates: [] }; })
+      .catch(function() { return { dates: [] }; });
+
+    Promise.all([statsP, datesP])
+      .then(function(results) {
+        var stats = results[0];
+        var datesData = results[1];
         container.innerHTML = _renderPerformanceContent(stats);
-        // アコーディオン初期化
         _initPerformanceAccordions();
-        // エクスポートイベント
         _initPerformanceExport();
+        // Populate date dropdown
+        _populateExportDates(datesData.dates || []);
       })
       .catch(function(err) {
         container.innerHTML = '<div class="moonshot-empty">' +
@@ -5051,6 +5060,32 @@
         '</div>';
       });
   }
+
+  function _populateExportDates(dates) {
+    var sel = document.getElementById('perf-export-date');
+    if (!sel) return;
+    if (!dates || dates.length === 0) {
+      sel.innerHTML = '<option value="">データなし</option>';
+      return;
+    }
+    var html = '';
+    dates.forEach(function(d) {
+      html += '<option value="' + d + '">' + d + '</option>';
+    });
+    sel.innerHTML = html;
+  }
+
+  window._switchExportMode = function(mode) {
+    var dailyPanel = document.getElementById('perf-export-daily');
+    var rangePanel = document.getElementById('perf-export-range');
+    var btns = document.querySelectorAll('.performance-export-mode__btn');
+    if (!dailyPanel || !rangePanel) return;
+    btns.forEach(function(b) {
+      b.classList.toggle('performance-export-mode__btn--active', b.getAttribute('data-mode') === mode);
+    });
+    dailyPanel.classList.toggle('performance-export-panel--active', mode === 'daily');
+    rangePanel.classList.toggle('performance-export-panel--active', mode === 'range');
+  };
 
   function _renderPerformanceContent(stats) {
     var os = stats.overall_summary || {};
@@ -5205,20 +5240,43 @@
       html += '</div></div></div>';
     }
 
-    // データエクスポート
+    // データエクスポート（日別/期間指定 2モード）
     html += '<div class="performance-section" style="animation-delay:0.35s">' +
       '<h3 class="performance-section__title">📦 データエクスポート</h3>' +
-      '<div style="display:flex;gap:8px;margin-bottom:12px">' +
-        '<input type="date" id="perf-export-since" style="flex:1;padding:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:12px">' +
-        '<input type="date" id="perf-export-until" style="flex:1;padding:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:12px">' +
+      // モード切替ボタン
+      '<div class="performance-export-mode">' +
+        '<button class="performance-export-mode__btn performance-export-mode__btn--active" data-mode="daily" onclick="window._switchExportMode(\'daily\')">日別</button>' +
+        '<button class="performance-export-mode__btn" data-mode="range" onclick="window._switchExportMode(\'range\')">期間指定</button>' +
       '</div>' +
-      '<div class="performance-exit-grid">' +
-        '<button class="performance-export-btn" data-type="trades" data-fmt="csv">📊 Trades CSV</button>' +
-        '<button class="performance-export-btn" data-type="trades" data-fmt="json">📊 Trades JSON</button>' +
-        '<button class="performance-export-btn" data-type="snapshots" data-fmt="csv">📸 Snapshots CSV</button>' +
-        '<button class="performance-export-btn" data-type="snapshots" data-fmt="json">📸 Snapshots JSON</button>' +
-        '<button class="performance-export-btn" data-type="coins" data-fmt="csv">🪙 Coins CSV</button>' +
-        '<button class="performance-export-btn" data-type="coins" data-fmt="json">🪙 Coins JSON</button>' +
+      // 日別モード（デフォルト表示）
+      '<div id="perf-export-daily" class="performance-export-panel performance-export-panel--active">' +
+        '<select id="perf-export-date" class="performance-export-select">' +
+          '<option value="">読込中...</option>' +
+        '</select>' +
+        '<div class="performance-exit-grid" style="margin-top:8px">' +
+          '<button class="performance-export-btn" data-type="trades" data-fmt="csv" data-mode="daily">📊 Trades CSV</button>' +
+          '<button class="performance-export-btn" data-type="trades" data-fmt="json" data-mode="daily">📊 Trades JSON</button>' +
+          '<button class="performance-export-btn" data-type="snapshots" data-fmt="csv" data-mode="daily">📸 Snap CSV</button>' +
+          '<button class="performance-export-btn" data-type="snapshots" data-fmt="json" data-mode="daily">📸 Snap JSON</button>' +
+          '<button class="performance-export-btn" data-type="coins" data-fmt="csv" data-mode="daily">🪙 Coins CSV</button>' +
+          '<button class="performance-export-btn" data-type="coins" data-fmt="json" data-mode="daily">🪙 Coins JSON</button>' +
+        '</div>' +
+      '</div>' +
+      // 期間指定モード（非表示）
+      '<div id="perf-export-range" class="performance-export-panel">' +
+        '<div style="display:flex;gap:8px;margin-bottom:8px">' +
+          '<input type="date" id="perf-export-since" class="performance-export-select" style="flex:1">' +
+          '<span style="color:rgba(255,255,255,0.4);align-self:center;font-size:12px">〜</span>' +
+          '<input type="date" id="perf-export-until" class="performance-export-select" style="flex:1">' +
+        '</div>' +
+        '<div class="performance-exit-grid">' +
+          '<button class="performance-export-btn" data-type="trades" data-fmt="csv" data-mode="range">📊 Trades CSV</button>' +
+          '<button class="performance-export-btn" data-type="trades" data-fmt="json" data-mode="range">📊 Trades JSON</button>' +
+          '<button class="performance-export-btn" data-type="snapshots" data-fmt="csv" data-mode="range">📸 Snap CSV</button>' +
+          '<button class="performance-export-btn" data-type="snapshots" data-fmt="json" data-mode="range">📸 Snap JSON</button>' +
+          '<button class="performance-export-btn" data-type="coins" data-fmt="csv" data-mode="range">🪙 Coins CSV</button>' +
+          '<button class="performance-export-btn" data-type="coins" data-fmt="json" data-mode="range">🪙 Coins JSON</button>' +
+        '</div>' +
       '</div>' +
     '</div>';
 
@@ -5243,12 +5301,23 @@
       btn.addEventListener('click', function() {
         var type = btn.getAttribute('data-type');
         var fmt = btn.getAttribute('data-fmt');
+        var mode = btn.getAttribute('data-mode');
         if (!type || !fmt) return;
-        var sinceEl = document.getElementById('perf-export-since');
-        var untilEl = document.getElementById('perf-export-until');
-        var params = 'format=' + fmt;
-        if (sinceEl && sinceEl.value) params += '&since=' + sinceEl.value;
-        if (untilEl && untilEl.value) params += '&until=' + untilEl.value;
+
+        var params = 'format=' + fmt + '&include_conditions=true';
+
+        if (mode === 'daily') {
+          var dateEl = document.getElementById('perf-export-date');
+          if (dateEl && dateEl.value) {
+            params += '&date=' + dateEl.value;
+          }
+        } else {
+          var sinceEl = document.getElementById('perf-export-since');
+          var untilEl = document.getElementById('perf-export-until');
+          if (sinceEl && sinceEl.value) params += '&since=' + sinceEl.value;
+          if (untilEl && untilEl.value) params += '&until=' + untilEl.value;
+        }
+
         var url = BACKEND_URL + '/api/collector/export/' + type + '?' + params;
         window.open(url, '_blank');
       });
@@ -7639,26 +7708,7 @@
       '</div>';
     }
 
-    // === Data Export Section ===
-    html += '<div class="collector-monitor__section">' +
-      '<div class="collector-monitor__section-title">Data Export</div>' +
-      '<div class="collector-export__dates">' +
-        '<label class="collector-export__label">開始' +
-          '<input type="date" id="export-since" class="collector-export__input" />' +
-        '</label>' +
-        '<label class="collector-export__label">終了' +
-          '<input type="date" id="export-until" class="collector-export__input" />' +
-        '</label>' +
-      '</div>' +
-      '<div class="collector-export__buttons">' +
-        '<button class="collector-export__btn" onclick="_kairosExport(\'trades\',\'csv\')">Trades CSV</button>' +
-        '<button class="collector-export__btn" onclick="_kairosExport(\'snapshots\',\'csv\')">Snapshots CSV</button>' +
-        '<button class="collector-export__btn" onclick="_kairosExport(\'coins\',\'csv\')">Coins CSV</button>' +
-        '<button class="collector-export__btn collector-export__btn--json" onclick="_kairosExport(\'trades\',\'json\')">Trades JSON</button>' +
-        '<button class="collector-export__btn collector-export__btn--json" onclick="_kairosExport(\'snapshots\',\'json\')">Snapshots JSON</button>' +
-        '<button class="collector-export__btn collector-export__btn--json" onclick="_kairosExport(\'coins\',\'json\')">Coins JSON</button>' +
-      '</div>' +
-    '</div>';
+    // Data export is available in the Performance screen
 
     return html;
   }
@@ -17461,162 +17511,6 @@
   }
 
 })();
-
-  // ============================================
-  // 通貨別ストラテジー管理（長期/短期の2択）
-  // ============================================
-
-  var STRATEGY_TYPES = {
-    longterm: 'longterm',
-    swing: 'swing'
-  };
-
-  var STRATEGY_CONFIG = {
-    longterm: {
-      label: '長期',
-      icon: '🎯',
-      color: '#3b82f6',
-      colorBg: 'rgba(59,130,246,0.15)',
-      chartPeriods: ['1D', '1W', '1M', '1Y', '5Y', 'MAX'],
-      defaultPeriod: '1M',
-      apiMode: 'longterm',
-      signalInterval: '4h'
-    },
-    swing: {
-      label: '短期',
-      icon: '⚡',
-      color: '#f59e0b',
-      colorBg: 'rgba(245,158,11,0.15)',
-      chartPeriods: ['1H', '4H', '1D', '1W', '1M', '1Y'],
-      defaultPeriod: '1D',
-      apiMode: 'swing',
-      signalInterval: '1h'
-    }
-  };
-
-  var StrategyManager = {
-    _storageKey: 'kairos_coin_strategies',
-    _migratedKey: 'kairos_strategy_migrated',
-
-    _load: function() {
-      try {
-        var raw = localStorage.getItem(this._storageKey);
-        return raw ? JSON.parse(raw) : {};
-      } catch(e) {
-        return {};
-      }
-    },
-
-    _save: function(data) {
-      localStorage.setItem(this._storageKey, JSON.stringify(data));
-    },
-
-    getStrategy: function(ticker) {
-      var data = this._load();
-      var val = data[ticker];
-      // 旧4択→2択への互換: hodl/accumulate/watching → longterm
-      if (val === 'hodl' || val === 'accumulate' || val === 'watching') return STRATEGY_TYPES.longterm;
-      if (val === 'swing') return STRATEGY_TYPES.swing;
-      if (val === 'longterm') return STRATEGY_TYPES.longterm;
-      // デフォルト: 長期
-      return STRATEGY_TYPES.longterm;
-    },
-
-    setStrategy: function(ticker, type) {
-      if (!STRATEGY_CONFIG[type]) {
-        console.warn('[StrategyManager] Unknown strategy type:', type);
-        return;
-      }
-      var data = this._load();
-      data[ticker] = type;
-      this._save(data);
-    },
-
-    getConfig: function(ticker) {
-      var type = this.getStrategy(ticker);
-      return STRATEGY_CONFIG[type] || STRATEGY_CONFIG.longterm;
-    },
-
-    getApiMode: function(ticker) {
-      return this.getConfig(ticker).apiMode;
-    },
-
-    getChartPeriods: function(ticker) {
-      return this.getConfig(ticker).chartPeriods;
-    },
-
-    getDefaultPeriod: function(ticker) {
-      return this.getConfig(ticker).defaultPeriod;
-    },
-
-    getSignalInterval: function(ticker) {
-      return this.getConfig(ticker).signalInterval;
-    },
-
-    // 保有通貨の多数派APIモードを返す（rank-all API用）
-    getDominantApiMode: function() {
-      var data = this._load();
-      var self = this;
-      var longCount = 0;
-      var swingCount = 0;
-
-      Object.keys(data).forEach(function(ticker) {
-        var strat = self.getStrategy(ticker);
-        if (strat === 'longterm') longCount++;
-        else if (strat === 'swing') swingCount++;
-      });
-
-      return swingCount > longCount ? 'swing' : 'longterm';
-    },
-
-    // 旧グローバルモードからのマイグレーション（一回限り）
-    migrateFromGlobalMode: function() {
-      if (localStorage.getItem(this._migratedKey)) return;
-
-      var oldMode = localStorage.getItem('kairosMode') || 'core';
-      var defaultType = oldMode === 'satellite' ? STRATEGY_TYPES.swing : STRATEGY_TYPES.longterm;
-
-      // 保有通貨にデフォルトストラテジーを設定
-      var records = [];
-      try { records = JSON.parse(localStorage.getItem('kairosInvestmentRecords') || '[]'); } catch(e) {}
-
-      var data = this._load();
-      var holdingTickers = {};
-      records.forEach(function(r) {
-        if (r.currencyId && r.type === 'buy') {
-          holdingTickers[r.currencyId] = true;
-        }
-      });
-
-      Object.keys(holdingTickers).forEach(function(ticker) {
-        if (!data[ticker]) {
-          data[ticker] = defaultType;
-        }
-      });
-
-      // ウォッチリストの通貨も設定
-      var watchlistStr = localStorage.getItem('kairos-watchlist');
-      var watchlist = watchlistStr ? JSON.parse(watchlistStr) : [];
-      watchlist.forEach(function(ticker) {
-        if (!data[ticker]) {
-          data[ticker] = STRATEGY_TYPES.longterm;
-        }
-      });
-
-      this._save(data);
-      localStorage.setItem(this._migratedKey, '1');
-      console.log('[StrategyManager] Migrated from global mode:', oldMode, '→ default:', defaultType);
-    },
-
-    // 全ストラテジーを取得（UIリスト用）
-    getAllStrategies: function() {
-      return this._load();
-    }
-  };
-
-  window.KAIROS = window.KAIROS || {};
-  window.KAIROS.StrategyManager = StrategyManager;
-
 
   // ============================================
   // 通貨別ストラテジー管理（長期/短期の2択）

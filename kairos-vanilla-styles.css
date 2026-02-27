@@ -14482,6 +14482,60 @@ body.has-ticker-bar {
 .performance-trade-item__pnl.positive { color: #10b981; }
 .performance-trade-item__pnl.negative { color: #ef4444; }
 
+/* Export mode toggle */
+.performance-export-mode {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.performance-export-mode__btn {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.5);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.performance-export-mode__btn--active {
+  background: var(--accent-primary, rgba(99,102,241,0.25));
+  border-color: var(--accent-primary, rgba(99,102,241,0.4));
+  color: var(--text-primary, #fff);
+}
+
+/* Export panels */
+.performance-export-panel {
+  display: none;
+}
+
+.performance-export-panel--active {
+  display: block;
+}
+
+/* Date select dropdown */
+.performance-export-select {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  color: var(--text-primary, #fff);
+  font-size: 13px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.performance-export-select:focus {
+  outline: none;
+  border-color: var(--accent-primary, rgba(99,102,241,0.5));
+}
+
 /* Export buttons */
 .performance-export-btn {
   background: rgba(255,255,255,0.06);
