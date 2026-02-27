@@ -9887,14 +9887,13 @@ button.moonshot-btn.moonshot-btn--active {
 }
 
 .nav-mode-btn--cex {
-  background: var(--accent-gradient, linear-gradient(135deg, var(--accent-light, #e8c476), var(--accent-dark, #a67c3d)));
-  box-shadow: 0 0 8px rgba(var(--accent-rgb, 212,168,83), 0.3);
+  background: var(--mode-core-gradient);
+  box-shadow: 0 0 8px var(--mode-core-glow);
 }
 
 .nav-mode-btn--dex {
-  background: linear-gradient(135deg, var(--accent, #d4a853), var(--accent-dark, #a67c3d));
-  box-shadow: 0 0 8px rgba(var(--accent-rgb, 212,168,83), 0.2);
-  filter: hue-rotate(-15deg) saturate(1.2);
+  background: var(--mode-satellite-gradient);
+  box-shadow: 0 0 8px var(--mode-satellite-glow);
 }
 
 .nav-mode-btn__icon {
