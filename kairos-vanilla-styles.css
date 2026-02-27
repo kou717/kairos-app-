@@ -9886,12 +9886,10 @@ button.moonshot-btn.moonshot-btn--active {
   transform: scale(0.95);
 }
 
-.nav-mode-btn--cex {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-}
-
+.nav-mode-btn--cex,
 .nav-mode-btn--dex {
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: var(--accent-gradient, linear-gradient(135deg, var(--accent-light, #e8c476), var(--accent-dark, #a67c3d)));
+  box-shadow: 0 0 8px rgba(var(--accent-rgb, 212,168,83), 0.3);
 }
 
 .nav-mode-btn__icon {
