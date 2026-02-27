@@ -1256,6 +1256,30 @@
       if (since) url += '&since=' + encodeURIComponent(since);
       if (until) url += '&until=' + encodeURIComponent(until);
       window.open(url, '_blank');
+    },
+
+    getSleepingLionStats: function() {
+      var self = this;
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) { reject(new Error('Backend not available')); return; }
+          fetch(self.baseUrl + '/api/collector/sleeping-lion/stats')
+            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
+            .then(resolve).catch(reject);
+        });
+      });
+    },
+
+    getSleepingLionWatchlist: function() {
+      var self = this;
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) { reject(new Error('Backend not available')); return; }
+          fetch(self.baseUrl + '/api/collector/sleeping-lion/watchlist')
+            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
+            .then(resolve).catch(reject);
+        });
+      });
     }
   };
 
@@ -2282,6 +2306,13 @@
         _collectorAutoRefresh = null;
       }
     }
+    // Sleeping Lion自動更新を停止
+    if (appState.currentScreen === 'sleeping-lion' && screenId !== 'sleeping-lion') {
+      if (typeof _slAutoRefresh !== 'undefined' && _slAutoRefresh) {
+        clearInterval(_slAutoRefresh);
+        _slAutoRefresh = null;
+      }
+    }
 
     // ポートフォリオ詳細が開いている場合
     if (appState.portfolioDetailOpen) {
@@ -2360,6 +2391,7 @@
     'home': 'detection',
     'performance': 'detection',
     'collector': 'detection',
+    'sleeping-lion': 'detection',
     'detection': null  // 検出画面が最上位 → アプリ終了
   };
 
@@ -2425,7 +2457,8 @@
       'kairos-dca-modal', 'kairos-category-help-modal',
       'feargreed-detail-modal', 'indicator-help-popup',
       'early-mover-detail-modal', 'moonshot-detail-modal',
-      'moonshot-settings-modal', 'news-detail-modal'
+      'moonshot-settings-modal', 'news-detail-modal',
+      'sleeping-lion-detail-modal'
     ];
     for (var j = 0; j < simpleModalIds.length; j++) {
       var modal = document.getElementById(simpleModalIds[j]);
@@ -2715,6 +2748,7 @@
   function renderBottomNav() {
     var items = [
       { id: 'detection', icon: '🚀', label: '検出' },
+      { id: 'sleeping-lion', icon: '🦁', label: '獅子' },
       { id: 'performance', icon: '📈', label: '成績' },
       { id: 'collector', icon: '🗄️', label: 'Monitor' }
     ];
@@ -2725,7 +2759,7 @@
         '<span class="menu-btn__icon">☰</span>' +
         '<span class="menu-btn__label">メニュー</span>' +
       '</button>' +
-      // 中央：ナビゲーション（3アイテム）
+      // 中央：ナビゲーション（4アイテム）
       '<nav class="bottom-nav">';
 
     items.forEach(function(item) {
@@ -5074,11 +5108,17 @@
       ? Promise.resolve({ dates: _perfDatesList })
       : BackendAPI.getCollectorStatsDates().catch(function() { return { dates: [] }; });
 
-    Promise.all([statsP, exportDatesP, statsDatesP])
+    // SL stats (separate from regular)
+    var slStatsP = BackendAPI.getSleepingLionStats().catch(function() {
+      return { watchlist: {}, trades: {} };
+    });
+
+    Promise.all([statsP, exportDatesP, statsDatesP, slStatsP])
       .then(function(results) {
         var stats = results[0];
         var exportDatesData = results[1];
         var statsDatesData = results[2];
+        var slStats = results[3];
 
         // Cache stats dates
         if (!_perfDatesList) {
@@ -5091,7 +5131,7 @@
         // Update title
         _updatePerfTitle(dateFilter || '');
 
-        container.innerHTML = _renderPerformanceContent(stats);
+        container.innerHTML = _renderPerformanceContent(stats) + _renderPerformanceSLSection(slStats);
         _initPerformanceAccordions();
         _initPerformanceExport();
         // Populate export date dropdown
@@ -7175,6 +7215,9 @@
         case 'collector':
           screenHtml = renderCollectorMonitor();
           break;
+        case 'sleeping-lion':
+          screenHtml = renderSleepingLionScreen();
+          break;
         default:
           screenHtml = renderDetectionScreen();
       }
@@ -7247,6 +7290,11 @@
     // Collector Monitor: load data
     if (appState.currentScreen === 'collector') {
       _refreshCollectorData();
+    }
+
+    // Sleeping Lion: load data
+    if (appState.currentScreen === 'sleeping-lion') {
+      _loadSleepingLionData();
     }
   }
 
@@ -7540,6 +7588,455 @@
     }
 
     // スワイプジェスチャーはv19で廃止（通貨別ストラテジー制に移行）
+  }
+
+  // ============================================================
+  // Sleeping Lion Screen
+  // ============================================================
+
+  var _slAutoRefresh = null;
+  var _slCache = { stats: null, watchlist: null, time: 0 };
+
+  function renderSleepingLionScreen() {
+    // Setup auto-refresh
+    if (_slAutoRefresh) clearInterval(_slAutoRefresh);
+    _slAutoRefresh = setInterval(function() {
+      if (appState.currentScreen === 'sleeping-lion') _loadSleepingLionData();
+    }, 30000);
+
+    return '<div class="sl-screen">' +
+      '<header class="sl-header">' +
+        '<h1 class="sl-header__title">🦁 眠れる獅子</h1>' +
+        '<button class="sl-header__refresh" onclick="window._loadSleepingLionData()">🔄</button>' +
+      '</header>' +
+      '<div id="sl-content">' +
+        '<div class="moonshot-loading">' +
+          '<div class="moonshot-loading__spinner"></div>' +
+          '<div class="moonshot-loading__text">データ読み込み中...</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  window._loadSleepingLionData = function() {
+    _loadSleepingLionData();
+  };
+
+  function _loadSleepingLionData() {
+    var container = document.getElementById('sl-content');
+    if (!container) return;
+
+    Promise.all([
+      BackendAPI.getSleepingLionStats().catch(function() {
+        return { watchlist: { watching: 0, awakened: 0, timeout: 0, dead: 0 }, trades: { open: 0, closed: 0, total_pnl: 0, winners: 0, losers: 0 } };
+      }),
+      BackendAPI.getSleepingLionWatchlist().catch(function() {
+        return { items: [] };
+      })
+    ]).then(function(results) {
+      var stats = results[0];
+      var watchlistData = results[1];
+      _slCache = { stats: stats, watchlist: watchlistData.items || [], time: Date.now() };
+      container.innerHTML = _renderSleepingLionContent(stats, watchlistData.items || []);
+    }).catch(function(err) {
+      container.innerHTML = '<div class="moonshot-empty">' +
+        '<div class="moonshot-empty__icon">⚠️</div>' +
+        '<div class="moonshot-empty__text">データ取得に失敗しました</div>' +
+        '<div class="moonshot-empty__hint">' + (err.message || '') + '</div>' +
+      '</div>';
+    });
+  }
+
+  function _renderSleepingLionContent(stats, items) {
+    var wl = stats.watchlist || {};
+    var tr = stats.trades || {};
+    var html = '';
+
+    // セクション1: ステータスカード 2x2
+    html += '<div class="sl-cards">' +
+      _slStatusCard('👁️', '監視中', wl.watching || 0, 'watching') +
+      _slStatusCard('⚡', '覚醒', wl.awakened || 0, 'awakened') +
+      _slStatusCard('⏰', 'タイムアウト', wl.timeout || 0, 'timeout') +
+      _slStatusCard('💀', '死亡', wl.dead || 0, 'dead') +
+    '</div>';
+
+    // Separate items by category
+    var watching = [];
+    var openTrades = [];
+    var closedTrades = [];
+    (items || []).forEach(function(item) {
+      if (item.status === 'watching') {
+        watching.push(item);
+      } else if (item.trade_id && item.trade_status && item.trade_status !== 'closed') {
+        openTrades.push(item);
+      } else if (item.trade_id && item.trade_status === 'closed') {
+        closedTrades.push(item);
+      }
+    });
+
+    // セクション2: 監視中リスト
+    html += '<div class="sl-list">' +
+      '<div class="sl-list__title">👁️ 監視中 (' + watching.length + ')</div>';
+    if (watching.length === 0) {
+      html += '<div class="sl-list__empty">現在監視中のコインはありません</div>';
+    } else {
+      watching.forEach(function(item, idx) {
+        html += _renderSlWatchingItem(item, idx);
+      });
+    }
+    html += '</div>';
+
+    // セクション3: トレード中
+    html += '<div class="sl-list">' +
+      '<div class="sl-list__title">⚡ トレード中 (' + openTrades.length + ')</div>';
+    if (openTrades.length === 0) {
+      html += '<div class="sl-list__empty">アクティブなトレードはありません</div>';
+    } else {
+      openTrades.forEach(function(item, idx) {
+        html += _renderSlTradeItem(item, idx);
+      });
+    }
+    html += '</div>';
+
+    // セクション4: 最近のクローズ (max 10)
+    var recentClosed = closedTrades.slice(0, 10);
+    html += '<div class="sl-list">' +
+      '<div class="sl-list__title">📋 最近のクローズ (' + recentClosed.length + ')</div>';
+    if (recentClosed.length === 0) {
+      html += '<div class="sl-list__empty">クローズ済みのトレードはありません</div>';
+    } else {
+      recentClosed.forEach(function(item, idx) {
+        html += _renderSlClosedItem(item, idx);
+      });
+    }
+    html += '</div>';
+
+    return html;
+  }
+
+  function _slStatusCard(icon, label, count, type) {
+    return '<div class="sl-card sl-card--' + type + '">' +
+      '<div class="sl-card__icon">' + icon + '</div>' +
+      '<div class="sl-card__count">' + count + '</div>' +
+      '<div class="sl-card__label">' + label + '</div>' +
+    '</div>';
+  }
+
+  function _renderSlWatchingItem(item, idx) {
+    var elapsed = _slElapsedStr(item.baseline_at);
+    // Calculate awakening condition progress
+    var volPct = 0, buysPct = 0, pricePct = 0;
+    // We show checks_done as a proxy for monitoring progress
+    var checks = item.checks_done || 0;
+
+    return '<div class="sl-list-item sl-list-item--watching" onclick="window._openSlDetail(' + idx + ',\'watching\')">' +
+      '<div class="sl-list-item__header">' +
+        '<span class="sl-list-item__symbol">' + (item.symbol || '???') + '</span>' +
+        '<span class="sl-list-item__elapsed">' + elapsed + '</span>' +
+      '</div>' +
+      '<div class="sl-list-item__meta">' +
+        '<span>Score ' + (item.moonshot_score || 0).toFixed(0) + '</span>' +
+        '<span>BSR ' + (item.baseline_bsr || 0).toFixed(1) + '</span>' +
+        '<span>Vol $' + _slFormatUsd(item.baseline_volume || 0) + '</span>' +
+        '<span>Check #' + checks + '</span>' +
+      '</div>' +
+      '<div class="sl-list-item__progress">' +
+        _slProgressBar('vol', '+100%', volPct) +
+        _slProgressBar('buys', '+50%', buysPct) +
+        _slProgressBar('price', '+30%', pricePct) +
+      '</div>' +
+    '</div>';
+  }
+
+  function _renderSlTradeItem(item, idx) {
+    var pnl = item.unrealized_pnl_pct || 0;
+    var pnlClass = pnl >= 0 ? 'positive' : 'negative';
+    var pnlSign = pnl >= 0 ? '+' : '';
+    var peakPnl = item.peak_pnl_pct || 0;
+    var pos = item.position_size != null ? item.position_size : 1.0;
+    var holdStr = _slHoldingStr(item.entry_at);
+
+    // Exit proximity
+    var trailingPct = peakPnl > 0 ? ((pnl - peakPnl) / peakPnl * 100) : 0;
+
+    return '<div class="sl-list-item sl-list-item--trade" onclick="window._openSlDetail(' + idx + ',\'trade\')">' +
+      '<div class="sl-list-item__header">' +
+        '<span class="sl-list-item__symbol">' + (item.symbol || '???') + '</span>' +
+        '<span class="sl-trade-item__pnl ' + pnlClass + '">' + pnlSign + pnl.toFixed(1) + '%</span>' +
+      '</div>' +
+      '<div class="sl-list-item__meta">' +
+        '<span>Entry $' + _slFormatPrice(item.entry_price || 0) + '</span>' +
+        '<span>Pos ' + pos.toFixed(2) + '</span>' +
+        '<span>' + holdStr + '</span>' +
+        '<span>Peak ' + (peakPnl >= 0 ? '+' : '') + peakPnl.toFixed(1) + '%</span>' +
+      '</div>' +
+      '<div class="sl-trade-item__exit">' +
+        '<div class="sl-trade-item__exit-label">trailing: peak→now ' + trailingPct.toFixed(0) + '%/-25%</div>' +
+        '<div class="sl-trade-item__exit-label">emergency: entry→now ' + pnl.toFixed(0) + '%/-30%</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function _renderSlClosedItem(item, idx) {
+    var pnl = item.realized_pnl_pct || 0;
+    var pnlClass = pnl >= 0 ? 'positive' : 'negative';
+    var pnlSign = pnl >= 0 ? '+' : '';
+    var exitReason = _slExitReasonJa(item.exit_reason || '');
+    var holdStr = item.holding_duration ? _slDurationStr(item.holding_duration) : '-';
+
+    return '<div class="sl-list-item sl-list-item--closed" onclick="window._openSlDetail(' + idx + ',\'closed\')">' +
+      '<div class="sl-list-item__header">' +
+        '<span class="sl-list-item__symbol">' + (item.symbol || '???') + '</span>' +
+        '<span class="sl-trade-item__pnl ' + pnlClass + '">' + pnlSign + pnl.toFixed(2) + '%</span>' +
+      '</div>' +
+      '<div class="sl-list-item__meta">' +
+        '<span>' + exitReason + '</span>' +
+        '<span>' + holdStr + '</span>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function _slProgressBar(label, target, pct) {
+    pct = Math.max(0, Math.min(100, pct));
+    var color = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#64748b';
+    return '<div class="sl-progress">' +
+      '<span class="sl-progress__label">' + label + '</span>' +
+      '<div class="sl-progress__bar">' +
+        '<div class="sl-progress__fill" style="width:' + pct + '%;background:' + color + '"></div>' +
+      '</div>' +
+      '<span class="sl-progress__value">' + pct.toFixed(0) + '%/' + target + '</span>' +
+    '</div>';
+  }
+
+  // SL Detail Popup
+  window._openSlDetail = function(idx, type) {
+    var items = _slCache.watchlist || [];
+    var filtered;
+    if (type === 'watching') {
+      filtered = items.filter(function(i) { return i.status === 'watching'; });
+    } else if (type === 'trade') {
+      filtered = items.filter(function(i) { return i.trade_id && i.trade_status && i.trade_status !== 'closed'; });
+    } else {
+      filtered = items.filter(function(i) { return i.trade_id && i.trade_status === 'closed'; }).slice(0, 10);
+    }
+    var item = filtered[idx];
+    if (!item) return;
+    _showSlDetailPopup(item);
+  };
+
+  function _showSlDetailPopup(item) {
+    // Remove existing
+    var existing = document.getElementById('sleeping-lion-detail-modal');
+    if (existing) existing.remove();
+
+    var status = item.trade_status || item.status || 'unknown';
+    var statusLabel = { watching: '👁️ 監視中', awakened: '⚡ 覚醒', timeout: '⏰ タイムアウト', dead: '💀 死亡', open: '⚡ トレード中', closed: '📋 クローズ', partial_exit_50: '🎯 +50%利確済', partial_exit_100: '🚀 +100%利確済', partial_exit_500: '🌙 +500%利確済' };
+    var statusText = statusLabel[status] || status;
+
+    var html = '<div class="sl-popup" id="sleeping-lion-detail-modal" onclick="if(event.target===this)this.remove()">' +
+      '<div class="sl-popup__content">' +
+        '<div class="sl-popup__header sl-popup__header--' + (item.status || 'watching') + '">' +
+          '<span>🦁 ' + (item.symbol || '???') + '</span>' +
+          '<span class="sl-popup__status">' + statusText + '</span>' +
+          '<button class="sl-popup__close" onclick="document.getElementById(\'sleeping-lion-detail-modal\').remove()">✕</button>' +
+        '</div>';
+
+    // Baseline section
+    html += '<div class="sl-popup__section">' +
+      '<div class="sl-popup__section-title">ベースライン (5m時点)</div>' +
+      '<div class="sl-popup__grid">' +
+        '<div class="sl-popup__grid-item"><span class="sl-popup__grid-label">💰 価格</span><span>$' + _slFormatPrice(item.baseline_price || 0) + '</span></div>' +
+        '<div class="sl-popup__grid-item"><span class="sl-popup__grid-label">📊 出来高</span><span>$' + _slFormatUsd(item.baseline_volume || 0) + '</span></div>' +
+        '<div class="sl-popup__grid-item"><span class="sl-popup__grid-label">📈 BSR</span><span>' + (item.baseline_bsr || 0).toFixed(2) + '</span></div>' +
+        '<div class="sl-popup__grid-item"><span class="sl-popup__grid-label">🎯 Score</span><span>' + (item.moonshot_score || 0).toFixed(0) + '</span></div>' +
+      '</div>' +
+    '</div>';
+
+    // Awakening conditions (for watching)
+    if (item.status === 'watching') {
+      html += '<div class="sl-popup__section">' +
+        '<div class="sl-popup__section-title">覚醒条件</div>' +
+        '<div class="sl-popup__conditions">' +
+          _slPopupProgress('出来高', '+100%', 0) +
+          _slPopupProgress('Buys', '+50%', 0) +
+          _slPopupProgress('価格', '+30%', 0) +
+        '</div>' +
+        '<div class="sl-popup__hint">チェック回数: ' + (item.checks_done || 0) + '</div>' +
+      '</div>';
+    }
+
+    // Trade section (if trade exists)
+    if (item.trade_id) {
+      var pnl = (item.trade_status === 'closed') ? (item.realized_pnl_pct || 0) : (item.unrealized_pnl_pct || 0);
+      var pnlClass = pnl >= 0 ? 'positive' : 'negative';
+      var pnlSign = pnl >= 0 ? '+' : '';
+      var peakPnl = item.peak_pnl_pct || 0;
+      var holdStr = item.holding_duration ? _slDurationStr(item.holding_duration) : (item.entry_at ? _slHoldingStr(item.entry_at) : '-');
+
+      html += '<div class="sl-popup__section">' +
+        '<div class="sl-popup__section-title">トレード</div>' +
+        '<div class="sl-popup__grid">' +
+          '<div class="sl-popup__grid-item"><span class="sl-popup__grid-label">Entry</span><span>$' + _slFormatPrice(item.entry_price || 0) + '</span></div>' +
+          '<div class="sl-popup__grid-item"><span class="sl-popup__grid-label">PnL</span><span class="' + pnlClass + '">' + pnlSign + pnl.toFixed(2) + '%</span></div>' +
+          '<div class="sl-popup__grid-item"><span class="sl-popup__grid-label">Peak</span><span>' + (peakPnl >= 0 ? '+' : '') + peakPnl.toFixed(1) + '%</span></div>' +
+          '<div class="sl-popup__grid-item"><span class="sl-popup__grid-label">保有</span><span>' + holdStr + '</span></div>' +
+        '</div>';
+
+      if (item.exit_reason) {
+        html += '<div class="sl-popup__exit-reason">Exit: ' + _slExitReasonJa(item.exit_reason) + '</div>';
+      }
+
+      // Exit proximity (if open)
+      if (item.trade_status && item.trade_status !== 'closed') {
+        var trailingDrop = peakPnl > 0 ? ((pnl - peakPnl) / peakPnl * 100) : 0;
+        html += '<div class="sl-popup__exit-proximity">' +
+          '<div class="sl-popup__section-title">出口接近度</div>' +
+          '<div class="sl-popup__exit-line">trailing: ' + trailingDrop.toFixed(0) + '% / -25%</div>' +
+          '<div class="sl-popup__exit-line">emergency: ' + pnl.toFixed(0) + '% / -30%</div>' +
+        '</div>';
+      }
+
+      html += '</div>';
+    }
+
+    // Resolve reason (for timeout/dead)
+    if (item.resolve_reason && !item.trade_id) {
+      html += '<div class="sl-popup__section">' +
+        '<div class="sl-popup__resolve">' + item.resolve_reason + '</div>' +
+      '</div>';
+    }
+
+    html += '</div></div>';
+
+    document.body.insertAdjacentHTML('beforeend', html);
+    document.body.style.overflow = 'hidden';
+  }
+
+  function _slPopupProgress(label, target, pct) {
+    pct = Math.max(0, Math.min(100, pct));
+    var color = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#64748b';
+    return '<div class="sl-popup__progress">' +
+      '<div class="sl-popup__progress-header">' +
+        '<span>' + label + ' ' + target + '</span>' +
+        '<span>' + pct.toFixed(0) + '%</span>' +
+      '</div>' +
+      '<div class="sl-progress__bar" style="height:8px">' +
+        '<div class="sl-progress__fill" style="width:' + pct + '%;background:' + color + '"></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // Helpers
+  function _slElapsedStr(baselineAt) {
+    if (!baselineAt) return '-';
+    var sec = Math.floor(Date.now() / 1000 - baselineAt);
+    if (sec < 60) return sec + 's';
+    if (sec < 3600) return Math.floor(sec / 60) + 'm' + (sec % 60) + 's';
+    return Math.floor(sec / 3600) + 'h' + Math.floor((sec % 3600) / 60) + 'm';
+  }
+
+  function _slHoldingStr(entryAt) {
+    if (!entryAt) return '-';
+    var sec = Math.floor(Date.now() / 1000 - entryAt);
+    if (sec < 60) return sec + 's';
+    if (sec < 3600) return Math.floor(sec / 60) + 'm';
+    return Math.floor(sec / 3600) + 'h ' + Math.floor((sec % 3600) / 60) + 'm';
+  }
+
+  function _slDurationStr(sec) {
+    if (!sec || sec <= 0) return '-';
+    if (sec < 60) return sec + 's';
+    if (sec < 3600) return Math.floor(sec / 60) + 'm';
+    return Math.floor(sec / 3600) + 'h ' + Math.floor((sec % 3600) / 60) + 'm';
+  }
+
+  function _slFormatUsd(val) {
+    if (val >= 1e6) return (val / 1e6).toFixed(1) + 'M';
+    if (val >= 1e3) return (val / 1e3).toFixed(1) + 'K';
+    return val.toFixed(0);
+  }
+
+  function _slFormatPrice(val) {
+    if (val === 0) return '0';
+    if (val < 0.000001) return val.toExponential(2);
+    if (val < 0.01) return val.toFixed(6);
+    if (val < 1) return val.toFixed(4);
+    return val.toFixed(2);
+  }
+
+  function _slExitReasonJa(reason) {
+    var map = {
+      'rugpull_detected': '🚨 ラグプル検知',
+      'emergency_stop': '🛑 緊急損切り',
+      'trailing_stop': '📉 トレーリング',
+      'momentum_death': '📊 勢い消失',
+      'max_hold_time': '⏰ 24h上限',
+      'profit_50pct_partial': '🎯 +50%利確',
+      'profit_100pct_partial': '🚀 +100%利確',
+      'profit_500pct_partial': '🌙 +500%利確',
+    };
+    return map[reason] || reason;
+  }
+
+  // Performance SL Section — appended to _renderPerformanceContent
+  function _renderPerformanceSLSection(stats) {
+    var tr = stats.trades || {};
+    var wl = stats.watchlist || {};
+    var totalTrades = (tr.closed || 0);
+    var winners = tr.winners || 0;
+    var losers = tr.losers || 0;
+    var winRate = totalTrades > 0 ? (winners / totalTrades * 100) : 0;
+    var avgPnl = totalTrades > 0 ? (tr.total_pnl / totalTrades) : 0;
+    var pnlClass = avgPnl >= 0 ? 'positive' : 'negative';
+    var pnlSign = avgPnl >= 0 ? '+' : '';
+
+    var html = '<div class="performance-section sl-perf-section" style="animation-delay:0.45s">' +
+      '<h3 class="performance-section__title">🦁 眠れる獅子 成績</h3>';
+
+    // SL Hero Card
+    html += '<div class="sl-perf-hero">' +
+      '<div class="sl-perf-hero__stats">' +
+        '<div class="sl-perf-hero__stat">' +
+          '<div class="sl-perf-hero__stat-value">' + totalTrades + '</div>' +
+          '<div class="sl-perf-hero__stat-label">SL取引数</div>' +
+        '</div>' +
+        '<div class="sl-perf-hero__stat">' +
+          '<div class="sl-perf-hero__stat-value" style="color:' + (winRate >= 50 ? '#10b981' : '#ef4444') + '">' + winRate.toFixed(1) + '%</div>' +
+          '<div class="sl-perf-hero__stat-label">SL勝率</div>' +
+        '</div>' +
+        '<div class="sl-perf-hero__stat">' +
+          '<div class="sl-perf-hero__stat-value ' + pnlClass + '">' + pnlSign + avgPnl.toFixed(2) + '%</div>' +
+          '<div class="sl-perf-hero__stat-label">平均PnL</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+    // Funnel: 監視 → 覚醒 → トレード → 勝ち
+    var totalWatched = (wl.watching || 0) + (wl.awakened || 0) + (wl.timeout || 0) + (wl.dead || 0);
+    var totalAwakened = wl.awakened || 0;
+    var totalTraded = (tr.open || 0) + (tr.closed || 0);
+
+    html += '<div class="sl-funnel">' +
+      _slFunnelStep('監視', totalWatched, totalWatched) +
+      '<span class="sl-funnel__arrow">→</span>' +
+      _slFunnelStep('覚醒', totalAwakened, totalWatched) +
+      '<span class="sl-funnel__arrow">→</span>' +
+      _slFunnelStep('トレード', totalTraded, totalWatched) +
+      '<span class="sl-funnel__arrow">→</span>' +
+      _slFunnelStep('勝ち', winners, totalWatched) +
+    '</div>';
+
+    html += '</div>';
+    return html;
+  }
+
+  function _slFunnelStep(label, count, total) {
+    var pct = total > 0 ? (count / total * 100) : 0;
+    return '<div class="sl-funnel__step">' +
+      '<div class="sl-funnel__count">' + count + '</div>' +
+      '<div class="sl-funnel__bar"><div class="sl-funnel__bar-fill" style="width:' + Math.max(pct, 5) + '%"></div></div>' +
+      '<div class="sl-funnel__label">' + label + '</div>' +
+    '</div>';
   }
 
   // ============================================================
