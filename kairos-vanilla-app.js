@@ -5068,7 +5068,7 @@
       sel.innerHTML = '<option value="">データなし</option>';
       return;
     }
-    var html = '';
+    var html = '<option value="">すべて（全期間）</option>';
     dates.forEach(function(d) {
       html += '<option value="' + d + '">' + d + '</option>';
     });
