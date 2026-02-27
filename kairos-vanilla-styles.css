@@ -14269,10 +14269,39 @@ body.has-ticker-bar {
 
 .performance-date-filter {
   margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.perf-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.perf-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #d4a853;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.perf-checkbox--leo {
+  color: #f59e0b;
 }
 
 .performance-date-filter__select {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: 10px 14px;
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.12);
@@ -14292,6 +14321,11 @@ body.has-ticker-bar {
 .performance-date-filter__select:focus {
   outline: none;
   border-color: rgba(212,168,83,0.5);
+}
+
+.performance-date-filter__select:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .performance-hero {

@@ -5065,6 +5065,21 @@
   }
 
   // ===== Performance画面（ペーパートレード成績） =====
+
+  // JST今日の日付文字列 (YYYY-MM-DD)
+  function _getTodayJST() {
+    var now = new Date();
+    var jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    var y = jst.getUTCFullYear();
+    var m = ('0' + (jst.getUTCMonth() + 1)).slice(-2);
+    var d = ('0' + jst.getUTCDate()).slice(-2);
+    return y + '-' + m + '-' + d;
+  }
+
+  // Performance state
+  var _perfAllDates = false;   // 「すべて」チェック
+  var _perfIncludeSL = false;  // 「レオ」チェック
+
   function renderPerformanceScreen() {
     return '<div class="performance-screen">' +
       '<header class="detection-header">' +
@@ -5072,9 +5087,11 @@
         '<div class="detection-header__subtitle">Collector自動売買のシミュレーション結果</div>' +
       '</header>' +
       '<div class="performance-date-filter">' +
-        '<select id="perf-date-filter" class="performance-date-filter__select" onchange="window._onPerfDateChange()">' +
-          '<option value="">全期間</option>' +
+        '<label class="perf-checkbox"><input type="checkbox" id="perf-all-dates" onchange="window._onPerfAllDatesChange()"' + (_perfAllDates ? ' checked' : '') + '><span>すべて</span></label>' +
+        '<select id="perf-date-filter" class="performance-date-filter__select" onchange="window._onPerfDateChange()"' + (_perfAllDates ? ' disabled' : '') + '>' +
+          '<option value="">読込中...</option>' +
         '</select>' +
+        '<label class="perf-checkbox perf-checkbox--leo"><input type="checkbox" id="perf-include-sl" onchange="window._onPerfIncludeSLChange()"' + (_perfIncludeSL ? ' checked' : '') + '><span>🦁レオ</span></label>' +
       '</div>' +
       '<div id="performance-content">' +
         '<div class="moonshot-loading">' +
@@ -5092,13 +5109,16 @@
     var container = document.getElementById('performance-content');
     if (!container) return;
 
+    // Determine effective date filter
+    var effectiveDate = _perfAllDates ? null : (dateFilter !== undefined ? dateFilter : _getTodayJST());
+
     container.innerHTML = '<div class="moonshot-loading">' +
       '<div class="moonshot-loading__spinner"></div>' +
       '<div class="moonshot-loading__text">成績データを読み込み中...</div>' +
     '</div>';
 
     // Fetch stats (with optional date) and export dates in parallel
-    var statsP = BackendAPI.getCollectorStats(dateFilter || null);
+    var statsP = BackendAPI.getCollectorStats(effectiveDate);
     var exportDatesP = fetch(BACKEND_URL + '/api/collector/export/dates')
       .then(function(r) { return r.ok ? r.json() : { dates: [] }; })
       .catch(function() { return { dates: [] }; });
@@ -5125,17 +5145,35 @@
           _perfDatesList = statsDatesData.dates || [];
         }
 
-        // Populate date filter select (preserve selection)
-        _populatePerfDateFilter(_perfDatesList, dateFilter || '');
+        // Populate date filter select (default = today)
+        var selValue = _perfAllDates ? '__all__' : (effectiveDate || _getTodayJST());
+        _populatePerfDateFilter(_perfDatesList, selValue);
 
         // Update title
-        _updatePerfTitle(dateFilter || '');
+        _updatePerfTitle(_perfAllDates ? '' : effectiveDate);
 
-        container.innerHTML = _renderPerformanceContent(stats) + _renderPerformanceSLSection(slStats);
+        // Merge SL data into stats if レオ checked
+        var displayStats = stats;
+        if (_perfIncludeSL) {
+          displayStats = _mergeStatsWithSL(stats, slStats);
+        }
+
+        var html = _renderPerformanceContent(displayStats);
+        // SL独立セクションは常に表示（レオON時はマージ済みなので注記付き）
+        html += _renderPerformanceSLSection(slStats, _perfIncludeSL);
+        container.innerHTML = html;
         _initPerformanceAccordions();
         _initPerformanceExport();
         // Populate export date dropdown
         _populateExportDates(exportDatesData.dates || []);
+
+        // Restore checkbox/select states after DOM re-render
+        var allCb = document.getElementById('perf-all-dates');
+        var slCb = document.getElementById('perf-include-sl');
+        var sel = document.getElementById('perf-date-filter');
+        if (allCb) allCb.checked = _perfAllDates;
+        if (slCb) slCb.checked = _perfIncludeSL;
+        if (sel) sel.disabled = _perfAllDates;
       })
       .catch(function(err) {
         container.innerHTML = '<div class="moonshot-empty">' +
@@ -5146,14 +5184,50 @@
       });
   }
 
+  // Merge SL stats into regular stats for combined view
+  function _mergeStatsWithSL(stats, slStats) {
+    var merged = JSON.parse(JSON.stringify(stats)); // deep clone
+    var os = merged.overall_summary || {};
+    var tr = slStats.trades || {};
+    var slClosed = tr.closed || 0;
+    var slWinners = tr.winners || 0;
+    var slTotalPnl = tr.total_pnl || 0;
+
+    if (slClosed > 0) {
+      var origTotal = os.total || 0;
+      var origWinners = os.winners || 0;
+      var origTotalPnl = (os.avg_pnl_pct || 0) * origTotal;
+
+      var newTotal = origTotal + slClosed;
+      var newWinners = origWinners + slWinners;
+      var newTotalPnl = origTotalPnl + slTotalPnl;
+
+      os.total = newTotal;
+      os.winners = newWinners;
+      os.win_rate = newTotal > 0 ? (newWinners / newTotal * 100) : 0;
+      os.avg_pnl_pct = newTotal > 0 ? (newTotalPnl / newTotal) : 0;
+      merged.overall_summary = os;
+    }
+    return merged;
+  }
+
   function _populatePerfDateFilter(dates, selectedValue) {
     var sel = document.getElementById('perf-date-filter');
     if (!sel) return;
-    var html = '<option value="">全期間</option>';
+    var today = _getTodayJST();
+    var html = '';
     (dates || []).forEach(function(d) {
       var label = _formatDateLabel(d);
-      html += '<option value="' + d + '"' + (d === selectedValue ? ' selected' : '') + '>' + label + '</option>';
+      var selected = (selectedValue === '__all__') ? false : (d === selectedValue);
+      html += '<option value="' + d + '"' + (selected ? ' selected' : '') + '>' + label + '</option>';
     });
+    // If today not in list, add it at top
+    var hasToday = (dates || []).indexOf(today) >= 0;
+    if (!hasToday) {
+      var todayLabel = _formatDateLabel(today);
+      var todaySelected = (selectedValue !== '__all__' && (!selectedValue || selectedValue === today));
+      html = '<option value="' + today + '"' + (todaySelected ? ' selected' : '') + '>' + todayLabel + ' (今日)</option>' + html;
+    }
     sel.innerHTML = html;
   }
 
@@ -5172,10 +5246,11 @@
   function _updatePerfTitle(dateFilter) {
     var titleEl = document.getElementById('perf-title');
     if (!titleEl) return;
+    var suffix = _perfIncludeSL ? ' +🦁' : '';
     if (dateFilter) {
-      titleEl.textContent = '📈 ' + _formatDateLabel(dateFilter) + ' の成績';
+      titleEl.textContent = '📈 ' + _formatDateLabel(dateFilter) + ' の成績' + suffix;
     } else {
-      titleEl.textContent = '📈 ペーパートレード成績';
+      titleEl.textContent = '📈 ペーパートレード成績（全期間）' + suffix;
     }
   }
 
@@ -5183,6 +5258,20 @@
     var sel = document.getElementById('perf-date-filter');
     if (!sel) return;
     _loadPerformanceData(sel.value || null);
+  };
+
+  window._onPerfAllDatesChange = function() {
+    var cb = document.getElementById('perf-all-dates');
+    _perfAllDates = cb ? cb.checked : false;
+    var sel = document.getElementById('perf-date-filter');
+    if (sel) sel.disabled = _perfAllDates;
+    _loadPerformanceData();
+  };
+
+  window._onPerfIncludeSLChange = function() {
+    var cb = document.getElementById('perf-include-sl');
+    _perfIncludeSL = cb ? cb.checked : false;
+    _loadPerformanceData();
   };
 
   function _populateExportDates(dates) {
@@ -7979,7 +8068,7 @@
   }
 
   // Performance SL Section — appended to _renderPerformanceContent
-  function _renderPerformanceSLSection(stats) {
+  function _renderPerformanceSLSection(stats, includedInMain) {
     var tr = stats.trades || {};
     var wl = stats.watchlist || {};
     var totalTrades = (tr.closed || 0);
@@ -7991,7 +8080,7 @@
     var pnlSign = avgPnl >= 0 ? '+' : '';
 
     var html = '<div class="performance-section sl-perf-section" style="animation-delay:0.45s">' +
-      '<h3 class="performance-section__title">🦁 眠れる獅子 成績</h3>';
+      '<h3 class="performance-section__title">🦁 眠れる獅子 成績' + (includedInMain ? ' <span style="font-size:11px;color:#f59e0b;font-weight:400">（上のヒーローに合算済み）</span>' : '') + '</h3>';
 
     // SL Hero Card
     html += '<div class="sl-perf-hero">' +
