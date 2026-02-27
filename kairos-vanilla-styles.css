@@ -13347,6 +13347,7 @@ body.has-ticker-bar {
 
 .collector-monitor {
   padding: 16px;
+  padding-top: 84px;
   padding-bottom: 80px;
 }
 
@@ -14235,7 +14236,7 @@ body.has-ticker-bar {
 
 /* ===== Detection Screen ===== */
 .detection-screen {
-  padding: 0 16px 100px;
+  padding: 84px 16px 100px 16px;
 }
 
 .detection-header {
@@ -14264,7 +14265,7 @@ body.has-ticker-bar {
 
 /* ===== Performance Screen ===== */
 .performance-screen {
-  padding: 0 16px 100px;
+  padding: 84px 16px 100px 16px;
 }
 
 .performance-date-filter {
@@ -14622,7 +14623,7 @@ body.has-ticker-bar {
    ============================================ */
 
 .sl-screen {
-  padding: 0 16px 100px;
+  padding: 84px 16px 100px 16px;
 }
 
 .sl-header {
