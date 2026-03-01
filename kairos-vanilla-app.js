@@ -15408,6 +15408,18 @@
       if (prevStr) {
         priceAlerts.previousPrices = JSON.parse(prevStr);
       }
+      // 通知済みフラグを復元（更新時の再発火を防止）
+      var notifiedStr = localStorage.getItem('kairos-notified-alerts');
+      if (notifiedStr) {
+        var notified = JSON.parse(notifiedStr);
+        // 24時間以内のエントリのみ復元
+        var cutoff = Date.now() - 24 * 60 * 60 * 1000;
+        Object.keys(notified).forEach(function(key) {
+          if (notified[key] > cutoff) {
+            priceAlerts.notifiedAlerts[key] = notified[key];
+          }
+        });
+      }
       // 価格履歴を読み込み
       var historyStr = localStorage.getItem('kairos-price-history');
       if (historyStr) {
@@ -15517,11 +15529,13 @@
 
         if (weeklyChange <= thresholds.weeklyDrop && !priceAlerts.notifiedAlerts[weekKey + '-drop']) {
           showLongTermAlert(ticker, 'weeklyDrop', weeklyChange);
-          priceAlerts.notifiedAlerts[weekKey + '-drop'] = true;
+          priceAlerts.notifiedAlerts[weekKey + '-drop'] = Date.now();
+          _saveNotifiedAlerts();
         }
         if (weeklyChange >= thresholds.weeklyRise && !priceAlerts.notifiedAlerts[weekKey + '-rise']) {
           showLongTermAlert(ticker, 'weeklyRise', weeklyChange);
-          priceAlerts.notifiedAlerts[weekKey + '-rise'] = true;
+          priceAlerts.notifiedAlerts[weekKey + '-rise'] = Date.now();
+          _saveNotifiedAlerts();
         }
       }
 
@@ -15532,11 +15546,13 @@
 
         if (monthlyChange <= thresholds.monthlyDrop && !priceAlerts.notifiedAlerts[monthKey + '-drop']) {
           showLongTermAlert(ticker, 'monthlyDrop', monthlyChange);
-          priceAlerts.notifiedAlerts[monthKey + '-drop'] = true;
+          priceAlerts.notifiedAlerts[monthKey + '-drop'] = Date.now();
+          _saveNotifiedAlerts();
         }
         if (monthlyChange >= thresholds.monthlyRise && !priceAlerts.notifiedAlerts[monthKey + '-rise']) {
           showLongTermAlert(ticker, 'monthlyRise', monthlyChange);
-          priceAlerts.notifiedAlerts[monthKey + '-rise'] = true;
+          priceAlerts.notifiedAlerts[monthKey + '-rise'] = Date.now();
+          _saveNotifiedAlerts();
         }
       }
     });
@@ -15621,14 +15637,21 @@
   }
 
   // アラート通知を表示（ブラウザ通知 + アプリ内トースト/緊急アラート）
-  function showPriceAlert(ticker, type, changePercent, currentPrice) {
-    var alertKey = ticker + '-' + type + '-' + Math.floor(Date.now() / 60000);
+  function _saveNotifiedAlerts() {
+    try {
+      localStorage.setItem('kairos-notified-alerts', JSON.stringify(priceAlerts.notifiedAlerts));
+    } catch(e) {}
+  }
 
-    // 1分以内の重複通知を防止
-    if (priceAlerts.notifiedAlerts[alertKey]) {
+  function showPriceAlert(ticker, type, changePercent, currentPrice) {
+    // 同じticker+typeは10分間隔でしか通知しない
+    var alertKey = ticker + '-' + type;
+    var lastNotified = priceAlerts.notifiedAlerts[alertKey] || 0;
+    if (Date.now() - lastNotified < 10 * 60 * 1000) {
       return;
     }
-    priceAlerts.notifiedAlerts[alertKey] = true;
+    priceAlerts.notifiedAlerts[alertKey] = Date.now();
+    _saveNotifiedAlerts();
 
     var absChange = Math.abs(changePercent);
 
