@@ -5190,24 +5190,20 @@
       window._perfPrefetch = null; // 1回だけ使用
     } else {
       var statsP = BackendAPI.getCollectorStats(effectiveDate);
-      var exportDatesP = fetch(BACKEND_URL + '/api/collector/export/dates')
-        .then(function(r) { return r.ok ? r.json() : { dates: [] }; })
-        .catch(function() { return { dates: [] }; });
       var statsDatesP = _perfDatesList
         ? Promise.resolve({ dates: _perfDatesList })
         : BackendAPI.getCollectorStatsDates().catch(function() { return { dates: [] }; });
       var slStatsP = BackendAPI.getSleepingLionStats(effectiveDate).catch(function() {
         return { watchlist: {}, trades: {} };
       });
-      dataPromise = Promise.all([statsP, exportDatesP, statsDatesP, slStatsP]);
+      dataPromise = Promise.all([statsP, statsDatesP, slStatsP]);
     }
 
     dataPromise
       .then(function(results) {
         var stats = results[0];
-        var exportDatesData = results[1];
-        var statsDatesData = results[2];
-        var slStats = results[3];
+        var statsDatesData = results[1];
+        var slStats = results[2];
 
         // Cache stats dates
         if (!_perfDatesList) {
@@ -5235,8 +5231,6 @@
         container.innerHTML = html;
         _initPerformanceAccordions();
         _initPerformanceExport();
-        // Populate export date dropdown
-        _populateExportDates(exportDatesData.dates || []);
 
         // Restore checkbox/select states after DOM re-render
         var allCb = document.getElementById('perf-all-dates');
@@ -5344,20 +5338,6 @@
     _perfIncludeSL = cb ? cb.checked : false;
     _loadPerformanceData();
   };
-
-  function _populateExportDates(dates) {
-    var sel = document.getElementById('perf-export-date');
-    if (!sel) return;
-    if (!dates || dates.length === 0) {
-      sel.innerHTML = '<option value="">データなし</option>';
-      return;
-    }
-    var html = '<option value="">すべて（全期間）</option>';
-    dates.forEach(function(d) {
-      html += '<option value="' + d + '">' + d + '</option>';
-    });
-    sel.innerHTML = html;
-  }
 
   window._switchExportMode = function(mode) {
     var dailyPanel = document.getElementById('perf-export-daily');
@@ -5533,20 +5513,19 @@
 
   // Separated from _renderPerformanceContent — rendered AFTER SL section
   function _renderExportAndResetSection() {
-    var html = '';
+    // Show which date range the export covers
+    var dateLabel = _perfAllDates ? '全日分' : (_getCurrentPerfDate() || _getTodayJST());
 
-    // データエクスポート（日別/期間指定 2モード）
-    html += '<div class="performance-section" style="animation-delay:0.5s">' +
+    var html = '<div class="performance-section" style="animation-delay:0.5s">' +
       '<h3 class="performance-section__title">📦 データエクスポート</h3>' +
+      '<p style="color:rgba(255,255,255,0.45);font-size:12px;margin:0 0 10px">対象: ' + dateLabel + '</p>' +
       '<div class="performance-export-mode">' +
         '<button class="performance-export-mode__btn performance-export-mode__btn--active" data-mode="daily" onclick="window._switchExportMode(\'daily\')">日別</button>' +
         '<button class="performance-export-mode__btn" data-mode="range" onclick="window._switchExportMode(\'range\')">期間指定</button>' +
       '</div>' +
+      // 日別モード（画面上部の日付フィルタを使用）
       '<div id="perf-export-daily" class="performance-export-panel performance-export-panel--active">' +
-        '<select id="perf-export-date" class="performance-export-select">' +
-          '<option value="">読込中...</option>' +
-        '</select>' +
-        '<div class="performance-exit-grid" style="margin-top:8px">' +
+        '<div class="performance-exit-grid">' +
           '<button class="performance-export-btn" data-type="trades" data-fmt="csv" data-mode="daily">📊 Trades CSV</button>' +
           '<button class="performance-export-btn" data-type="trades" data-fmt="json" data-mode="daily">📊 Trades JSON</button>' +
           '<button class="performance-export-btn" data-type="snapshots" data-fmt="csv" data-mode="daily">📸 Snap CSV</button>' +
@@ -5559,6 +5538,7 @@
           '<button class="performance-export-btn" data-type="sl-snapshots" data-fmt="json" data-mode="daily">🦁 SL Snap JSON</button>' +
         '</div>' +
       '</div>' +
+      // 期間指定モード
       '<div id="perf-export-range" class="performance-export-panel">' +
         '<div style="display:flex;gap:8px;margin-bottom:8px">' +
           '<input type="date" id="perf-export-since" class="performance-export-select" style="flex:1">' +
@@ -5580,16 +5560,12 @@
       '</div>' +
     '</div>';
 
-    // リセットボタン
-    html += '<div class="performance-section" style="animation-delay:0.55s">' +
-      '<h3 class="performance-section__title">🔄 ペーパートレード リセット</h3>' +
-      '<p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0 0 12px">条件変更後に実行。進行中のトレードをすべてクローズし、新条件で再スタートします。過去データは消えません。</p>' +
-      '<button id="perf-reset-btn" class="performance-export-btn" style="background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.3);color:#ef4444;width:100%">' +
-        '🔄 進行中トレードをリセット' +
-      '</button>' +
-    '</div>';
-
     return html;
+  }
+
+  function _getCurrentPerfDate() {
+    var sel = document.getElementById('perf-date-filter');
+    return sel ? sel.value : null;
   }
 
   function _initPerformanceAccordions() {
@@ -5607,10 +5583,12 @@
         var params = 'format=' + fmt + '&include_conditions=true';
 
         if (mode === 'daily') {
-          var dateEl = document.getElementById('perf-export-date');
-          if (dateEl && dateEl.value) {
-            params += '&date=' + dateEl.value;
+          // Use the screen's current date filter (top of performance screen)
+          if (!_perfAllDates) {
+            var date = _getCurrentPerfDate() || _getTodayJST();
+            if (date) params += '&date=' + date;
           }
+          // If _perfAllDates is true, no date param = all data
         } else {
           var sinceEl = document.getElementById('perf-export-since');
           var untilEl = document.getElementById('perf-export-until');
@@ -5622,26 +5600,6 @@
         window.open(url, '_blank');
       });
     });
-    // Reset button
-    var resetBtn = document.getElementById('perf-reset-btn');
-    if (resetBtn) {
-      resetBtn.addEventListener('click', function() {
-        if (!confirm('進行中のペーパートレードをすべてクローズしますか？\n（過去データは保持されます）')) return;
-        resetBtn.textContent = 'リセット中...';
-        resetBtn.disabled = true;
-        fetch(BACKEND_URL + '/api/collector/paper-trades/reset', { method: 'POST' })
-          .then(function(r) { return r.json(); })
-          .then(function(data) {
-            alert('リセット完了: ' + (data.closed || 0) + '件のトレードをクローズしました。\n過去データは保持されています。');
-            _loadPerformanceData();
-          })
-          .catch(function(err) {
-            alert('リセット失敗: ' + (err.message || 'エラー'));
-            resetBtn.textContent = '🔄 進行中トレードをリセット';
-            resetBtn.disabled = false;
-          });
-      });
-    }
   }
 
   function renderMoonshotCoinsIntoDOM(coins) {
@@ -18386,7 +18344,6 @@
     // スプラッシュ中にPerformanceデータをプリフェッチ（DOM不要のAPI呼び出しのみ）
     window._perfPrefetch = Promise.all([
       BackendAPI.getCollectorStats(_perfAllDates ? null : _getTodayJST()),
-      fetch(BACKEND_URL + '/api/collector/export/dates').then(function(r) { return r.ok ? r.json() : { dates: [] }; }).catch(function() { return { dates: [] }; }),
       _perfDatesList ? Promise.resolve({ dates: _perfDatesList }) : BackendAPI.getCollectorStatsDates().catch(function() { return { dates: [] }; }),
       BackendAPI.getSleepingLionStats(_perfAllDates ? null : _getTodayJST()).catch(function() { return { watchlist: {}, trades: {} }; })
     ]).catch(function() { return null; });
