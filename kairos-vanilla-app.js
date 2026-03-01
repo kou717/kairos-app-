@@ -2759,7 +2759,7 @@
     { id: 'home', icon: '🏠', label: 'メイン' },
     { id: 'currencies', icon: '💰', label: '通貨' },
     { id: 'market', icon: '📊', label: '市場' },
-    { id: 'ai', icon: '🤖', label: 'AI' }
+    { id: 'ai-compare', icon: '🤖', label: 'AI' }
   ];
 
   function _buildNavItemsHtml(items) {
@@ -12181,18 +12181,6 @@
         '<button class="kairos-side-menu-btn" onclick="openTaxModal(); closeSideMenu();">' +
           '<span class="kairos-side-menu-btn-icon">🧮</span>' +
           '<span>税金計算</span>' +
-        '</button>' +
-      '</div>' +
-
-      '<div class="kairos-side-menu-section">' +
-        '<div class="kairos-side-menu-section-title">AI アシスタント</div>' +
-        '<button class="kairos-side-menu-btn" onclick="openAIChatModal(); closeSideMenu();">' +
-          '<span class="kairos-side-menu-btn-icon">🤖</span>' +
-          '<span>AI チャット</span>' +
-        '</button>' +
-        '<button class="kairos-side-menu-btn" onclick="openAIAnalysisModal(); closeSideMenu();">' +
-          '<span class="kairos-side-menu-btn-icon">🧠</span>' +
-          '<span>AI 分析</span>' +
         '</button>' +
       '</div>' +
 
