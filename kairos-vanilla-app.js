@@ -8150,8 +8150,8 @@
     var html = '<div class="performance-section sl-perf-section" style="animation-delay:0.45s">' +
       '<h3 class="performance-section__title">🦁 眠れる獅子 成績' + (includedInMain ? ' <span style="font-size:11px;color:#f59e0b;font-weight:400">（上のヒーローに合算済み）</span>' : '') + '</h3>';
 
-    // SL Hero Card
-    html += '<div class="sl-perf-hero">' +
+    // SL Hero Card — tappable
+    html += '<div class="sl-perf-hero" onclick="window._toggleSLClosedTrades()" style="cursor:pointer">' +
       '<div class="sl-perf-hero__stats">' +
         '<div class="sl-perf-hero__stat">' +
           '<div class="sl-perf-hero__stat-value">' + totalTrades + '</div>' +
@@ -8166,7 +8166,11 @@
           '<div class="sl-perf-hero__stat-label">平均PnL</div>' +
         '</div>' +
       '</div>' +
+      '<div style="text-align:center;font-size:11px;color:rgba(255,255,255,0.35);margin-top:4px">タップで詳細 ▼</div>' +
     '</div>';
+
+    // Closed trades detail container (loaded on tap)
+    html += '<div id="sl-closed-trades" class="sl-closed-trades" style="display:none"></div>';
 
     // Funnel: 監視 → 覚醒 → トレード → 勝ち
     var totalWatched = (wl.watching || 0) + (wl.awakened || 0) + (wl.timeout || 0) + (wl.dead || 0);
@@ -8183,6 +8187,91 @@
       _slFunnelStep('勝ち', winners, totalWatched) +
     '</div>';
 
+    html += '</div>';
+    return html;
+  }
+
+  var _slClosedTradesOpen = false;
+  window._toggleSLClosedTrades = function() {
+    var container = document.getElementById('sl-closed-trades');
+    if (!container) return;
+
+    if (_slClosedTradesOpen) {
+      container.style.display = 'none';
+      _slClosedTradesOpen = false;
+      return;
+    }
+
+    _slClosedTradesOpen = true;
+    container.style.display = 'block';
+    container.innerHTML = '<div style="text-align:center;padding:12px;color:rgba(255,255,255,0.4);font-size:12px">読み込み中...</div>';
+
+    // Determine current date filter
+    var dateParam = '';
+    if (!_perfAllDates) {
+      var sel = document.getElementById('perf-date-filter');
+      var d = (sel && sel.value) ? sel.value : _getTodayJST();
+      dateParam = '?date=' + d;
+    }
+
+    fetch(BACKEND_URL + '/api/collector/sleeping-lion/closed-trades' + dateParam)
+      .then(function(r) { return r.ok ? r.json() : { trades: [] }; })
+      .then(function(data) {
+        var trades = data.trades || [];
+        if (trades.length === 0) {
+          container.innerHTML = '<div style="text-align:center;padding:12px;color:rgba(255,255,255,0.35);font-size:12px">クローズ済みトレードなし</div>';
+          return;
+        }
+        container.innerHTML = _renderSLClosedTradesList(trades);
+      })
+      .catch(function() {
+        container.innerHTML = '<div style="text-align:center;padding:12px;color:#ef4444;font-size:12px">取得失敗</div>';
+      });
+  };
+
+  function _renderSLClosedTradesList(trades) {
+    var html = '<div class="sl-closed-list">';
+    for (var i = 0; i < trades.length; i++) {
+      var t = trades[i];
+      var pnl = t.realized_pnl_pct || 0;
+      var isWin = pnl > 0;
+      var pnlColor = isWin ? '#10b981' : '#ef4444';
+      var pnlSign = pnl >= 0 ? '+' : '';
+      var peakPnl = t.peak_pnl_pct || 0;
+      var holdMin = t.holding_duration ? Math.round(t.holding_duration / 60) : 0;
+      var holdStr = holdMin >= 60 ? Math.floor(holdMin / 60) + 'h' + (holdMin % 60) + 'm' : holdMin + 'm';
+      var awakenMin = t.time_to_awaken_sec ? Math.round(t.time_to_awaken_sec / 60) : 0;
+      var exitJa = _slExitReasonJa(t.exit_reason || '');
+      var trustColor = t.combined_trust === 'high' ? '#10b981' : t.combined_trust === 'medium' ? '#f59e0b' : '#ef4444';
+
+      // Exit time in JST
+      var exitTime = '';
+      if (t.exit_at) {
+        try {
+          var d = new Date(t.exit_at);
+          exitTime = d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' });
+        } catch(e) { exitTime = ''; }
+      }
+
+      html += '<div class="sl-closed-item">' +
+        '<div class="sl-closed-item__header">' +
+          '<span class="sl-closed-item__symbol">' + (t.symbol || '?') + '</span>' +
+          '<span class="sl-closed-item__pnl" style="color:' + pnlColor + '">' + pnlSign + pnl.toFixed(2) + '%</span>' +
+        '</div>' +
+        '<div class="sl-closed-item__details">' +
+          '<span>' + exitJa + '</span>' +
+          '<span style="color:rgba(255,255,255,0.4)">|</span>' +
+          '<span>保有 ' + holdStr + '</span>' +
+          '<span style="color:rgba(255,255,255,0.4)">|</span>' +
+          '<span>最高 ' + (peakPnl >= 0 ? '+' : '') + peakPnl.toFixed(1) + '%</span>' +
+        '</div>' +
+        '<div class="sl-closed-item__meta">' +
+          '<span style="color:' + trustColor + '">' + (t.combined_trust || '-') + '</span>' +
+          '<span>覚醒 ' + awakenMin + '分</span>' +
+          (exitTime ? '<span>' + exitTime + '</span>' : '') +
+        '</div>' +
+      '</div>';
+    }
     html += '</div>';
     return html;
   }

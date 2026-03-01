@@ -15179,6 +15179,52 @@ body.has-ticker-bar {
   color: rgba(255,255,255,0.2);
   flex-shrink: 0;
 }
+
+/* SL Closed Trades List */
+.sl-closed-trades {
+  margin-top: 8px;
+}
+.sl-closed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sl-closed-item {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.sl-closed-item__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.sl-closed-item__symbol {
+  font-weight: 600;
+  font-size: 14px;
+  color: rgba(255,255,255,0.9);
+}
+.sl-closed-item__pnl {
+  font-weight: 700;
+  font-size: 15px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.sl-closed-item__details {
+  display: flex;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.55);
+  flex-wrap: wrap;
+}
+.sl-closed-item__meta {
+  display: flex;
+  gap: 8px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  margin-top: 4px;
+}
 /* ============================================
    通貨別ストラテジーUI（長期/短期の2択）
    ============================================ */
