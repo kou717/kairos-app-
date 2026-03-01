@@ -15786,6 +15786,72 @@
   };
 
   // Fear & Greed をリアルタイム取得して更新
+  // 初回ロード・タブ復帰時に prices + F&G を1リクエストで取得
+  function fetchBootstrapData() {
+    fetch(BACKEND_URL + '/api/bootstrap')
+      .then(function(response) {
+        if (!response.ok) throw new Error('API error: ' + response.status);
+        return response.json();
+      })
+      .then(function(data) {
+        // --- prices 更新 ---
+        var rate = data.usd_jpy_rate || 150;
+        var prices = data.prices || {};
+        var converted = {};
+        Object.keys(prices).forEach(function(ticker) {
+          var p = prices[ticker];
+          var usd = p.current_price || 0;
+          converted[ticker] = {
+            jpy: Math.round(usd * rate),
+            usd: usd,
+            change24h: p.price_change_24h || 0
+          };
+        });
+        liveData.prices = converted;
+        liveData.lastUpdate = Date.now();
+
+        // PriceAPI._bulkCacheも更新（他の呼び出しが再fetchしないように）
+        PriceAPI._bulkCache = data;
+        PriceAPI._bulkCacheTime = Date.now();
+
+        // all_resultsを更新
+        if (kairosData.all_results) {
+          kairosData.all_results.forEach(function(coin) {
+            var priceData = converted[coin.ticker];
+            if (priceData) {
+              coin.current_price = priceData.usd;
+              coin.price_change_24h = priceData.change24h;
+            }
+          });
+        }
+
+        if (window.checkPriceAlerts) window.checkPriceAlerts();
+        recordDailyPrice();
+        checkLongTermAlerts();
+
+        // --- Fear & Greed 更新 ---
+        var fg = data.fear_greed || {};
+        var fgResult = {
+          value: fg.value || 50,
+          classification: fg.classification || 'Neutral',
+          timestamp: fg.timestamp
+        };
+        liveData.fearGreed = fgResult;
+        FearGreedAPI._cache = fgResult;
+        FearGreedAPI._lastFetch = Date.now();
+
+        if (!kairosData.analysis) kairosData.analysis = {};
+        if (!kairosData.analysis.market) kairosData.analysis.market = {};
+        kairosData.analysis.market.fear_greed_index = fgResult.value;
+        updateFearGreedDisplay(fgResult.value);
+      })
+      .catch(function(err) {
+        console.warn('[KAIROS] Bootstrap fetch failed, falling back:', err);
+        fetchAndUpdatePrices();
+        fetchAndUpdateFearGreed();
+      });
+  }
+
   function fetchAndUpdateFearGreed() {
     FearGreedAPI.fetch().then(function(data) {
       liveData.fearGreed = data;
@@ -16138,9 +16204,8 @@
   }
 
   function startLiveUpdates() {
-    // 初回取得（並列実行）
-    fetchAndUpdateFearGreed();
-    fetchAndUpdatePrices();
+    // 初回取得（ブートストラップで prices + F&G を1リクエストに統合）
+    fetchBootstrapData();
     fetchAndUpdateScores(); // バックエンドは2秒タイムアウトで即座にスキップ
 
     // ポートフォリオスナップショットを記録（初回）
@@ -16171,10 +16236,9 @@
         var pausedFor = Date.now() - lastPausedAt;
         console.log('[KAIROS] Tab visible - polling resumed (paused ' + Math.round(pausedFor / 1000) + 's)');
 
-        // データが古くなっている場合は即座に再取得
+        // データが古くなっている場合は即座に再取得（ブートストラップで1リクエスト）
         if (pausedFor > 60 * 1000) {
-          fetchAndUpdatePrices();
-          fetchAndUpdateFearGreed();
+          fetchBootstrapData();
         }
         if (pausedFor > 3 * 60 * 1000) {
           scoreCache.lastUpdate = 0;
@@ -16194,9 +16258,7 @@
   // データ更新をグローバル公開
   window.KairosLive = {
     refresh: function() {
-      fetchAndUpdateFearGreed();
-      fetchAndUpdatePrices();
-      // スコアキャッシュをクリアして再取得
+      fetchBootstrapData();
       scoreCache.lastUpdate = 0;
       fetchAndUpdateScores();
     },
