@@ -5181,23 +5181,26 @@
       '<div class="moonshot-loading__text">成績データを読み込み中...</div>' +
     '</div>';
 
-    // Fetch stats (with optional date) and export dates in parallel
-    var statsP = BackendAPI.getCollectorStats(effectiveDate);
-    var exportDatesP = fetch(BACKEND_URL + '/api/collector/export/dates')
-      .then(function(r) { return r.ok ? r.json() : { dates: [] }; })
-      .catch(function() { return { dates: [] }; });
+    // プリフェッチ結果があれば使う（初回ロード時のみ）
+    var dataPromise;
+    if (window._perfPrefetch && dateFilter === undefined) {
+      dataPromise = window._perfPrefetch;
+      window._perfPrefetch = null; // 1回だけ使用
+    } else {
+      var statsP = BackendAPI.getCollectorStats(effectiveDate);
+      var exportDatesP = fetch(BACKEND_URL + '/api/collector/export/dates')
+        .then(function(r) { return r.ok ? r.json() : { dates: [] }; })
+        .catch(function() { return { dates: [] }; });
+      var statsDatesP = _perfDatesList
+        ? Promise.resolve({ dates: _perfDatesList })
+        : BackendAPI.getCollectorStatsDates().catch(function() { return { dates: [] }; });
+      var slStatsP = BackendAPI.getSleepingLionStats().catch(function() {
+        return { watchlist: {}, trades: {} };
+      });
+      dataPromise = Promise.all([statsP, exportDatesP, statsDatesP, slStatsP]);
+    }
 
-    // Only fetch stats dates if not cached
-    var statsDatesP = _perfDatesList
-      ? Promise.resolve({ dates: _perfDatesList })
-      : BackendAPI.getCollectorStatsDates().catch(function() { return { dates: [] }; });
-
-    // SL stats (separate from regular)
-    var slStatsP = BackendAPI.getSleepingLionStats().catch(function() {
-      return { watchlist: {}, trades: {} };
-    });
-
-    Promise.all([statsP, exportDatesP, statsDatesP, slStatsP])
+    dataPromise
       .then(function(results) {
         var stats = results[0];
         var exportDatesData = results[1];
@@ -15794,6 +15797,9 @@
         return response.json();
       })
       .then(function(data) {
+        // バックエンド応答確認 → healthCheckをスキップ可能にする
+        BackendAPI._available = true;
+
         // --- prices 更新 ---
         var rate = data.usd_jpy_rate || 150;
         var prices = data.prices || {};
@@ -18132,6 +18138,14 @@
 
     // ティッカーバー初期化
     initTickerBar();
+
+    // スプラッシュ中にPerformanceデータをプリフェッチ（DOM不要のAPI呼び出しのみ）
+    window._perfPrefetch = Promise.all([
+      BackendAPI.getCollectorStats(_perfAllDates ? null : _getTodayJST()),
+      fetch(BACKEND_URL + '/api/collector/export/dates').then(function(r) { return r.ok ? r.json() : { dates: [] }; }).catch(function() { return { dates: [] }; }),
+      _perfDatesList ? Promise.resolve({ dates: _perfDatesList }) : BackendAPI.getCollectorStatsDates().catch(function() { return { dates: [] }; }),
+      BackendAPI.getSleepingLionStats().catch(function() { return { watchlist: {}, trades: {} }; })
+    ]).catch(function() { return null; });
 
     // 1秒後に成績画面へ（DEXデフォルト）
     setTimeout(function() {
