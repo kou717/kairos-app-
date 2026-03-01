@@ -15189,8 +15189,8 @@
     notificationPermission: 'default',
     // 短期アラート閾値（%）- 分単位の急変動検出
     thresholds: {
-      spike: 5,      // 急上昇閾値（デフォルト5%）
-      crash: -5,     // 急落閾値（デフォルト-5%）
+      spike: 10,     // 急上昇閾値（デフォルト10%）
+      crash: -10,    // 急落閾値（デフォルト-10%）
       checkInterval: 60000  // チェック間隔（1分）
     },
     // 長期アラート閾値（%）- 週間/月間の変動検出
@@ -15220,6 +15220,11 @@
         priceAlerts.longTermThresholds = Object.assign(priceAlerts.longTermThresholds, settings.longTermThresholds || {});
         priceAlerts.customAlerts = settings.customAlerts || [];
         priceAlerts.enabled = settings.enabled !== false;
+      }
+      // 前回価格を復元（再起動時の一斉発火を防止）
+      var prevStr = localStorage.getItem('kairos-previous-prices');
+      if (prevStr) {
+        priceAlerts.previousPrices = JSON.parse(prevStr);
       }
       // 価格履歴を読み込み
       var historyStr = localStorage.getItem('kairos-price-history');
@@ -15673,15 +15678,21 @@
   }
 
   // 価格変動をチェック
+  var _priceAlertFirstRun = true;
+
   window.checkPriceAlerts = function() {
     if (!priceAlerts.enabled) return;
+
+    // 初回は前回値をセットするだけ（起動直後の一斉発火を防止）
+    var isFirstRun = _priceAlertFirstRun;
+    _priceAlertFirstRun = false;
 
     Object.keys(scoreCache.data).forEach(function(ticker) {
       var cached = scoreCache.data[ticker];
       var currentPrice = cached.price;
       var previousPrice = priceAlerts.previousPrices[ticker];
 
-      if (previousPrice && currentPrice) {
+      if (!isFirstRun && previousPrice && currentPrice) {
         var changePercent = ((currentPrice - previousPrice) / previousPrice) * 100;
 
         // 急上昇チェック
@@ -15697,6 +15708,11 @@
       // 現在価格を保存
       priceAlerts.previousPrices[ticker] = currentPrice;
     });
+
+    // previousPricesを永続化（再起動時に復元）
+    try {
+      localStorage.setItem('kairos-previous-prices', JSON.stringify(priceAlerts.previousPrices));
+    } catch(e) {}
 
     // カスタムアラートもチェック
     checkCustomAlerts();
