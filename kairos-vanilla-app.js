@@ -5517,45 +5517,49 @@
     var dateLabel = _perfAllDates ? '全日分' : (_getCurrentPerfDate() || _getTodayJST());
 
     var html = '<div class="performance-section" style="animation-delay:0.5s">' +
-      '<h3 class="performance-section__title">📦 データエクスポート</h3>' +
-      '<p style="color:rgba(255,255,255,0.45);font-size:12px;margin:0 0 10px">対象: ' + dateLabel + '</p>' +
-      '<div class="performance-export-mode">' +
-        '<button class="performance-export-mode__btn performance-export-mode__btn--active" data-mode="daily" onclick="window._switchExportMode(\'daily\')">日別</button>' +
-        '<button class="performance-export-mode__btn" data-mode="range" onclick="window._switchExportMode(\'range\')">期間指定</button>' +
-      '</div>' +
-      // 日別モード（画面上部の日付フィルタを使用）
-      '<div id="perf-export-daily" class="performance-export-panel performance-export-panel--active">' +
-        '<div class="performance-exit-grid">' +
-          '<button class="performance-export-btn" data-type="trades" data-fmt="csv" data-mode="daily">📊 Trades CSV</button>' +
-          '<button class="performance-export-btn" data-type="trades" data-fmt="json" data-mode="daily">📊 Trades JSON</button>' +
-          '<button class="performance-export-btn" data-type="snapshots" data-fmt="csv" data-mode="daily">📸 Snap CSV</button>' +
-          '<button class="performance-export-btn" data-type="snapshots" data-fmt="json" data-mode="daily">📸 Snap JSON</button>' +
-          '<button class="performance-export-btn" data-type="coins" data-fmt="csv" data-mode="daily">🪙 Coins CSV</button>' +
-          '<button class="performance-export-btn" data-type="coins" data-fmt="json" data-mode="daily">🪙 Coins JSON</button>' +
-          '<button class="performance-export-btn" data-type="sl-trades" data-fmt="csv" data-mode="daily">🦁 SL Trades CSV</button>' +
-          '<button class="performance-export-btn" data-type="sl-trades" data-fmt="json" data-mode="daily">🦁 SL Trades JSON</button>' +
-          '<button class="performance-export-btn" data-type="sl-snapshots" data-fmt="csv" data-mode="daily">🦁 SL Snap CSV</button>' +
-          '<button class="performance-export-btn" data-type="sl-snapshots" data-fmt="json" data-mode="daily">🦁 SL Snap JSON</button>' +
+      '<div class="performance-accordion" id="perf-export-accordion">' +
+        '<div class="performance-accordion__header" onclick="this.parentElement.classList.toggle(\'performance-accordion--expanded\')">' +
+          '<span>📦 データエクスポート <span style="font-weight:400;font-size:11px;color:rgba(255,255,255,0.4)">(' + dateLabel + ')</span></span>' +
+          '<span class="performance-accordion__chevron">▼</span>' +
         '</div>' +
-      '</div>' +
-      // 期間指定モード
-      '<div id="perf-export-range" class="performance-export-panel">' +
-        '<div style="display:flex;gap:8px;margin-bottom:8px">' +
-          '<input type="date" id="perf-export-since" class="performance-export-select" style="flex:1">' +
-          '<span style="color:rgba(255,255,255,0.4);align-self:center;font-size:12px">〜</span>' +
-          '<input type="date" id="perf-export-until" class="performance-export-select" style="flex:1">' +
-        '</div>' +
-        '<div class="performance-exit-grid">' +
-          '<button class="performance-export-btn" data-type="trades" data-fmt="csv" data-mode="range">📊 Trades CSV</button>' +
-          '<button class="performance-export-btn" data-type="trades" data-fmt="json" data-mode="range">📊 Trades JSON</button>' +
-          '<button class="performance-export-btn" data-type="snapshots" data-fmt="csv" data-mode="range">📸 Snap CSV</button>' +
-          '<button class="performance-export-btn" data-type="snapshots" data-fmt="json" data-mode="range">📸 Snap JSON</button>' +
-          '<button class="performance-export-btn" data-type="coins" data-fmt="csv" data-mode="range">🪙 Coins CSV</button>' +
-          '<button class="performance-export-btn" data-type="coins" data-fmt="json" data-mode="range">🪙 Coins JSON</button>' +
-          '<button class="performance-export-btn" data-type="sl-trades" data-fmt="csv" data-mode="range">🦁 SL Trades CSV</button>' +
-          '<button class="performance-export-btn" data-type="sl-trades" data-fmt="json" data-mode="range">🦁 SL Trades JSON</button>' +
-          '<button class="performance-export-btn" data-type="sl-snapshots" data-fmt="csv" data-mode="range">🦁 SL Snap CSV</button>' +
-          '<button class="performance-export-btn" data-type="sl-snapshots" data-fmt="json" data-mode="range">🦁 SL Snap JSON</button>' +
+        '<div class="performance-accordion__body performance-accordion__body--export">' +
+          '<div class="performance-export-mode">' +
+            '<button class="performance-export-mode__btn performance-export-mode__btn--active" data-mode="daily" onclick="window._switchExportMode(\'daily\')">日別</button>' +
+            '<button class="performance-export-mode__btn" data-mode="range" onclick="window._switchExportMode(\'range\')">期間指定</button>' +
+          '</div>' +
+          '<div id="perf-export-daily" class="performance-export-panel performance-export-panel--active">' +
+            '<div class="performance-exit-grid">' +
+              '<button class="performance-export-btn" data-type="trades" data-fmt="csv" data-mode="daily">📊 Trades CSV</button>' +
+              '<button class="performance-export-btn" data-type="trades" data-fmt="json" data-mode="daily">📊 Trades JSON</button>' +
+              '<button class="performance-export-btn" data-type="snapshots" data-fmt="csv" data-mode="daily">📸 Snap CSV</button>' +
+              '<button class="performance-export-btn" data-type="snapshots" data-fmt="json" data-mode="daily">📸 Snap JSON</button>' +
+              '<button class="performance-export-btn" data-type="coins" data-fmt="csv" data-mode="daily">🪙 Coins CSV</button>' +
+              '<button class="performance-export-btn" data-type="coins" data-fmt="json" data-mode="daily">🪙 Coins JSON</button>' +
+              '<button class="performance-export-btn" data-type="sl-trades" data-fmt="csv" data-mode="daily">🦁 SL Trades CSV</button>' +
+              '<button class="performance-export-btn" data-type="sl-trades" data-fmt="json" data-mode="daily">🦁 SL Trades JSON</button>' +
+              '<button class="performance-export-btn" data-type="sl-snapshots" data-fmt="csv" data-mode="daily">🦁 SL Snap CSV</button>' +
+              '<button class="performance-export-btn" data-type="sl-snapshots" data-fmt="json" data-mode="daily">🦁 SL Snap JSON</button>' +
+            '</div>' +
+          '</div>' +
+          '<div id="perf-export-range" class="performance-export-panel">' +
+            '<div style="display:flex;gap:8px;margin-bottom:8px">' +
+              '<input type="date" id="perf-export-since" class="performance-export-select" style="flex:1">' +
+              '<span style="color:rgba(255,255,255,0.4);align-self:center;font-size:12px">〜</span>' +
+              '<input type="date" id="perf-export-until" class="performance-export-select" style="flex:1">' +
+            '</div>' +
+            '<div class="performance-exit-grid">' +
+              '<button class="performance-export-btn" data-type="trades" data-fmt="csv" data-mode="range">📊 Trades CSV</button>' +
+              '<button class="performance-export-btn" data-type="trades" data-fmt="json" data-mode="range">📊 Trades JSON</button>' +
+              '<button class="performance-export-btn" data-type="snapshots" data-fmt="csv" data-mode="range">📸 Snap CSV</button>' +
+              '<button class="performance-export-btn" data-type="snapshots" data-fmt="json" data-mode="range">📸 Snap JSON</button>' +
+              '<button class="performance-export-btn" data-type="coins" data-fmt="csv" data-mode="range">🪙 Coins CSV</button>' +
+              '<button class="performance-export-btn" data-type="coins" data-fmt="json" data-mode="range">🪙 Coins JSON</button>' +
+              '<button class="performance-export-btn" data-type="sl-trades" data-fmt="csv" data-mode="range">🦁 SL Trades CSV</button>' +
+              '<button class="performance-export-btn" data-type="sl-trades" data-fmt="json" data-mode="range">🦁 SL Trades JSON</button>' +
+              '<button class="performance-export-btn" data-type="sl-snapshots" data-fmt="csv" data-mode="range">🦁 SL Snap CSV</button>' +
+              '<button class="performance-export-btn" data-type="sl-snapshots" data-fmt="json" data-mode="range">🦁 SL Snap JSON</button>' +
+            '</div>' +
+          '</div>' +
         '</div>' +
       '</div>' +
     '</div>';

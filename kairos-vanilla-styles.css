@@ -14577,6 +14577,10 @@ body.has-ticker-bar {
   margin-top: 12px;
 }
 
+.performance-accordion--expanded .performance-accordion__body--export {
+  max-height: 800px;
+}
+
 /* Trade items */
 .performance-trade-item {
   display: flex;
