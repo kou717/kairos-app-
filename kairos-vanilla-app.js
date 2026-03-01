@@ -1257,12 +1257,14 @@
       window.open(url, '_blank');
     },
 
-    getSleepingLionStats: function() {
+    getSleepingLionStats: function(date) {
       var self = this;
       return new Promise(function(resolve, reject) {
         self.healthCheck().then(function(available) {
           if (!available) { reject(new Error('Backend not available')); return; }
-          fetch(self.baseUrl + '/api/collector/sleeping-lion/stats')
+          var url = self.baseUrl + '/api/collector/sleeping-lion/stats';
+          if (date) url += '?date=' + date;
+          fetch(url)
             .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
             .then(resolve).catch(reject);
         });
@@ -5194,7 +5196,7 @@
       var statsDatesP = _perfDatesList
         ? Promise.resolve({ dates: _perfDatesList })
         : BackendAPI.getCollectorStatsDates().catch(function() { return { dates: [] }; });
-      var slStatsP = BackendAPI.getSleepingLionStats().catch(function() {
+      var slStatsP = BackendAPI.getSleepingLionStats(effectiveDate).catch(function() {
         return { watchlist: {}, trades: {} };
       });
       dataPromise = Promise.all([statsP, exportDatesP, statsDatesP, slStatsP]);
@@ -7774,7 +7776,7 @@
     if (!container) return;
 
     Promise.all([
-      BackendAPI.getSleepingLionStats().catch(function() {
+      BackendAPI.getSleepingLionStats(_getTodayJST()).catch(function() {
         return { watchlist: { watching: 0, awakened: 0, timeout: 0, dead: 0 }, trades: { open: 0, closed: 0, total_pnl: 0, winners: 0, losers: 0 } };
       }),
       BackendAPI.getSleepingLionWatchlist().catch(function() {
@@ -8254,8 +8256,8 @@
     if (!container) return;
     container.innerHTML = '<div class="collector-monitor__loading">読み込み中...</div>';
 
-    // 統合エンドポイントで health + stats を1リクエストで取得
-    fetch(BACKEND_URL + '/api/collector/dashboard')
+    // 統合エンドポイントで health + stats を1リクエストで取得（今日のJST日付でフィルタ）
+    fetch(BACKEND_URL + '/api/collector/dashboard?date=' + _getTodayJST())
       .then(function(r) {
         if (!r.ok) throw new Error('API error: ' + r.status);
         return r.json();
@@ -18162,7 +18164,7 @@
       BackendAPI.getCollectorStats(_perfAllDates ? null : _getTodayJST()),
       fetch(BACKEND_URL + '/api/collector/export/dates').then(function(r) { return r.ok ? r.json() : { dates: [] }; }).catch(function() { return { dates: [] }; }),
       _perfDatesList ? Promise.resolve({ dates: _perfDatesList }) : BackendAPI.getCollectorStatsDates().catch(function() { return { dates: [] }; }),
-      BackendAPI.getSleepingLionStats().catch(function() { return { watchlist: {}, trades: {} }; })
+      BackendAPI.getSleepingLionStats(_perfAllDates ? null : _getTodayJST()).catch(function() { return { watchlist: {}, trades: {} }; })
     ]).catch(function() { return null; });
 
     // 1秒後に成績画面へ（DEXデフォルト）
