@@ -12196,21 +12196,6 @@
         '</button>' +
       '</div>' +
 
-      '<div class="kairos-side-menu-section">' +
-        '<div class="kairos-side-menu-section-title">CEXツール</div>' +
-        '<button class="kairos-side-menu-btn" onclick="window.KairosApp.navigate(\'home\'); closeSideMenu();">' +
-          '<span class="kairos-side-menu-btn-icon">🏠</span>' +
-          '<span>メイン（ポートフォリオ）</span>' +
-        '</button>' +
-        '<button class="kairos-side-menu-btn" onclick="window.KairosApp.navigate(\'currencies\'); closeSideMenu();">' +
-          '<span class="kairos-side-menu-btn-icon">💰</span>' +
-          '<span>通貨一覧</span>' +
-        '</button>' +
-        '<button class="kairos-side-menu-btn" onclick="window.KairosApp.navigate(\'market\'); closeSideMenu();">' +
-          '<span class="kairos-side-menu-btn-icon">📊</span>' +
-          '<span>マーケット</span>' +
-        '</button>' +
-      '</div>' +
 
       '<div class="kairos-side-menu-section">' +
         '<div class="kairos-side-menu-section-title">🔥 Trending</div>' +
