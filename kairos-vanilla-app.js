@@ -5230,6 +5230,8 @@
         var html = _renderPerformanceContent(displayStats);
         // SL独立セクションは常に表示（レオON時はマージ済みなので注記付き）
         html += _renderPerformanceSLSection(slStats, _perfIncludeSL);
+        // エクスポート＆リセットはSLの下
+        html += _renderExportAndResetSection();
         container.innerHTML = html;
         _initPerformanceAccordions();
         _initPerformanceExport();
@@ -5526,15 +5528,20 @@
       html += '</div></div></div>';
     }
 
+    return html;
+  }
+
+  // Separated from _renderPerformanceContent — rendered AFTER SL section
+  function _renderExportAndResetSection() {
+    var html = '';
+
     // データエクスポート（日別/期間指定 2モード）
-    html += '<div class="performance-section" style="animation-delay:0.35s">' +
+    html += '<div class="performance-section" style="animation-delay:0.5s">' +
       '<h3 class="performance-section__title">📦 データエクスポート</h3>' +
-      // モード切替ボタン
       '<div class="performance-export-mode">' +
         '<button class="performance-export-mode__btn performance-export-mode__btn--active" data-mode="daily" onclick="window._switchExportMode(\'daily\')">日別</button>' +
         '<button class="performance-export-mode__btn" data-mode="range" onclick="window._switchExportMode(\'range\')">期間指定</button>' +
       '</div>' +
-      // 日別モード（デフォルト表示）
       '<div id="perf-export-daily" class="performance-export-panel performance-export-panel--active">' +
         '<select id="perf-export-date" class="performance-export-select">' +
           '<option value="">読込中...</option>' +
@@ -5552,7 +5559,6 @@
           '<button class="performance-export-btn" data-type="sl-snapshots" data-fmt="json" data-mode="daily">🦁 SL Snap JSON</button>' +
         '</div>' +
       '</div>' +
-      // 期間指定モード（非表示）
       '<div id="perf-export-range" class="performance-export-panel">' +
         '<div style="display:flex;gap:8px;margin-bottom:8px">' +
           '<input type="date" id="perf-export-since" class="performance-export-select" style="flex:1">' +
@@ -5575,7 +5581,7 @@
     '</div>';
 
     // リセットボタン
-    html += '<div class="performance-section" style="animation-delay:0.4s">' +
+    html += '<div class="performance-section" style="animation-delay:0.55s">' +
       '<h3 class="performance-section__title">🔄 ペーパートレード リセット</h3>' +
       '<p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0 0 12px">条件変更後に実行。進行中のトレードをすべてクローズし、新条件で再スタートします。過去データは消えません。</p>' +
       '<button id="perf-reset-btn" class="performance-export-btn" style="background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.3);color:#ef4444;width:100%">' +
