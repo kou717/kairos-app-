@@ -5544,6 +5544,10 @@
           '<button class="performance-export-btn" data-type="snapshots" data-fmt="json" data-mode="daily">📸 Snap JSON</button>' +
           '<button class="performance-export-btn" data-type="coins" data-fmt="csv" data-mode="daily">🪙 Coins CSV</button>' +
           '<button class="performance-export-btn" data-type="coins" data-fmt="json" data-mode="daily">🪙 Coins JSON</button>' +
+          '<button class="performance-export-btn" data-type="sl-trades" data-fmt="csv" data-mode="daily">🦁 SL Trades CSV</button>' +
+          '<button class="performance-export-btn" data-type="sl-trades" data-fmt="json" data-mode="daily">🦁 SL Trades JSON</button>' +
+          '<button class="performance-export-btn" data-type="sl-snapshots" data-fmt="csv" data-mode="daily">🦁 SL Snap CSV</button>' +
+          '<button class="performance-export-btn" data-type="sl-snapshots" data-fmt="json" data-mode="daily">🦁 SL Snap JSON</button>' +
         '</div>' +
       '</div>' +
       // 期間指定モード（非表示）
@@ -5560,6 +5564,10 @@
           '<button class="performance-export-btn" data-type="snapshots" data-fmt="json" data-mode="range">📸 Snap JSON</button>' +
           '<button class="performance-export-btn" data-type="coins" data-fmt="csv" data-mode="range">🪙 Coins CSV</button>' +
           '<button class="performance-export-btn" data-type="coins" data-fmt="json" data-mode="range">🪙 Coins JSON</button>' +
+          '<button class="performance-export-btn" data-type="sl-trades" data-fmt="csv" data-mode="range">🦁 SL Trades CSV</button>' +
+          '<button class="performance-export-btn" data-type="sl-trades" data-fmt="json" data-mode="range">🦁 SL Trades JSON</button>' +
+          '<button class="performance-export-btn" data-type="sl-snapshots" data-fmt="csv" data-mode="range">🦁 SL Snap CSV</button>' +
+          '<button class="performance-export-btn" data-type="sl-snapshots" data-fmt="json" data-mode="range">🦁 SL Snap JSON</button>' +
         '</div>' +
       '</div>' +
     '</div>';
