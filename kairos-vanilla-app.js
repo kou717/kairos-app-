@@ -7785,24 +7785,39 @@
     var container = document.getElementById('sl-content');
     if (!container) return;
 
+    // Stale-while-revalidate: show cached data immediately, refresh in background
+    var hasCachedData = _slCache.stats && _slCache.time > 0;
+    if (hasCachedData) {
+      container.innerHTML = _renderSleepingLionContent(_slCache.stats, _slCache.watchlist || []);
+    }
+
+    // Skip healthCheck overhead — fetch directly (backend returns error if unavailable)
+    var statsUrl = BACKEND_URL + '/api/collector/sleeping-lion/stats?date=' + _getTodayJST();
+    var watchlistUrl = BACKEND_URL + '/api/collector/sleeping-lion/watchlist';
+
     Promise.all([
-      BackendAPI.getSleepingLionStats(_getTodayJST()).catch(function() {
-        return { watchlist: { watching: 0, awakened: 0, timeout: 0, dead: 0 }, trades: { open: 0, closed: 0, total_pnl: 0, winners: 0, losers: 0 } };
+      fetch(statsUrl).then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); }).catch(function() {
+        return _slCache.stats || { watchlist: { watching: 0, awakened: 0, timeout: 0, dead: 0 }, trades: { open: 0, closed: 0, total_pnl: 0, winners: 0, losers: 0 } };
       }),
-      BackendAPI.getSleepingLionWatchlist().catch(function() {
-        return { items: [] };
+      fetch(watchlistUrl).then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); }).catch(function() {
+        return _slCache.watchlist ? { items: _slCache.watchlist } : { items: [] };
       })
     ]).then(function(results) {
       var stats = results[0];
       var watchlistData = results[1];
       _slCache = { stats: stats, watchlist: watchlistData.items || [], time: Date.now() };
-      container.innerHTML = _renderSleepingLionContent(stats, watchlistData.items || []);
+      if (appState.currentScreen === 'sleeping-lion') {
+        var c = document.getElementById('sl-content');
+        if (c) c.innerHTML = _renderSleepingLionContent(stats, watchlistData.items || []);
+      }
     }).catch(function(err) {
-      container.innerHTML = '<div class="moonshot-empty">' +
-        '<div class="moonshot-empty__icon">⚠️</div>' +
-        '<div class="moonshot-empty__text">データ取得に失敗しました</div>' +
-        '<div class="moonshot-empty__hint">' + (err.message || '') + '</div>' +
-      '</div>';
+      if (!hasCachedData) {
+        container.innerHTML = '<div class="moonshot-empty">' +
+          '<div class="moonshot-empty__icon">⚠️</div>' +
+          '<div class="moonshot-empty__text">データ取得に失敗しました</div>' +
+          '<div class="moonshot-empty__hint">' + (err.message || '') + '</div>' +
+        '</div>';
+      }
     });
   }
 
