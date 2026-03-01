@@ -5450,13 +5450,15 @@
         var label = exitLabels[key] || key;
         var ePnlClass = (e.avg_pnl_pct || 0) >= 0 ? 'positive' : 'negative';
         var ePnlSign = (e.avg_pnl_pct || 0) >= 0 ? '+' : '';
-        html += '<div class="performance-exit-card">' +
+        html += '<div class="performance-exit-card" onclick="window._toggleExitReasonTrades(\'' + key + '\', this)" style="cursor:pointer">' +
           '<div class="performance-exit-card__label">' + label + '</div>' +
           '<div class="performance-exit-card__count">' + e.count + '件</div>' +
           '<div class="performance-exit-card__pnl ' + ePnlClass + '">' + ePnlSign + e.avg_pnl_pct.toFixed(2) + '%</div>' +
         '</div>';
       });
-      html += '</div></div>';
+      html += '</div>' +
+        '<div id="exit-reason-trades" class="exit-reason-trades" style="display:none"></div>' +
+      '</div>';
     }
 
     // ベスト/ワースト取引（アコーディオン）
@@ -8119,6 +8121,87 @@
     if (val < 0.01) return val.toFixed(6);
     if (val < 1) return val.toFixed(4);
     return val.toFixed(2);
+  }
+
+  // Exit reason trades toggle
+  var _exitReasonOpen = '';
+  window._toggleExitReasonTrades = function(reason, cardEl) {
+    var container = document.getElementById('exit-reason-trades');
+    if (!container) return;
+
+    // Toggle off if same reason tapped again
+    if (_exitReasonOpen === reason) {
+      container.style.display = 'none';
+      _exitReasonOpen = '';
+      return;
+    }
+
+    _exitReasonOpen = reason;
+    container.style.display = 'block';
+    container.innerHTML = '<div style="text-align:center;padding:8px;color:rgba(255,255,255,0.4);font-size:12px">読み込み中...</div>';
+
+    // Determine current date filter
+    var dateParam = '';
+    if (!_perfAllDates) {
+      var sel = document.getElementById('perf-date-filter');
+      var d = (sel && sel.value) ? sel.value : _getTodayJST();
+      dateParam = '&date=' + d;
+    }
+
+    fetch(BACKEND_URL + '/api/collector/paper-trades/by-exit-reason?reason=' + encodeURIComponent(reason) + dateParam + '&limit=10')
+      .then(function(r) { return r.ok ? r.json() : { trades: [] }; })
+      .then(function(data) {
+        var trades = data.trades || [];
+        if (trades.length === 0) {
+          container.innerHTML = '<div style="text-align:center;padding:8px;color:rgba(255,255,255,0.35);font-size:12px">該当トレードなし</div>';
+          return;
+        }
+        container.innerHTML = _renderExitReasonTradesList(trades);
+      })
+      .catch(function() {
+        container.innerHTML = '<div style="text-align:center;padding:8px;color:#ef4444;font-size:12px">取得失敗</div>';
+      });
+  };
+
+  function _renderExitReasonTradesList(trades) {
+    var html = '<div class="sl-closed-list" style="margin-top:8px">';
+    for (var i = 0; i < trades.length; i++) {
+      var t = trades[i];
+      var pnl = t.realized_pnl_pct || 0;
+      var pnlColor = pnl > 0 ? '#10b981' : '#ef4444';
+      var pnlSign = pnl >= 0 ? '+' : '';
+      var peakPnl = t.peak_pnl_pct || 0;
+      var timing = t.entry_timing || '-';
+      var trustColor = t.combined_trust === 'high' ? '#10b981' : t.combined_trust === 'medium' ? '#f59e0b' : '#ef4444';
+
+      var exitTime = '';
+      if (t.exit_at) {
+        try {
+          var d = new Date(t.exit_at);
+          exitTime = d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' });
+        } catch(e) { exitTime = ''; }
+      }
+
+      html += '<div class="sl-closed-item">' +
+        '<div class="sl-closed-item__header">' +
+          '<span class="sl-closed-item__symbol">' + (t.symbol || '?') + '</span>' +
+          '<span class="sl-closed-item__pnl" style="color:' + pnlColor + '">' + pnlSign + pnl.toFixed(2) + '%</span>' +
+        '</div>' +
+        '<div class="sl-closed-item__details">' +
+          '<span>' + timing + '</span>' +
+          '<span style="color:rgba(255,255,255,0.4)">|</span>' +
+          '<span>最高 ' + (peakPnl >= 0 ? '+' : '') + peakPnl.toFixed(1) + '%</span>' +
+          '<span style="color:rgba(255,255,255,0.4)">|</span>' +
+          '<span>スコア ' + (t.moonshot_score ? t.moonshot_score.toFixed(0) : '-') + '</span>' +
+        '</div>' +
+        '<div class="sl-closed-item__meta">' +
+          '<span style="color:' + trustColor + '">' + (t.combined_trust || '-') + '</span>' +
+          (exitTime ? '<span>' + exitTime + '</span>' : '') +
+        '</div>' +
+      '</div>';
+    }
+    html += '</div>';
+    return html;
   }
 
   function _slExitReasonJa(reason) {
