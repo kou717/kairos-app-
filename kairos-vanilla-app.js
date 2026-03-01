@@ -11,8 +11,9 @@
   // ===== 定数 =====
   var STORAGE_KEY = 'kairos_investment_records';
   var VERSION = '7.0.0';
-  var COINGECKO_API = 'https://api.coingecko.com/api/v3';
-  var FEAR_GREED_API = 'https://api.alternative.me/fng';
+  // 外部API直接呼び出しはバックエンド経由に移行済み (v19.28)
+  // var COINGECKO_API = 'https://api.coingecko.com/api/v3';
+  // var FEAR_GREED_API = 'https://api.alternative.me/fng';
   // バックエンドURL（Railway本番 / ローカル開発を自動切替）
   var BACKEND_URL = (function() {
     var host = window.location.hostname;
@@ -331,19 +332,42 @@
   var KAIROS_ICON = window.KAIROS_ICON || '';
 
   // ============================================
-  // 1. PRICE API - CoinGecko連携
+  // 1. PRICE API - バックエンド経由
   // ============================================
   var PriceAPI = {
-    // レート制限対策のキャッシュ
     _cache: {},
     _cacheTime: 60000, // 1分間キャッシュ
+    _bulkCache: null,
+    _bulkCacheTime: 0,
 
-    // 通貨IDをCoinGecko用に変換
+    // 通貨IDをCoinGecko用に変換（過去価格取得用に維持）
     getCoinId: function(currencyId) {
       return CURRENCY_MAP[currencyId.toLowerCase()] || currencyId.toLowerCase();
     },
 
-    // 過去の価格を取得
+    // バックエンドから全価格+為替レートを一括取得
+    _fetchBulkPrices: function() {
+      var self = this;
+      return new Promise(function(resolve, reject) {
+        if (self._bulkCache && Date.now() - self._bulkCacheTime < self._cacheTime) {
+          resolve(self._bulkCache);
+          return;
+        }
+        fetch(BACKEND_URL + '/api/prices')
+          .then(function(response) {
+            if (!response.ok) throw new Error('API error: ' + response.status);
+            return response.json();
+          })
+          .then(function(data) {
+            self._bulkCache = data;
+            self._bulkCacheTime = Date.now();
+            resolve(data);
+          })
+          .catch(reject);
+      });
+    },
+
+    // 過去の価格を取得（バックエンド経由）
     getHistoricalPrice: function(currencyId, date) {
       var self = this;
       return new Promise(function(resolve, reject) {
@@ -361,17 +385,12 @@
           return;
         }
 
-        var url = COINGECKO_API + '/coins/' + coinId + '/history?date=' + dateStr + '&localization=false';
-
-        fetch(url)
+        fetch(BACKEND_URL + '/api/prices/history?coin_id=' + encodeURIComponent(coinId) + '&date=' + encodeURIComponent(dateStr))
           .then(function(response) {
             if (!response.ok) throw new Error('API error: ' + response.status);
             return response.json();
           })
-          .then(function(data) {
-            var priceJpy = data.market_data && data.market_data.current_price && data.market_data.current_price.jpy;
-            var priceUsd = data.market_data && data.market_data.current_price && data.market_data.current_price.usd;
-            var result = { jpy: priceJpy || 0, usd: priceUsd || 0 };
+          .then(function(result) {
             self._cache[cacheKey] = { data: result, time: Date.now() };
             resolve(result);
           })
@@ -382,34 +401,25 @@
       });
     },
 
-    // 現在の価格を取得
+    // 現在の価格を取得（バックエンドの一括データから抽出）
     getCurrentPrice: function(currencyId) {
       var self = this;
       return new Promise(function(resolve, reject) {
-        var coinId = self.getCoinId(currencyId);
-        var cacheKey = 'current_' + coinId;
-
-        if (self._cache[cacheKey] && Date.now() - self._cache[cacheKey].time < self._cacheTime) {
-          resolve(self._cache[cacheKey].data);
-          return;
-        }
-
-        var url = COINGECKO_API + '/simple/price?ids=' + coinId + '&vs_currencies=jpy,usd&include_24hr_change=true';
-
-        fetch(url)
-          .then(function(response) {
-            if (!response.ok) throw new Error('API error: ' + response.status);
-            return response.json();
-          })
-          .then(function(data) {
-            var coinData = data[coinId] || {};
-            var result = {
-              jpy: coinData.jpy || 0,
-              usd: coinData.usd || 0,
-              change24h: coinData.usd_24h_change || 0
-            };
-            self._cache[cacheKey] = { data: result, time: Date.now() };
-            resolve(result);
+        self._fetchBulkPrices()
+          .then(function(bulk) {
+            var ticker = currencyId.toUpperCase();
+            var priceData = bulk.prices[ticker];
+            var rate = bulk.usd_jpy_rate || 150;
+            if (priceData) {
+              var usd = priceData.current_price || 0;
+              resolve({
+                jpy: Math.round(usd * rate),
+                usd: usd,
+                change24h: priceData.price_change_24h || 0
+              });
+            } else {
+              resolve({ jpy: 0, usd: 0, change24h: 0 });
+            }
           })
           .catch(function(error) {
             console.error('Current price fetch error:', error);
@@ -418,30 +428,22 @@
       });
     },
 
-    // 複数通貨の現在価格を一括取得
+    // 複数通貨の現在価格を一括取得（バックエンド1回で完結）
     getMultiplePrices: function(currencyIds) {
       var self = this;
       return new Promise(function(resolve, reject) {
-        var coinIds = currencyIds.map(function(id) {
-          return self.getCoinId(id);
-        }).join(',');
-
-        var url = COINGECKO_API + '/simple/price?ids=' + coinIds + '&vs_currencies=jpy,usd&include_24hr_change=true';
-
-        fetch(url)
-          .then(function(response) {
-            if (!response.ok) throw new Error('API error: ' + response.status);
-            return response.json();
-          })
-          .then(function(data) {
+        self._fetchBulkPrices()
+          .then(function(bulk) {
+            var rate = bulk.usd_jpy_rate || 150;
             var result = {};
             currencyIds.forEach(function(id) {
-              var coinId = self.getCoinId(id);
-              var coinData = data[coinId] || {};
-              result[id.toUpperCase()] = {
-                jpy: coinData.jpy || 0,
-                usd: coinData.usd || 0,
-                change24h: coinData.usd_24h_change || 0
+              var ticker = id.toUpperCase();
+              var priceData = bulk.prices[ticker] || {};
+              var usd = priceData.current_price || 0;
+              result[ticker] = {
+                jpy: Math.round(usd * rate),
+                usd: usd,
+                change24h: priceData.price_change_24h || 0
               };
             });
             resolve(result);
@@ -471,7 +473,7 @@
   };
 
   // ============================================
-  // 2. FEAR & GREED API
+  // 2. FEAR & GREED API - バックエンド経由
   // ============================================
   var FearGreedAPI = {
     _cache: null,
@@ -486,28 +488,23 @@
           return;
         }
 
-        fetch(FEAR_GREED_API + '/?limit=1')
+        fetch(BACKEND_URL + '/api/fear-greed')
           .then(function(response) {
             if (!response.ok) throw new Error('API error: ' + response.status);
             return response.json();
           })
           .then(function(data) {
-            if (data.data && data.data[0]) {
-              var result = {
-                value: parseInt(data.data[0].value),
-                classification: data.data[0].value_classification,
-                timestamp: data.data[0].timestamp
-              };
-              self._cache = result;
-              self._lastFetch = Date.now();
-              resolve(result);
-            } else {
-              throw new Error('Invalid data format');
-            }
+            var result = {
+              value: data.value || 50,
+              classification: data.classification || 'Neutral',
+              timestamp: data.timestamp
+            };
+            self._cache = result;
+            self._lastFetch = Date.now();
+            resolve(result);
           })
           .catch(function(error) {
             console.error('Fear & Greed fetch error:', error);
-            // フォールバック値
             resolve({ value: 50, classification: 'Neutral', timestamp: Date.now() });
           });
       });
@@ -524,14 +521,16 @@
           resolve(self._historyCache);
           return;
         }
-        fetch(FEAR_GREED_API + '/?limit=' + days)
-          .then(function(r) { return r.json(); })
+        fetch(BACKEND_URL + '/api/fear-greed?days=' + days)
+          .then(function(response) {
+            if (!response.ok) throw new Error('API error');
+            return response.json();
+          })
           .then(function(data) {
-            if (data.data && data.data.length > 0) {
-              var history = data.data.map(function(d) { return parseInt(d.value); }).reverse();
-              self._historyCache = history;
+            if (data.history && data.history.length > 0) {
+              self._historyCache = data.history;
               self._historyLastFetch = Date.now();
-              resolve(history);
+              resolve(data.history);
             } else {
               resolve(null);
             }
@@ -7525,30 +7524,24 @@
     // ウォッチリストにある場合はスキップ（データは既にある）
     if (watchlist.indexOf(ticker) >= 0) return;
 
-    var coinId = CURRENCY_MAP[ticker.toLowerCase()];
-    if (!coinId) return;
+    // バックエンド経由で価格取得（/api/prices は全コインを含む）
+    PriceAPI.getCurrentPrice(ticker)
+      .then(function(result) {
+        var price = result.usd;
+        var priceJpy = result.jpy;
+        var change24h = result.change24h || 0;
+        var changeClass = change24h >= 0 ? 'positive' : 'negative';
+        var changeSign = change24h >= 0 ? '+' : '';
 
-    fetch('https://api.coingecko.com/api/v3/simple/price?ids=' + coinId + '&vs_currencies=usd,jpy&include_24hr_change=true')
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        if (data[coinId]) {
-          var price = data[coinId].usd;
-          var priceJpy = data[coinId].jpy;
-          var change24h = data[coinId].usd_24h_change || 0;
-          var changeClass = change24h >= 0 ? 'positive' : 'negative';
-          var changeSign = change24h >= 0 ? '+' : '';
+        var priceJpyEl = document.querySelector('.detail__price-jpy');
+        var priceUsdEl = document.querySelector('.detail__price-usd');
+        var priceChangeEl = document.querySelector('.detail__price-change');
 
-          // 価格表示を更新（JPY/USD切替対応）
-          var priceJpyEl = document.querySelector('.detail__price-jpy');
-          var priceUsdEl = document.querySelector('.detail__price-usd');
-          var priceChangeEl = document.querySelector('.detail__price-change');
-
-          if (priceJpyEl) priceJpyEl.textContent = formatYen(priceJpy);
-          if (priceUsdEl) priceUsdEl.textContent = formatUSD(price);
-          if (priceChangeEl) {
-            priceChangeEl.className = 'detail__price-change ' + changeClass;
-            priceChangeEl.innerHTML = changeSign + change24h.toFixed(1) + '% <small>24h</small>';
-          }
+        if (priceJpyEl) priceJpyEl.textContent = formatYen(priceJpy);
+        if (priceUsdEl) priceUsdEl.textContent = formatUSD(price);
+        if (priceChangeEl) {
+          priceChangeEl.className = 'detail__price-change ' + changeClass;
+          priceChangeEl.innerHTML = changeSign + change24h.toFixed(1) + '% <small>24h</small>';
         }
       })
       .catch(function(err) {
@@ -16894,17 +16887,17 @@
     var content = document.getElementById('news-content');
     if (!content) return;
 
-    // CoinGeckoのトレンドを代替ニュースとして使用
-    fetch(COINGECKO_API + '/search/trending')
+    // バックエンド経由でトレンドを取得
+    fetch(BACKEND_URL + '/api/trending')
       .then(function(res) { return res.json(); })
       .then(function(data) {
-        var trendingCoins = data.coins || [];
+        var trendingCoins = (data.coins || []).map(function(c) { return { item: c }; });
         var newsHtml = '<div style="font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:12px">🔥 トレンド通貨</div>';
 
         trendingCoins.slice(0, 7).forEach(function(item) {
           var coin = item.item;
           newsHtml += '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:10px;margin-bottom:8px">' +
-            '<img src="' + (coin.small || '') + '" style="width:32px;height:32px;border-radius:50%" onerror="this.style.display=\'none\'">' +
+            '<img src="' + (coin.thumb || coin.small || '') + '" style="width:32px;height:32px;border-radius:50%" onerror="this.style.display=\'none\'">' +
             '<div style="flex:1">' +
               '<div style="font-size:14px;font-weight:600;color:#fff">' + coin.name + ' (' + coin.symbol + ')</div>' +
               '<div style="font-size:11px;color:rgba(255,255,255,0.5)">ランキング #' + (coin.market_cap_rank || '-') + '</div>' +
@@ -17987,41 +17980,26 @@
     var watchlist = getTickerWatchlist();
     if (watchlist.length === 0) return;
 
-    var symbols = watchlist.map(function(t) { return BINANCE_SYMBOLS[t]; }).filter(Boolean);
-
     try {
-      // Binance 24hr tickerから価格と変動率を取得
-      var url = 'https://api.binance.com/api/v3/ticker/24hr?symbols=' +
-                encodeURIComponent(JSON.stringify(symbols));
-      var resp = await fetch(url);
+      // バックエンド1回で全価格+為替レートを取得
+      var resp = await fetch(BACKEND_URL + '/api/prices');
+      if (!resp.ok) throw new Error('API error: ' + resp.status);
       var data = await resp.json();
 
-      if (Array.isArray(data)) {
-        data.forEach(function(item) {
-          var ticker = Object.keys(BINANCE_SYMBOLS).find(function(k) {
-            return BINANCE_SYMBOLS[k] === item.symbol;
-          });
-          if (ticker) {
-            tickerBarState.prices[ticker] = {
-              price: parseFloat(item.lastPrice),
-              change: parseFloat(item.priceChangePercent)
-            };
-          }
-        });
+      var prices = data.prices || {};
+      if (data.usd_jpy_rate) {
+        tickerBarState.usdJpyRate = data.usd_jpy_rate;
       }
 
-      // 為替レートも更新（CoinGeckoから）
-      try {
-        var fxResp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=usd&vs_currencies=jpy');
-        var fxData = await fxResp.json();
-        // CoinGeckoはusdのjpy価格を直接返さないので、btcから計算
-        var btcResp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,jpy');
-        var btcData = await btcResp.json();
-        if (btcData.bitcoin && btcData.bitcoin.usd && btcData.bitcoin.jpy) {
-          tickerBarState.usdJpyRate = btcData.bitcoin.jpy / btcData.bitcoin.usd;
+      watchlist.forEach(function(ticker) {
+        var p = prices[ticker];
+        if (p) {
+          tickerBarState.prices[ticker] = {
+            price: p.current_price || 0,
+            change: p.price_change_24h || 0
+          };
         }
-      } catch (e) {
-      }
+      });
 
       renderTickerBar();
     } catch (err) {
