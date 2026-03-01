@@ -8254,20 +8254,22 @@
     if (!container) return;
     container.innerHTML = '<div class="collector-monitor__loading">読み込み中...</div>';
 
-    Promise.all([
-      BackendAPI.getCollectorHealth(),
-      BackendAPI.getCollectorStats()
-    ]).then(function(results) {
-      var health = results[0];
-      var stats = results[1];
-      container.innerHTML = _renderCollectorContent(health, stats);
-    }).catch(function(err) {
-      container.innerHTML = '<div class="collector-monitor__error">' +
-        '<div style="font-size:24px;margin-bottom:8px">!</div>' +
-        '<div>バックエンドに接続できません</div>' +
-        '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">' + (err.message || err) + '</div>' +
-      '</div>';
-    });
+    // 統合エンドポイントで health + stats を1リクエストで取得
+    fetch(BACKEND_URL + '/api/collector/dashboard')
+      .then(function(r) {
+        if (!r.ok) throw new Error('API error: ' + r.status);
+        return r.json();
+      })
+      .then(function(data) {
+        container.innerHTML = _renderCollectorContent(data.health, data.stats);
+      })
+      .catch(function(err) {
+        container.innerHTML = '<div class="collector-monitor__error">' +
+          '<div style="font-size:24px;margin-bottom:8px">!</div>' +
+          '<div>バックエンドに接続できません</div>' +
+          '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">' + (err.message || err) + '</div>' +
+        '</div>';
+      });
   }
 
   function _renderCollectorContent(health, stats) {
