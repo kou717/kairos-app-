@@ -5152,6 +5152,32 @@
     return y + '-' + m + '-' + d;
   }
 
+  // Shared exit reason labels (single source of truth)
+  var EXIT_REASON_LABELS = {
+    'rugpull_detected': '🚨 ラグプル検知',
+    'emergency_stop': '🛑 緊急損切り',
+    'trailing_stop': '📉 トレーリング',
+    'moonshot_crash_signal': '💥 暴落検知',
+    'momentum_death': '📊 勢い消失',
+    'max_hold_time': '⏰ 24h上限',
+    'time_limit': '⏰ 時間切れ (旧)',
+    'no_liquidity': '💀 流動性喪失',
+    'historical_data_unavailable': '📭 データ欠損',
+    'no_price_data': '📭 価格なし',
+    'profit_50pct_partial': '🎯 +50%利確',
+    'profit_100pct_partial': '🚀 +100%利確',
+    'profit_500pct_partial': '🌙 +500%利確',
+    'profit_10x_partial': '🚀 10x利確',
+    'profit_100x_partial': '🌙 100x利確',
+    'profit_1000x': '✨ 1000x',
+    'dream_exit_crash_signal': '💥 夢枠暴落',
+    'unknown': '❓ 不明'
+  };
+
+  function _exitReasonJa(reason) {
+    return EXIT_REASON_LABELS[reason] || reason;
+  }
+
   // Performance state
   var _perfAllDates = false;   // 「すべて」チェック
   var _perfIncludeSL = false;  // 「レオ」チェック
@@ -5421,22 +5447,9 @@
       html += '<div class="performance-section" style="animation-delay:0.15s">' +
         '<h3 class="performance-section__title">🏁 クローズ理由</h3>' +
         '<div class="performance-exit-grid">';
-      var exitLabels = {
-        'rugpull_detected': '🚨 ラグプル検知',
-        'emergency_stop': '🛑 緊急損切り', 'trailing_stop': '📉 トレーリング',
-        'moonshot_crash_signal': '💥 暴落検知', 'momentum_death': '📊 勢い消失',
-        'max_hold_time': '⏰ 24h上限', 'time_limit': '⏰ 時間切れ (旧)',
-        'no_liquidity': '💀 流動性喪失', 'historical_data_unavailable': '📭 データ欠損',
-        'no_price_data': '📭 価格なし',
-        'profit_50pct_partial': '🎯 +50%利確', 'profit_100pct_partial': '🚀 +100%利確',
-        'profit_500pct_partial': '🌙 +500%利確',
-        'profit_10x_partial': '🚀 10x利確', 'profit_100x_partial': '🌙 100x利確',
-        'profit_1000x': '✨ 1000x', 'dream_exit_crash_signal': '💥 夢枠暴落',
-        'unknown': '❓ 不明'
-      };
       exitKeys.forEach(function(key) {
         var e = exitBreakdown[key];
-        var label = exitLabels[key] || key;
+        var label = _exitReasonJa(key);
         var ePnlClass = (e.avg_pnl_pct || 0) >= 0 ? 'positive' : 'negative';
         var ePnlSign = (e.avg_pnl_pct || 0) >= 0 ? '+' : '';
         html += '<div class="performance-exit-card" onclick="window._toggleExitReasonTrades(\'' + key + '\', this)" style="cursor:pointer">' +
@@ -7929,7 +7942,7 @@
     var pnl = item.realized_pnl_pct || 0;
     var pnlClass = pnl >= 0 ? 'positive' : 'negative';
     var pnlSign = pnl >= 0 ? '+' : '';
-    var exitReason = _slExitReasonJa(item.exit_reason || '');
+    var exitReason = _exitReasonJa(item.exit_reason || '');
     var holdStr = item.holding_duration ? _slDurationStr(item.holding_duration) : '-';
 
     return '<div class="sl-list-item sl-list-item--closed" onclick="window._openSlDetail(' + idx + ',\'closed\')">' +
@@ -8031,7 +8044,7 @@
         '</div>';
 
       if (item.exit_reason) {
-        html += '<div class="sl-popup__exit-reason">Exit: ' + _slExitReasonJa(item.exit_reason) + '</div>';
+        html += '<div class="sl-popup__exit-reason">Exit: ' + _exitReasonJa(item.exit_reason) + '</div>';
       }
 
       // Exit proximity (if open)
@@ -8115,10 +8128,10 @@
   // ============================================================
   // Trade History Popup — shared by Exit Reason & SL Closed
   // ============================================================
-  var _tradePopupState = { page: 1, total: 0, perPage: 10, type: '', param: '', expanded: {} };
+  var _tradePopupState = { page: 1, total: 0, perPage: 10, type: '', param: '', expanded: {}, _scrollY: 0, _openIdx: undefined, _fetchGen: 0 };
 
   function _openTradeHistoryPopup(title, type, param) {
-    _tradePopupState = { page: 1, total: 0, perPage: 10, type: type, param: param, expanded: {} };
+    _tradePopupState = { page: 1, total: 0, perPage: 10, type: type, param: param, expanded: {}, _scrollY: 0, _openIdx: undefined, _fetchGen: 0 };
 
     // Remove existing popup
     var existing = document.getElementById('trade-history-popup');
@@ -8162,9 +8175,12 @@
     _fetchTradeHistoryPage(1);
   }
 
+  var _thpClosing = false;
   window._closeTradeHistoryPopup = function(fromPopState) {
+    if (_thpClosing) return; // re-entrancy guard
     var overlay = document.getElementById('trade-history-popup');
     if (!overlay) return;
+    _thpClosing = true;
     // バックボタン以外で閉じた場合はpushStateを戻す
     if (!fromPopState) {
       history.back();
@@ -8178,7 +8194,7 @@
     window.scrollTo(0, _tradePopupState._scrollY || 0);
 
     overlay.classList.remove('thp-overlay--visible');
-    setTimeout(function() { overlay.remove(); }, 200);
+    setTimeout(function() { overlay.remove(); _thpClosing = false; }, 200);
   };
 
   function _fetchTradeHistoryPage(page) {
@@ -8192,6 +8208,9 @@
     body.innerHTML = '<div class="thp-loading">読み込み中...</div>';
     _tradePopupState.page = page;
     _tradePopupState.expanded = {};
+    _tradePopupState._openIdx = undefined;
+    _tradePopupState._fetchGen = (_tradePopupState._fetchGen || 0) + 1;
+    var myGen = _tradePopupState._fetchGen;
 
     var offset = (page - 1) * _tradePopupState.perPage;
     var dateParam = '';
@@ -8215,6 +8234,7 @@
     fetch(url)
       .then(function(r) { return r.ok ? r.json() : { trades: [], total: 0 }; })
       .then(function(data) {
+        if (_tradePopupState._fetchGen !== myGen) return; // stale response, discard
         var trades = data.trades || [];
         _tradePopupState.total = data.total || 0;
         if (trades.length === 0) {
@@ -8265,6 +8285,21 @@
       '<button class="thp-pagination__btn" onclick="window._thpGoPage(' + (page + 1) + ')"' + (page >= maxPage ? ' disabled' : '') + '>&gt;</button>';
   }
 
+  // Detail expand/collapse helpers (module scope — avoid re-creation per call)
+  function _collapseDetail(detailEl) {
+    detailEl.style.maxHeight = detailEl.scrollHeight + 'px';
+    void detailEl.offsetHeight;
+    detailEl.style.maxHeight = '0';
+    detailEl.classList.remove('thp-item__detail--open');
+  }
+
+  function _expandDetail(detailEl, expandIdx) {
+    detailEl.classList.add('thp-item__detail--open');
+    detailEl.style.maxHeight = '250px';
+    _tradePopupState.expanded[expandIdx] = true;
+    _tradePopupState._openIdx = expandIdx;
+  }
+
   // Toggle inline detail for a trade item in popup
   // - スムーズなアニメーション (max-height transition)
   // - 別の詳細を開いたら前のを閉じる
@@ -8272,22 +8307,6 @@
     var el = document.getElementById('thp-detail-' + idx);
     if (!el) return;
     var isOpen = _tradePopupState.expanded[idx];
-
-    // 閉じるヘルパー
-    function _collapseDetail(detailEl) {
-      detailEl.style.maxHeight = detailEl.scrollHeight + 'px';
-      void detailEl.offsetHeight;
-      detailEl.style.maxHeight = '0';
-      detailEl.classList.remove('thp-item__detail--open');
-    }
-
-    // 開くヘルパー
-    function _expandDetail(detailEl, expandIdx) {
-      detailEl.classList.add('thp-item__detail--open');
-      detailEl.style.maxHeight = '250px';
-      _tradePopupState.expanded[expandIdx] = true;
-      _tradePopupState._openIdx = expandIdx;
-    }
 
     // 別のを開いている場合 → 閉じ終わってから開く
     var prevIdx = _tradePopupState._openIdx;
@@ -8303,8 +8322,12 @@
         _collapseDetail(prevEl);
         _tradePopupState.expanded[prevIdx] = false;
       }
-      // 閉じアニメーション(0.3s)を待ってから開く
-      setTimeout(function() { _expandDetail(el, idx); }, 320);
+      // 閉じアニメーション(0.3s)を待ってから開く（stale対策: DOM存在確認）
+      setTimeout(function() {
+        if (document.getElementById('thp-detail-' + idx)) {
+          _expandDetail(el, idx);
+        }
+      }, 320);
     } else {
       _expandDetail(el, idx);
     }
@@ -8381,10 +8404,9 @@
       var pnlColor = pnl > 0 ? '#10b981' : '#ef4444';
       var pnlSign = pnl >= 0 ? '+' : '';
       var peakPnl = t.peak_pnl_pct || 0;
-      var holdMin = t.holding_duration ? Math.round(t.holding_duration / 60) : 0;
-      var holdStr = holdMin >= 60 ? Math.floor(holdMin / 60) + 'h' + (holdMin % 60) + 'm' : holdMin + 'm';
+      var holdStr = _slDurationStr(t.holding_duration || 0);
       var awakenMin = t.time_to_awaken_sec ? Math.round(t.time_to_awaken_sec / 60) : 0;
-      var exitJa = _slExitReasonJa(t.exit_reason || '');
+      var exitJa = _exitReasonJa(t.exit_reason || '');
 
       html += '<div class="thp-item" onclick="window._thpToggleDetail(' + i + ')">' +
         '<div class="thp-item__row">' +
@@ -8419,36 +8441,8 @@
 
   // Open Exit Reason trades popup
   window._toggleExitReasonTrades = function(reason, cardEl) {
-    var exitLabels = {
-      'rugpull_detected': '🚨 ラグプル検知',
-      'emergency_stop': '🛑 緊急損切り', 'trailing_stop': '📉 トレーリング',
-      'moonshot_crash_signal': '💥 暴落検知', 'momentum_death': '📊 勢い消失',
-      'max_hold_time': '⏰ 24h上限', 'time_limit': '⏰ 時間切れ (旧)',
-      'no_liquidity': '💀 流動性喪失', 'historical_data_unavailable': '📭 データ欠損',
-      'no_price_data': '📭 価格なし',
-      'profit_50pct_partial': '🎯 +50%利確', 'profit_100pct_partial': '🚀 +100%利確',
-      'profit_500pct_partial': '🌙 +500%利確',
-      'profit_10x_partial': '🚀 10x利確', 'profit_100x_partial': '🌙 100x利確',
-      'profit_1000x': '✨ 1000x', 'dream_exit_crash_signal': '💥 夢枠暴落',
-      'unknown': '❓ 不明'
-    };
-    var title = exitLabels[reason] || reason;
-    _openTradeHistoryPopup(title, 'exit-reason', reason);
+    _openTradeHistoryPopup(_exitReasonJa(reason), 'exit-reason', reason);
   };
-
-  function _slExitReasonJa(reason) {
-    var map = {
-      'rugpull_detected': '🚨 ラグプル検知',
-      'emergency_stop': '🛑 緊急損切り',
-      'trailing_stop': '📉 トレーリング',
-      'momentum_death': '📊 勢い消失',
-      'max_hold_time': '⏰ 24h上限',
-      'profit_50pct_partial': '🎯 +50%利確',
-      'profit_100pct_partial': '🚀 +100%利確',
-      'profit_500pct_partial': '🌙 +500%利確',
-    };
-    return map[reason] || reason;
-  }
 
   // Performance SL Section — appended to _renderPerformanceContent
   function _renderPerformanceSLSection(stats, includedInMain) {
@@ -8705,23 +8699,12 @@
     if (exitKeys.length > 0) {
       html += '<div class="collector-monitor__section">' +
         '<div class="collector-monitor__section-title">今日のクローズ理由</div>';
-      var exitLabels = {
-        'rugpull_detected': '🚨 ラグプル検知',
-        'emergency_stop': '緊急脱出 (-30%)',
-        'time_limit': '時間切れ (旧)',
-        'momentum_death': '勢い消失',
-        'max_hold_time': '24h上限',
-        'profit_100x': '100x利確',
-        'profit_10x': '10x部分売却',
-        'no_liquidity': 'ラグプル (流動性0)',
-        'no_price_data': '価格取得不可'
-      };
       for (var i = 0; i < exitKeys.length; i++) {
         var ek = exitKeys[i];
         var ev = exits[ek];
         var pnlColor = ev.avg_pnl_pct >= 0 ? '#10b981' : '#ef4444';
         html += '<div class="collector-monitor__filter-row">' +
-          '<span class="collector-monitor__filter-label">' + (exitLabels[ek] || ek) + '</span>' +
+          '<span class="collector-monitor__filter-label">' + _exitReasonJa(ek) + '</span>' +
           '<span class="collector-monitor__filter-value">' + ev.count + '件 ' +
             '<span style="color:' + pnlColor + '">' + (ev.avg_pnl_pct >= 0 ? '+' : '') + ev.avg_pnl_pct + '%</span>' +
           '</span>' +
@@ -8887,20 +8870,7 @@
       '</div>';
 
     if (status === 'closed' && trade.exit_reason) {
-      var exitLabels = {
-        'rugpull_detected': '🚨 ラグプル検知',
-        'emergency_stop': '緊急脱出',
-        'time_limit': '時間切れ (旧)',
-        'momentum_death': '勢い消失',
-        'max_hold_time': '24h上限',
-        'trailing_stop': 'トレーリング',
-        'moonshot_crash_signal': '暴落検知',
-        'profit_100x': '100x利確',
-        'profit_10x': '10x売却',
-        'no_liquidity': 'ラグプル',
-        'no_price_data': '価格不可'
-      };
-      html += '<div class="collector-trade-card__exit">' + (exitLabels[trade.exit_reason] || trade.exit_reason) + '</div>';
+      html += '<div class="collector-trade-card__exit">' + _exitReasonJa(trade.exit_reason) + '</div>';
     }
 
     html += '</div>';
