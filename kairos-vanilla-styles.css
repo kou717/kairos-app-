@@ -15374,9 +15374,17 @@ body.has-ticker-bar {
   flex-wrap: wrap;
 }
 .thp-item__detail {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding-top 0.3s ease, margin-top 0.3s ease;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 1px solid transparent;
+}
+.thp-item__detail--open {
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top-color: rgba(255,255,255,0.06);
 }
 .thp-detail-grid {
   display: grid;

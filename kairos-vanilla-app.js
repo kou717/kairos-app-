@@ -8223,16 +8223,36 @@
   }
 
   // Toggle inline detail for a trade item in popup
+  // - スムーズなアニメーション (max-height transition)
+  // - 別の詳細を開いたら前のを閉じる
   window._thpToggleDetail = function(idx) {
     var el = document.getElementById('thp-detail-' + idx);
     if (!el) return;
     var isOpen = _tradePopupState.expanded[idx];
+
+    // 別のを開いている場合は先に閉じる
+    var prevIdx = _tradePopupState._openIdx;
+    if (prevIdx !== undefined && prevIdx !== idx) {
+      var prevEl = document.getElementById('thp-detail-' + prevIdx);
+      if (prevEl && _tradePopupState.expanded[prevIdx]) {
+        prevEl.style.maxHeight = '0';
+        prevEl.classList.remove('thp-item__detail--open');
+        _tradePopupState.expanded[prevIdx] = false;
+      }
+    }
+
     if (isOpen) {
-      el.style.display = 'none';
+      // 閉じる
+      el.style.maxHeight = '0';
+      el.classList.remove('thp-item__detail--open');
       _tradePopupState.expanded[idx] = false;
+      _tradePopupState._openIdx = undefined;
     } else {
-      el.style.display = 'block';
+      // 開く — scrollHeightで自然な高さを計算
+      el.classList.add('thp-item__detail--open');
+      el.style.maxHeight = el.scrollHeight + 'px';
       _tradePopupState.expanded[idx] = true;
+      _tradePopupState._openIdx = idx;
     }
   };
 
@@ -8282,7 +8302,7 @@
           '<span>スコア ' + (t.moonshot_score ? t.moonshot_score.toFixed(0) : '-') + '</span>' +
           '<span>' + _thpFormatTime(t.exit_at) + '</span>' +
         '</div>' +
-        '<div id="thp-detail-' + i + '" class="thp-item__detail" style="display:none">' +
+        '<div id="thp-detail-' + i + '" class="thp-item__detail">' +
           '<div class="thp-detail-grid">' +
             '<div class="thp-detail-cell"><span class="thp-detail-label">エントリー価格</span><span class="thp-detail-value">' + _slFormatPrice(t.entry_price || 0) + '</span></div>' +
             '<div class="thp-detail-cell"><span class="thp-detail-label">決済価格</span><span class="thp-detail-value">' + _slFormatPrice(t.exit_price || 0) + '</span></div>' +
@@ -8325,7 +8345,7 @@
           '<span>覚醒 ' + awakenMin + '分</span>' +
           '<span>' + _thpFormatTime(t.exit_at) + '</span>' +
         '</div>' +
-        '<div id="thp-detail-' + i + '" class="thp-item__detail" style="display:none">' +
+        '<div id="thp-detail-' + i + '" class="thp-item__detail">' +
           '<div class="thp-detail-grid">' +
             '<div class="thp-detail-cell"><span class="thp-detail-label">エントリー価格</span><span class="thp-detail-value">' + _slFormatPrice(t.entry_price || 0) + '</span></div>' +
             '<div class="thp-detail-cell"><span class="thp-detail-label">決済価格</span><span class="thp-detail-value">' + _slFormatPrice(t.exit_price || 0) + '</span></div>' +
