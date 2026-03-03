@@ -7871,6 +7871,7 @@
 
   var _slAutoRefresh = null;
   var _slCache = { stats: null, watchlist: null, time: 0 };
+  window._slCache = _slCache;
 
   function renderSleepingLionScreen() {
     // Setup auto-refresh
@@ -7919,6 +7920,7 @@
       var stats = results[0];
       var watchlistData = results[1];
       _slCache = { stats: stats, watchlist: watchlistData.items || [], time: Date.now() };
+      window._slCache = _slCache;
       if (appState.currentScreen === 'sleeping-lion') {
         var c = document.getElementById('sl-content');
         if (c) c.innerHTML = _renderSleepingLionContent(stats, watchlistData.items || []);
@@ -17867,6 +17869,26 @@
         if (sc.price) parts.push('価格: $' + sc.price);
         if (sc.pricePositionDisplaySwing && mode === 'swing') parts.push('PRICE位置(短期): ' + sc.pricePositionDisplaySwing);
         if (sc.pricePositionDisplayLongterm && mode === 'longterm') parts.push('PRICE位置(長期): ' + sc.pricePositionDisplayLongterm);
+      }
+    }
+
+    // SLアクティブトレード情報（Monitor画面 or 背景で表示中）
+    var slCache = window._slCache;
+    if (slCache && slCache.watchlist && slCache.watchlist.length > 0) {
+      var activeTrades = slCache.watchlist.filter(function(i) {
+        return i.status === 'open' || i.status === 'partial_exit_50' ||
+               i.status === 'partial_exit_100' || i.status === 'partial_exit_500';
+      });
+      if (activeTrades.length > 0) {
+        parts.push('--- アクティブトレード (' + activeTrades.length + '件) ---');
+        activeTrades.forEach(function(t) {
+          var info = (t.symbol || '?') + ': PnL ' + (t.unrealized_pnl_pct || 0).toFixed(1) + '%' +
+            ', Peak ' + (t.peak_pnl_pct || 0).toFixed(1) + '%' +
+            ', Entry $' + (t.entry_price || 0) +
+            ', Pos ' + (t.position_size != null ? t.position_size : 1.0);
+          if (t.entry_liquidity) info += ', Liq $' + t.entry_liquidity;
+          parts.push(info);
+        });
       }
     }
 
