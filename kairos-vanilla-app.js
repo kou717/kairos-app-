@@ -2133,6 +2133,73 @@
     }, 3000);
   }
 
+  // ===== コンパクト数値フォーマッタ =====
+
+  // 数字をコンパクト表記（単位なし: 1.2B / 3.4M / 5.6K）
+  function formatCompactNumber(num) {
+    if (num === undefined || num === null) return '-';
+    if (num >= 1e9) return (num / 1e9).toFixed(1) + 'B';
+    if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
+    if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
+    return Math.round(num).toString();
+  }
+
+  // formatCompactNumber の別名（後方互換）
+  var formatCompactUSD = formatCompactNumber;
+
+  // ===== JST 時刻フォーマッタ =====
+
+  function formatTimeJST(date) {
+    if (date == null) return '-';
+    if (!(date instanceof Date)) date = new Date(date);
+    if (isNaN(date.getTime())) return '-';
+    return date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' });
+  }
+
+  function formatDateTimeJST(date) {
+    if (date == null) return '-';
+    if (!(date instanceof Date)) date = new Date(date);
+    if (isNaN(date.getTime())) return '-';
+    return date.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' });
+  }
+
+  function formatFullDateTimeJST(date) {
+    if (date == null) return '-';
+    if (!(date instanceof Date)) date = new Date(date);
+    if (isNaN(date.getTime())) return '-';
+    return date.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
+  }
+
+  // ===== モーダルスクロールロック（参照カウント付き） =====
+
+  var _scrollLockCount = 0;
+  var _scrollLockY = 0;
+
+  function lockBodyScroll() {
+    if (_scrollLockCount === 0) {
+      _scrollLockY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = '-' + _scrollLockY + 'px';
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.overflow = 'hidden';
+    }
+    _scrollLockCount++;
+  }
+
+  function unlockBodyScroll() {
+    if (_scrollLockCount <= 0) return;
+    _scrollLockCount--;
+    if (_scrollLockCount === 0) {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.overflow = '';
+      window.scrollTo(0, _scrollLockY);
+    }
+  }
+
   // グローバル公開
   window.KairosUI = {
     showToast: showToast,
@@ -2142,7 +2209,14 @@
     renderSkeletonCard: renderSkeletonCard,
     renderSkeletonGrid: renderSkeletonGrid,
     renderErrorState: renderErrorState,
-    renderEmptyState: renderEmptyState
+    renderEmptyState: renderEmptyState,
+    formatCompactNumber: formatCompactNumber,
+    formatCompactUSD: formatCompactUSD,
+    formatTimeJST: formatTimeJST,
+    formatDateTimeJST: formatDateTimeJST,
+    formatFullDateTimeJST: formatFullDateTimeJST,
+    lockBodyScroll: lockBodyScroll,
+    unlockBodyScroll: unlockBodyScroll
   };
 
   // ============================================
@@ -2464,7 +2538,7 @@
     for (var j = 0; j < simpleModalIds.length; j++) {
       var modal = document.getElementById(simpleModalIds[j]);
       if (modal) {
-        document.body.style.overflow = '';
+        unlockBodyScroll();
         modal.remove();
         return true;
       }
@@ -2640,7 +2714,7 @@
   function renderGlobalHeader() {
     if (appState.currentScreen === 'splash') return '';
 
-    var updateTime = new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'});
+    var updateTime = formatTimeJST(new Date());
 
     var titleContent = '';
     if (appState.currentScreen === 'detail' && appState.selectedCurrency) {
@@ -2741,7 +2815,7 @@
   function updateGlobalHeaderTime() {
     var timeEl = document.getElementById('global-header-time');
     if (timeEl) {
-      timeEl.textContent = new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'});
+      timeEl.textContent = formatTimeJST(new Date());
     }
   }
 
@@ -3059,7 +3133,7 @@
   // ===== ホーム画面 =====
   function renderHomeScreen() {
     var data = getInvestmentData();
-    var updateTime = new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'});
+    var updateTime = formatTimeJST(new Date());
 
     var isDetail = appState.portfolioDetailOpen;
     var heroAction = isDetail ? 'window.KairosApp.closePortfolioDetail()' : 'window.KairosApp.openPortfolioDetail()';
@@ -3669,7 +3743,7 @@
       '</div>';
     }).join('');
 
-    var updateTime = new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'});
+    var updateTime = formatTimeJST(new Date());
 
     // 短期/長期トグル（表示用、個別設定は変えない）
     var toggleHtml = '<div class="currencies__view-toggle-row">' +
@@ -3917,7 +3991,7 @@
       '</div>';
     }).join('');
 
-    var marketUpdateTime = new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'});
+    var marketUpdateTime = formatTimeJST(new Date());
 
     return '<div class="market" style="padding-bottom:100px">' +
       '<div class="market__header">' +
@@ -4109,7 +4183,7 @@
         contentHtml = renderAIRankingTab();
     }
 
-    var aiUpdateTime = new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'});
+    var aiUpdateTime = formatTimeJST(new Date());
 
     return '<div class="ai-screen">' +
       '<div class="ai-screen__header">' +
@@ -5690,14 +5764,6 @@
     container.innerHTML = html;
   }
 
-  // 数字をコンパクト表記
-  function formatCompactNumber(num) {
-    if (num >= 1e9) return (num / 1e9).toFixed(1) + 'B';
-    if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
-    if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
-    return num.toString();
-  }
-
   // Moonshot設定モーダル
   function openMoonshotSettingsModal() {
     var modal = document.createElement('div');
@@ -5858,7 +5924,7 @@
     '</div>';
 
     document.body.appendChild(modal);
-    document.body.style.overflow = 'hidden';
+    lockBodyScroll();
     requestAnimationFrame(function() { modal.classList.add('active'); });
 
     modal.onclick = function(e) {
@@ -5870,7 +5936,7 @@
   function closeMoonshotDetailModal() {
     var modal = document.getElementById('moonshot-detail-modal');
     if (modal) {
-      document.body.style.overflow = '';
+      unlockBodyScroll();
       modal.classList.remove('active');
       setTimeout(function() { modal.remove(); }, 300);
     }
@@ -7383,7 +7449,7 @@
     // 最終更新時刻のバナー（オプション）
     var updateBanner = '';
     if (appState.lastUpdated && !appState.isLoading && appState.currentScreen !== 'splash') {
-      var updateTime = new Date(appState.lastUpdated).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+      var updateTime = formatTimeJST(new Date(appState.lastUpdated));
       updateBanner = '<div class="update-banner">最終更新: ' + updateTime + '</div>';
     }
 
@@ -7898,7 +7964,7 @@
       '<div class="sl-list-item__meta">' +
         '<span>Score ' + (item.moonshot_score || 0).toFixed(0) + '</span>' +
         '<span>BSR ' + (item.baseline_bsr || 0).toFixed(1) + '</span>' +
-        '<span>Vol $' + _slFormatUsd(item.baseline_volume || 0) + '</span>' +
+        '<span>Vol $' + formatCompactUSD(item.baseline_volume || 0) + '</span>' +
         '<span>Check #' + checks + '</span>' +
       '</div>' +
       '<div class="sl-list-item__progress">' +
@@ -7994,12 +8060,12 @@
     var statusLabel = { watching: '👁️ 監視中', awakened: '⚡ 覚醒', timeout: '⏰ タイムアウト', dead: '💀 死亡', open: '⚡ トレード中', closed: '📋 クローズ', partial_exit_50: '🎯 +50%利確済', partial_exit_100: '🚀 +100%利確済', partial_exit_500: '🌙 +500%利確済' };
     var statusText = statusLabel[status] || status;
 
-    var html = '<div class="sl-popup" id="sleeping-lion-detail-modal" onclick="if(event.target===this)this.remove()">' +
+    var html = '<div class="sl-popup" id="sleeping-lion-detail-modal" onclick="if(event.target===this)window._closeSlDetailPopup()">' +
       '<div class="sl-popup__content">' +
         '<div class="sl-popup__header sl-popup__header--' + (item.status || 'watching') + '">' +
           '<span>🦁 ' + (item.symbol || '???') + '</span>' +
           '<span class="sl-popup__status">' + statusText + '</span>' +
-          '<button class="sl-popup__close" onclick="document.getElementById(\'sleeping-lion-detail-modal\').remove()">✕</button>' +
+          '<button class="sl-popup__close" onclick="window._closeSlDetailPopup()">✕</button>' +
         '</div>';
 
     // Baseline section
@@ -8007,7 +8073,7 @@
       '<div class="sl-popup__section-title">ベースライン (5m時点)</div>' +
       '<div class="sl-popup__grid">' +
         '<div class="sl-popup__grid-item"><span class="sl-popup__grid-label">💰 価格</span><span>$' + _slFormatPrice(item.baseline_price || 0) + '</span></div>' +
-        '<div class="sl-popup__grid-item"><span class="sl-popup__grid-label">📊 出来高</span><span>$' + _slFormatUsd(item.baseline_volume || 0) + '</span></div>' +
+        '<div class="sl-popup__grid-item"><span class="sl-popup__grid-label">📊 出来高</span><span>$' + formatCompactUSD(item.baseline_volume || 0) + '</span></div>' +
         '<div class="sl-popup__grid-item"><span class="sl-popup__grid-label">📈 BSR</span><span>' + (item.baseline_bsr || 0).toFixed(2) + '</span></div>' +
         '<div class="sl-popup__grid-item"><span class="sl-popup__grid-label">🎯 Score</span><span>' + (item.moonshot_score || 0).toFixed(0) + '</span></div>' +
       '</div>' +
@@ -8070,8 +8136,16 @@
     html += '</div></div>';
 
     document.body.insertAdjacentHTML('beforeend', html);
-    document.body.style.overflow = 'hidden';
+    lockBodyScroll();
   }
+
+  window._closeSlDetailPopup = function() {
+    var modal = document.getElementById('sleeping-lion-detail-modal');
+    if (modal) {
+      unlockBodyScroll();
+      modal.remove();
+    }
+  };
 
   function _slPopupProgress(label, target, pct) {
     pct = Math.max(0, Math.min(100, pct));
@@ -8109,12 +8183,6 @@
     if (sec < 60) return sec + 's';
     if (sec < 3600) return Math.floor(sec / 60) + 'm';
     return Math.floor(sec / 3600) + 'h ' + Math.floor((sec % 3600) / 60) + 'm';
-  }
-
-  function _slFormatUsd(val) {
-    if (val >= 1e6) return (val / 1e6).toFixed(1) + 'M';
-    if (val >= 1e3) return (val / 1e3).toFixed(1) + 'K';
-    return val.toFixed(0);
   }
 
   function _slFormatPrice(val) {
@@ -8158,13 +8226,8 @@
 
     document.body.appendChild(overlay);
 
-    // 背面スクロール禁止（モバイル対応: position:fixed + touchmove防止）
-    _tradePopupState._scrollY = window.scrollY;
-    document.body.style.position = 'fixed';
-    document.body.style.top = '-' + _tradePopupState._scrollY + 'px';
-    document.body.style.left = '0';
-    document.body.style.right = '0';
-    document.body.style.overflow = 'hidden';
+    // 背面スクロール禁止
+    lockBodyScroll();
 
     // Animate in
     requestAnimationFrame(function() { overlay.classList.add('thp-overlay--visible'); });
@@ -8186,12 +8249,7 @@
       history.back();
     }
     // 背面スクロール復帰
-    document.body.style.position = '';
-    document.body.style.top = '';
-    document.body.style.left = '';
-    document.body.style.right = '';
-    document.body.style.overflow = '';
-    window.scrollTo(0, _tradePopupState._scrollY || 0);
+    unlockBodyScroll();
 
     overlay.classList.remove('thp-overlay--visible');
     setTimeout(function() { overlay.remove(); _thpClosing = false; }, 200);
@@ -8335,19 +8393,12 @@
 
   function _thpFormatTime(isoStr) {
     if (!isoStr) return '-';
-    try {
-      var d = new Date(isoStr);
-      return d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' });
-    } catch(e) { return '-'; }
+    try { return formatTimeJST(new Date(isoStr)); } catch(e) { return '-'; }
   }
 
   function _thpFormatDateTime(isoStr) {
     if (!isoStr) return '-';
-    try {
-      var d = new Date(isoStr);
-      return d.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric', timeZone: 'Asia/Tokyo' }) + ' ' +
-        d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' });
-    } catch(e) { return '-'; }
+    try { return formatDateTimeJST(new Date(isoStr)); } catch(e) { return '-'; }
   }
 
   function _thpTrustBadge(trust) {
@@ -8428,8 +8479,8 @@
             '<div class="thp-detail-cell"><span class="thp-detail-label">ベースライン価格</span><span class="thp-detail-value">' + _slFormatPrice(t.baseline_price || 0) + '</span></div>' +
             '<div class="thp-detail-cell"><span class="thp-detail-label">スコア</span><span class="thp-detail-value">' + (t.moonshot_score ? t.moonshot_score.toFixed(0) : '-') + '</span></div>' +
             '<div class="thp-detail-cell"><span class="thp-detail-label">ポジションサイズ</span><span class="thp-detail-value">$' + (t.position_size || 0).toFixed(0) + '</span></div>' +
-            '<div class="thp-detail-cell"><span class="thp-detail-label">流動性</span><span class="thp-detail-value">$' + _slFormatUsd(t.entry_liquidity || 0) + '</span></div>' +
-            '<div class="thp-detail-cell"><span class="thp-detail-label">出来高</span><span class="thp-detail-value">$' + _slFormatUsd(t.entry_volume || 0) + '</span></div>' +
+            '<div class="thp-detail-cell"><span class="thp-detail-label">流動性</span><span class="thp-detail-value">$' + formatCompactUSD(t.entry_liquidity || 0) + '</span></div>' +
+            '<div class="thp-detail-cell"><span class="thp-detail-label">出来高</span><span class="thp-detail-value">$' + formatCompactUSD(t.entry_volume || 0) + '</span></div>' +
             '<div class="thp-detail-cell"><span class="thp-detail-label">決済時刻</span><span class="thp-detail-value">' + _thpFormatDateTime(t.exit_at) + '</span></div>' +
           '</div>' +
         '</div>' +
@@ -8610,7 +8661,7 @@
     var loops = health.loops || {};
     var lastCollAt = loops.last_collection_at;
     var lastCollStr = lastCollAt
-      ? new Date(lastCollAt * 1000).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+      ? formatTimeJST(new Date(lastCollAt * 1000))
       : '--:--';
 
     html += '<div class="collector-monitor__status ' + (ok ? 'collector-monitor__status--ok' : 'collector-monitor__status--down') + '">' +
@@ -9061,7 +9112,7 @@
   function _renderCoinDetailContent(coin) {
     var trust = coin.combined_trust || 'unknown';
     var trustClass = trust === 'high' ? '--high' : trust === 'medium' ? '--medium' : trust === 'low' ? '--low' : '--danger';
-    var detectedAt = coin.detected_at ? new Date(coin.detected_at * 1000).toLocaleString('ja-JP') : '--';
+    var detectedAt = coin.detected_at ? formatFullDateTimeJST(new Date(coin.detected_at * 1000)) : '--';
 
     var html = '<div class="collector-detail__header">' +
       '<div class="collector-detail__header-top">' +
@@ -11280,19 +11331,23 @@
     var clearBtn = container.querySelector('.add-currency-modal__search-clear');
     var contentDiv = container.querySelector('.add-currency-modal__content');
 
+    var _searchTimer = null;
     searchInput.addEventListener('input', function() {
       var query = searchInput.value.trim();
       clearBtn.classList.toggle('hidden', query.length === 0);
 
-      if (query.length >= 1) {
-        var results = searchCoins(query);
-        renderSearchResults(searchResults, results, query);
-        searchResults.classList.remove('hidden');
-        contentDiv.classList.add('hidden');
-      } else {
-        searchResults.classList.add('hidden');
-        contentDiv.classList.remove('hidden');
-      }
+      if (_searchTimer) clearTimeout(_searchTimer);
+      _searchTimer = setTimeout(function() {
+        if (query.length >= 1) {
+          var results = searchCoins(query);
+          renderSearchResults(searchResults, results, query);
+          searchResults.classList.remove('hidden');
+          contentDiv.classList.add('hidden');
+        } else {
+          searchResults.classList.add('hidden');
+          contentDiv.classList.remove('hidden');
+        }
+      }, 150);
     });
 
     clearBtn.addEventListener('click', function() {
@@ -13708,7 +13763,7 @@
     } else {
       history.forEach(function(item) {
         var time = new Date(item.time);
-        var timeStr = time.toLocaleDateString('ja-JP') + ' ' + time.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+        var timeStr = formatDateTimeJST(time);
         // tickerフィールドがない旧データはタイトルから抽出（"🚀 BTC 月間上昇!" → "BTC"）
         var ticker = item.ticker;
         if (!ticker && item.title) {
@@ -14748,7 +14803,7 @@
 
     // レポート生成（簡易版）
     var text = '=== KAIROS 損益レポート ===\n';
-    text += '出力日時: ' + new Date().toLocaleString('ja-JP') + '\n\n';
+    text += '出力日時: ' + formatFullDateTimeJST(new Date()) + '\n\n';
 
     var totalBuy = 0, totalSell = 0;
     records.forEach(function(r) {
@@ -15152,7 +15207,7 @@
       var socialHtml = '';
       if (coin.social && coin.social.interactions > 0) {
         socialHtml = '<div class="urgent-alert__social">' +
-          '<span>SNS ' + formatCompactNum(coin.social.interactions) + '件</span>' +
+          '<span>SNS ' + formatCompactNumber(coin.social.interactions) + '件</span>' +
           (coin.social.trend === 'up' ? '<span class="urgent-alert__trend-up">急上昇</span>' : '') +
         '</div>';
       }
@@ -15191,7 +15246,7 @@
       '</div>';
     }).join('');
 
-    var timeStr = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+    var timeStr = formatTimeJST(new Date());
 
     overlay.innerHTML =
       '<div class="urgent-alert-modal">' +
@@ -15324,7 +15379,7 @@
         // SNS
         (coin.social && coin.social.interactions > 0 ?
           '<div style="padding:10px;background:rgba(168,85,247,0.08);border-radius:8px;margin-bottom:12px;font-size:13px">' +
-            '📱 SNS反応 ' + formatCompactNum(coin.social.interactions) + '件' +
+            '📱 SNS反応 ' + formatCompactNumber(coin.social.interactions) + '件' +
             (coin.social.trend === 'up' ? ' <span style="color:#ef4444">🔥 急上昇</span>' : '') +
           '</div>' : '') +
 
@@ -15355,7 +15410,7 @@
     '</div>';
 
     document.body.appendChild(modal);
-    document.body.style.overflow = 'hidden';
+    lockBodyScroll();
     requestAnimationFrame(function() { modal.classList.add('active'); });
 
     modal.onclick = function(e) {
@@ -15368,23 +15423,11 @@
     var modal = document.getElementById('urgent-coin-detail-modal');
     if (modal) {
       modal.classList.remove('active');
-      document.body.style.overflow = '';
+      unlockBodyScroll();
       setTimeout(function() { modal.remove(); }, 300);
     }
   }
   window.closeUrgentCoinDetailModal = closeUrgentCoinDetailModal;
-
-  function formatCompactUSD(num) {
-    if (num >= 1e9) return (num / 1e9).toFixed(1) + 'B';
-    if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
-    if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
-    return Math.round(num).toString();
-  }
-  function formatCompactNum(num) {
-    if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
-    if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
-    return Math.round(num).toString();
-  }
 
   // ===== Worker URL 設定モーダル =====
   function openWorkerUrlModal() {
@@ -18077,7 +18120,7 @@
 
         // プロバイダー情報
         '<div style="text-align:center;font-size:11px;color:rgba(255,255,255,0.4)">' +
-          'Powered by ' + (data.provider || 'AI') + ' | ' + new Date().toLocaleString('ja-JP') +
+          'Powered by ' + (data.provider || 'AI') + ' | ' + formatFullDateTimeJST(new Date()) +
         '</div>';
 
     }).catch(function(err) {
@@ -18248,7 +18291,7 @@
 
         // プロバイダー情報
         '<div style="text-align:center;font-size:11px;color:rgba(255,255,255,0.4)">' +
-          'Powered by ' + (data.provider || 'AI') + ' | ' + new Date().toLocaleString('ja-JP') +
+          'Powered by ' + (data.provider || 'AI') + ' | ' + formatFullDateTimeJST(new Date()) +
         '</div>';
 
     }).catch(function(err) {
