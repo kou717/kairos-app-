@@ -8238,26 +8238,32 @@
       detailEl.classList.remove('thp-item__detail--open');
     }
 
-    // 別のを開いている場合は先に閉じる
-    var prevIdx = _tradePopupState._openIdx;
-    if (prevIdx !== undefined && prevIdx !== idx) {
-      var prevEl = document.getElementById('thp-detail-' + prevIdx);
-      if (prevEl && _tradePopupState.expanded[prevIdx]) {
-        _collapseDetail(prevEl);
-        _tradePopupState.expanded[prevIdx] = false;
-      }
+    // 開くヘルパー
+    function _expandDetail(detailEl, expandIdx) {
+      detailEl.classList.add('thp-item__detail--open');
+      detailEl.style.maxHeight = '250px';
+      _tradePopupState.expanded[expandIdx] = true;
+      _tradePopupState._openIdx = expandIdx;
     }
+
+    // 別のを開いている場合 → 閉じ終わってから開く
+    var prevIdx = _tradePopupState._openIdx;
+    var needSwitch = prevIdx !== undefined && prevIdx !== idx && _tradePopupState.expanded[prevIdx];
 
     if (isOpen) {
       _collapseDetail(el);
       _tradePopupState.expanded[idx] = false;
       _tradePopupState._openIdx = undefined;
+    } else if (needSwitch) {
+      var prevEl = document.getElementById('thp-detail-' + prevIdx);
+      if (prevEl) {
+        _collapseDetail(prevEl);
+        _tradePopupState.expanded[prevIdx] = false;
+      }
+      // 閉じアニメーション(0.3s)を待ってから開く
+      setTimeout(function() { _expandDetail(el, idx); }, 320);
     } else {
-      // 開く — 内容に近いmax-heightでアニメーション速度を自然に
-      el.classList.add('thp-item__detail--open');
-      el.style.maxHeight = '250px';
-      _tradePopupState.expanded[idx] = true;
-      _tradePopupState._openIdx = idx;
+      _expandDetail(el, idx);
     }
   };
 
