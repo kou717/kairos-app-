@@ -8248,9 +8248,14 @@
       _tradePopupState.expanded[idx] = false;
       _tradePopupState._openIdx = undefined;
     } else {
-      // 開く — scrollHeightで自然な高さを計算
+      // 開く — openクラス付与後にscrollHeightを再計測 + margin/padding分を加算
       el.classList.add('thp-item__detail--open');
-      el.style.maxHeight = el.scrollHeight + 'px';
+      el.style.maxHeight = 'none';
+      var fullHeight = el.scrollHeight;
+      el.style.maxHeight = '0';
+      // 強制reflow後にアニメーション開始
+      void el.offsetHeight;
+      el.style.maxHeight = (fullHeight + 20) + 'px';
       _tradePopupState.expanded[idx] = true;
       _tradePopupState._openIdx = idx;
     }
