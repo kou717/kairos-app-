@@ -9415,6 +9415,9 @@
   var chartUpdateTicker = null;
   var chartUpdatePeriod = null;
   var _chartCandleData = []; // initPriceChart内で保存
+  var _chartResizeObserver = null; // リサイズ監視の参照（破棄時に.disconnect()する）
+  var _chartCrosshairSub = null; // subscribeCrosshairMoveの解除関数
+  var _chartRangeSubs = []; // subscribeVisibleLogicalRangeChangeの解除関数リスト
 
   // ============================================
   // チャート チェックポイント（📍フラグ機能）
@@ -9637,7 +9640,7 @@
         if (!isLongPress) onTap(e);
         endPress(e);
       });
-      pin.addEventListener('touchcancel', endPress);
+      pin.addEventListener('touchcancel', endPress, { passive: true });
       pin.addEventListener('mousedown', startPress);
       pin.addEventListener('mouseup', endPress);
       pin.addEventListener('mouseleave', endPress);
@@ -9679,9 +9682,12 @@
 
     updatePins();
 
-    // スクロール/ズームで位置更新（取引マーカーと同じ）
+    // スクロール/ズームで位置更新（参照を保存して破棄時に解除）
     try {
       priceChart.timeScale().subscribeVisibleLogicalRangeChange(updatePins);
+      _chartRangeSubs.push(function() {
+        try { priceChart.timeScale().unsubscribeVisibleLogicalRangeChange(updatePins); } catch(e) {}
+      });
     } catch(e) {}
   }
 
@@ -9826,16 +9832,19 @@
       return;
     }
 
-    // 既存チャートをクリア
+    // 既存チャートをクリア（リスナー解放）
     if (priceChart) {
+      // ResizeObserver解放
+      if (_chartResizeObserver) { _chartResizeObserver.disconnect(); _chartResizeObserver = null; }
+      // VisibleLogicalRangeChange解放（チェックポイントピン + 取引マーカー）
+      _chartRangeSubs.forEach(function(unsub) { try { unsub(); } catch(e) {} });
+      _chartRangeSubs = [];
+      _chartCrosshairSub = null; // chart.remove()で自動解放される
       priceChart.remove();
       priceChart = null;
     }
 
-    // コンテナをクリア
-    container.innerHTML = '';
-
-    // ローディング表示
+    // ローディング表示（一度だけ書き換え）
     container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-secondary)"><span class="chart-loading">📊 読み込み中...</span></div>';
 
     // チャートデータを取得
@@ -10086,13 +10095,13 @@
         if (statsContainer) statsContainer.innerHTML = '';
       }
 
-      // リサイズ対応
-      var resizeObserver = new ResizeObserver(function() {
+      // リサイズ対応（参照を保持して破棄時にdisconnect）
+      _chartResizeObserver = new ResizeObserver(function() {
         if (priceChart && container.clientWidth > 0) {
           priceChart.applyOptions({ width: container.clientWidth });
         }
       });
-      resizeObserver.observe(container);
+      _chartResizeObserver.observe(container);
 
       // 初期表示範囲を設定（元のサイズで表示、スクロールで過去を見れる）
       var initialVisibleBars = {
@@ -10265,9 +10274,12 @@
 
     updatePins();
 
-    // スクロール/ズームで位置更新
+    // スクロール/ズームで位置更新（参照を保存して破棄時に解除）
     try {
       priceChart.timeScale().subscribeVisibleLogicalRangeChange(updatePins);
+      _chartRangeSubs.push(function() {
+        try { priceChart.timeScale().unsubscribeVisibleLogicalRangeChange(updatePins); } catch(e) {}
+      });
     } catch(e) {}
   }
 
