@@ -7519,6 +7519,72 @@
     }
   }
 
+  // ===== ライブデータ差分更新（タイマー駆動のスコア/価格更新用） =====
+  // renderApp()を呼ばず、表示中の画面のデータだけをin-placeで更新する。
+  // DOM破壊が起きないのでカクつかない。
+  function refreshLiveData() {
+    var root = document.getElementById('root');
+    if (!root) return;
+    var screen = appState.currentScreen;
+
+    // ヘッダーの時計を更新
+    updateGlobalHeaderTime();
+
+    if (screen === 'currencies') {
+      // 通貨一覧：各カードの価格・変化率・グレードを更新
+      root.querySelectorAll('.currencies__list-card').forEach(function(card) {
+        var ticker = card.getAttribute('data-ticker');
+        if (!ticker) return;
+        var cached = scoreCache.data[ticker];
+        if (!cached) return;
+        var viewScore = window.getStrategyScore(ticker);
+        var priceEl = card.querySelector('.currencies__list-card-price');
+        var changeEl = card.querySelector('.currencies__list-card-change');
+        var gradeEl = card.querySelector('.rank-badge');
+        if (priceEl && cached.price != null) priceEl.textContent = formatPrice(cached.price);
+        if (changeEl && cached.change24h != null) {
+          var ch = cached.change24h;
+          changeEl.textContent = formatPercent(ch);
+          changeEl.className = 'currencies__list-card-change ' + (ch >= 0 ? 'positive' : 'negative');
+        }
+        if (gradeEl && viewScore.grade) {
+          gradeEl.textContent = viewScore.grade;
+          gradeEl.className = 'rank-badge rank-badge--sm ' + getGradeClass(viewScore.grade);
+        }
+      });
+    } else if (screen === 'home') {
+      // ホーム画面：ポートフォリオ値は投資データ依存なのでヘッダー時刻のみ
+      var homeTimeEl = root.querySelector('.home-header__time');
+      if (homeTimeEl) homeTimeEl.textContent = formatTimeJST(new Date());
+    } else if (screen === 'detail' && appState.selectedCurrency) {
+      // 詳細画面：価格と変化率を更新
+      var ticker = appState.selectedCurrency;
+      var cached = scoreCache.data[ticker];
+      if (cached) {
+        var priceJpyEl = root.querySelector('.detail__price-jpy');
+        var priceUsdEl = root.querySelector('.detail__price-usd');
+        var priceChangeEl = root.querySelector('.detail__price-change');
+        if (priceJpyEl && cached.price != null) priceJpyEl.textContent = formatYen(cached.price * JPY_RATE);
+        if (priceUsdEl && cached.price != null) priceUsdEl.textContent = formatUSD(cached.price);
+        if (priceChangeEl && cached.change24h != null) {
+          var ch24 = cached.change24h;
+          var sign = ch24 >= 0 ? '+' : '';
+          priceChangeEl.className = 'detail__price-change ' + (ch24 >= 0 ? 'positive' : 'negative');
+          priceChangeEl.innerHTML = sign + ch24.toFixed(1) + '% <small>24h</small>';
+        }
+      }
+    } else if (screen === 'market') {
+      // マーケット画面：ヘッダー時刻のみ
+      var marketTimeEl = root.querySelector('.market__header-time');
+      if (marketTimeEl) marketTimeEl.textContent = formatTimeJST(new Date());
+    } else if (screen === 'ai-compare') {
+      // AI画面：ヘッダー時刻のみ
+      var aiTimeEl = root.querySelector('.ai-screen__header-time');
+      if (aiTimeEl) aiTimeEl.textContent = formatTimeJST(new Date());
+    }
+    // detection/performance/collector/sleeping-lion は独自の非同期ローダーが管理
+  }
+
   // トレードバー（購入/売却ボタン）をフッター上に固定表示
   function updateTradeBar() {
     var existing = document.getElementById('detail-trade-bar');
@@ -7646,61 +7712,71 @@
     }
   }
 
-  function setupEventListeners() {
+  // ===== イベント委譲（1回だけ登録、メモリリーク防止） =====
+
+  function _findClosest(el, selector, boundary) {
+    while (el && el !== boundary) {
+      if (el.matches && el.matches(selector)) return el;
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  var _eventDelegationInstalled = false;
+
+  function installEventDelegation() {
+    if (_eventDelegationInstalled) return;
+    _eventDelegationInstalled = true;
+
     var root = document.getElementById('root');
     if (!root) return;
 
-    root.querySelectorAll('.nav-item').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var screen = btn.getAttribute('data-screen');
+    root.addEventListener('click', function(e) {
+      var el;
+
+      // ボトムナビ
+      if ((el = _findClosest(e.target, '.nav-item', root))) {
+        var screen = el.getAttribute('data-screen');
         if (screen) navigateTo(screen);
-      });
-    });
+        return;
+      }
 
-    root.querySelectorAll('.currencies__list-card, .ai-compare-item, .portfolio-detail__item').forEach(function(el) {
-      el.addEventListener('click', function() {
+      // 通貨カード → 詳細画面
+      if ((el = _findClosest(e.target, '.currencies__list-card, .ai-compare-item, .portfolio-detail__item, .trend-item--opportunity', root))) {
         var ticker = el.getAttribute('data-ticker');
-        if (ticker) {
-          window.KairosApp.viewCurrency(ticker);
-        }
-      });
-    });
+        if (ticker) window.KairosApp.viewCurrency(ticker);
+        return;
+      }
 
-    root.querySelectorAll('.chart-card__period').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var newPeriod = btn.getAttribute('data-period');
+      // ポートフォリオチャート期間切替
+      if ((el = _findClosest(e.target, '.chart-card__period', root))) {
+        var newPeriod = el.getAttribute('data-period');
         appState.chartPeriod = newPeriod;
-        // ボタンのアクティブ状態を更新
         root.querySelectorAll('.chart-card__period').forEach(function(b) {
           b.classList.toggle('chart-card__period--active', b.getAttribute('data-period') === newPeriod);
         });
-        // ポートフォリオチャートSVGだけ再描画
         var chartContainer = root.querySelector('.chart-card__chart');
-        if (chartContainer) {
-          chartContainer.innerHTML = renderPortfolioChart();
-        }
-      });
-    });
+        if (chartContainer) chartContainer.innerHTML = renderPortfolioChart();
+        return;
+      }
 
-    root.querySelectorAll('.detail__chart-period').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var newPeriod = btn.getAttribute('data-period');
-        if (newPeriod === appState.chartPeriod) return;
-        appState.chartPeriod = newPeriod;
-        // ボタンのアクティブ状態を更新
+      // 詳細チャート期間切替
+      if ((el = _findClosest(e.target, '.detail__chart-period', root))) {
+        var detailPeriod = el.getAttribute('data-period');
+        if (detailPeriod === appState.chartPeriod) return;
+        appState.chartPeriod = detailPeriod;
         root.querySelectorAll('.detail__chart-period').forEach(function(b) {
-          b.classList.toggle('active', b.getAttribute('data-period') === newPeriod);
+          b.classList.toggle('active', b.getAttribute('data-period') === detailPeriod);
         });
-        // チャート切り替えアニメーション
         var chartArea = document.querySelector('.detail__chart-area');
         if (chartArea) {
           chartArea.classList.remove('chart-entering');
           chartArea.classList.add('chart-switching');
         }
-        var ticker = appState.selectedCurrency;
-        if (ticker) {
+        var detailTicker = appState.selectedCurrency;
+        if (detailTicker) {
           setTimeout(function() {
-            initPriceChart(ticker, newPeriod);
+            initPriceChart(detailTicker, detailPeriod);
             if (chartArea) {
               chartArea.classList.remove('chart-switching');
               chartArea.classList.add('chart-entering');
@@ -7711,98 +7787,76 @@
             }
           }, 150);
         }
-      });
+        return;
+      }
+
+      // ヘルプアイコン
+      if ((el = _findClosest(e.target, '[data-help]', root))) {
+        e.stopPropagation();
+        var helpKey = el.getAttribute('data-help');
+        var helpData = FEATURE_HELP[helpKey];
+        if (helpData) showFeatureTooltip(el, helpData.title, helpData.description, helpData.details);
+        return;
+      }
+
+      // AIタブ切替
+      if ((el = _findClosest(e.target, '.ai-tab', root))) {
+        var tabId = el.getAttribute('data-tab');
+        if (tabId && aiScreenState.activeTab !== tabId) {
+          aiScreenState.activeTab = tabId;
+          renderApp();
+        }
+        return;
+      }
+
+      // 通貨追加ボタン
+      if ((el = _findClosest(e.target, '.currencies__add-btn', root))) {
+        openAddCurrencyModal();
+        return;
+      }
     });
 
-    // ヘッダーのストラテジートグル（グローバルビューモードも同期）
-    var stratToggle = document.getElementById('global-strategy-toggle');
-    if (stratToggle) {
-      stratToggle.addEventListener('click', function() {
+    // ヘッダーのストラテジートグル（root外なのでdocument委譲）
+    document.addEventListener('click', function(e) {
+      var el;
+
+      if ((el = _findClosest(e.target, '#global-strategy-toggle', document.body))) {
         var ticker = appState.selectedCurrency;
         if (ticker && typeof StrategyManager !== 'undefined') {
           var current = appState.currenciesViewMode || StrategyManager.getStrategy(ticker);
           var next = current === 'longterm' ? 'swing' : 'longterm';
           StrategyManager.setStrategy(ticker, next);
-          // グローバルビューモードも同期（通貨一覧と詳細の一貫性）
           appState.currenciesViewMode = next;
-          // モードブリッジ更新
           var config = STRATEGY_CONFIG[next] || STRATEGY_CONFIG.longterm;
           appState.mode = config.apiMode === 'swing' ? 'satellite' : 'core';
           appState.chartPeriod = config.defaultPeriod;
-          // CSSクラスをトグル（スライドアニメーション）
-          stratToggle.classList.remove('strategy-toggle--longterm', 'strategy-toggle--swing');
-          stratToggle.classList.add('strategy-toggle--' + next);
-          // アニメーション完了後にアプリ再描画
-          setTimeout(function() {
-            renderApp();
-          }, 500);
+          el.classList.remove('strategy-toggle--longterm', 'strategy-toggle--swing');
+          el.classList.add('strategy-toggle--' + next);
+          setTimeout(function() { renderApp(); }, 500);
         }
-      });
-    }
+        return;
+      }
 
-    // 通貨一覧の短期/長期トグル（表示切替のみ、個別設定は変えない）
-    var currViewToggle = document.getElementById('currencies-view-toggle');
-    if (currViewToggle) {
-      currViewToggle.addEventListener('click', function() {
-        var current = appState.currenciesViewMode || 'swing';
-        var next = current === 'longterm' ? 'swing' : 'longterm';
-        appState.currenciesViewMode = next;
-        // スライドアニメーション
-        currViewToggle.classList.remove('strategy-toggle--longterm', 'strategy-toggle--swing');
-        currViewToggle.classList.add('strategy-toggle--' + next);
-        setTimeout(function() {
-          renderApp();
-        }, 300);
-      });
-    }
-
-    // 通貨を追加ボタン
-    var addCurrencyBtn = root.querySelector('.currencies__add-btn');
-    if (addCurrencyBtn) {
-      addCurrencyBtn.addEventListener('click', function() {
-        openAddCurrencyModal();
-      });
-    }
-
-    // ヘルプアイコン（?マーク）のイベント
-    root.querySelectorAll('[data-help]').forEach(function(el) {
-      el.addEventListener('click', function(e) {
-        e.stopPropagation();
-        var helpKey = el.getAttribute('data-help');
-        var helpData = FEATURE_HELP[helpKey];
-        if (helpData) {
-          showFeatureTooltip(el, helpData.title, helpData.description, helpData.details);
-        }
-      });
+      if ((el = _findClosest(e.target, '#currencies-view-toggle', document.body))) {
+        var currMode = appState.currenciesViewMode || 'swing';
+        var nextMode = currMode === 'longterm' ? 'swing' : 'longterm';
+        appState.currenciesViewMode = nextMode;
+        el.classList.remove('strategy-toggle--longterm', 'strategy-toggle--swing');
+        el.classList.add('strategy-toggle--' + nextMode);
+        setTimeout(function() { renderApp(); }, 300);
+        return;
+      }
     });
+  }
 
-    // AIタブの切り替え
-    root.querySelectorAll('.ai-tab').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var tabId = btn.getAttribute('data-tab');
-        if (tabId && aiScreenState.activeTab !== tabId) {
-          aiScreenState.activeTab = tabId;
-          renderApp();
-        }
-      });
-    });
+  function setupEventListeners() {
+    // イベント委譲を1回だけインストール
+    installEventDelegation();
 
-    // トレンド画面のアイテムクリック
-    root.querySelectorAll('.trend-item--opportunity').forEach(function(el) {
-      el.addEventListener('click', function() {
-        var ticker = el.getAttribute('data-ticker');
-        if (ticker) {
-          window.KairosApp.viewCurrency(ticker);
-        }
-      });
-    });
-
-    // 詳細画面のチャートを初期化
+    // 詳細画面のチャートを初期化（画面遷移後に毎回必要）
     if (appState.currentScreen === 'detail') {
       initPriceChart(appState.selectedCurrency, appState.chartPeriod);
     }
-
-    // スワイプジェスチャーはv19で廃止（通貨別ストラテジー制に移行）
   }
 
   // ============================================================
@@ -16357,7 +16411,7 @@
     BackendAPI.healthCheck().then(function(available) {
       if (!available) {
         appState.isLoading = false;
-        renderApp();
+        refreshLiveData();
         return;
       }
 
@@ -16367,7 +16421,7 @@
 
       if (cacheValid && cacheHasData) {
         appState.isLoading = false;
-        renderApp();
+        refreshLiveData();
         return;
       }
 
@@ -16442,9 +16496,9 @@
 
         scoreCache.lastUpdate = Date.now();
 
-        // ローディング解除して画面を再描画
+        // ローディング解除してライブデータのみ更新
         appState.isLoading = false;
-        renderApp();
+        refreshLiveData();
       }).catch(function(err) {
         console.warn('[KAIROS] Rank-all fetch failed:', err.message);
         appState.isLoading = false;
@@ -16496,7 +16550,7 @@
         if (completed === total) {
           scoreCache.lastUpdate = Date.now();
           if (appState.currentScreen === 'home') {
-            renderApp();
+            refreshLiveData();
           }
         }
       }).catch(function(err) {
