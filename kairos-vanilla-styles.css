@@ -15308,6 +15308,15 @@ body.has-ticker-bar {
   color: rgba(255,255,255,0.35);
   font-size: 13px;
 }
+.thp-list-animate {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.thp-list-animate--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
 .thp-list {
   display: flex;
   flex-direction: column;

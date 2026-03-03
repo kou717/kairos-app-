@@ -8187,12 +8187,16 @@
           if (pag) pag.style.display = 'none';
           return;
         }
-        if (_tradePopupState.type === 'exit-reason') {
-          body.innerHTML = _renderExitReasonPopupList(trades);
-        } else {
-          body.innerHTML = _renderSLPopupList(trades);
-        }
+        var listHtml = _tradePopupState.type === 'exit-reason'
+          ? _renderExitReasonPopupList(trades)
+          : _renderSLPopupList(trades);
+        body.innerHTML = '<div class="thp-list-animate">' + listHtml + '</div>';
         _renderTradeHistoryPagination();
+        // なめらかにフェードイン+スライド
+        requestAnimationFrame(function() {
+          var animEl = body.querySelector('.thp-list-animate');
+          if (animEl) animEl.classList.add('thp-list-animate--visible');
+        });
       })
       .catch(function() {
         body.innerHTML = '<div class="thp-empty" style="color:#ef4444">取得失敗</div>';
