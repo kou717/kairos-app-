@@ -8137,15 +8137,35 @@
     });
 
     document.body.appendChild(overlay);
+    // 背面スクロール禁止
+    document.body.style.overflow = 'hidden';
     // Animate in
     requestAnimationFrame(function() { overlay.classList.add('thp-overlay--visible'); });
+    // バックボタンで閉じるためにhistory pushState
+    history.pushState({ thpPopup: true }, '');
+    window.addEventListener('popstate', window._thpOnPopState);
 
     _fetchTradeHistoryPage(1);
   }
 
-  window._closeTradeHistoryPopup = function() {
+  window._thpOnPopState = function(e) {
+    var overlay = document.getElementById('trade-history-popup');
+    if (overlay) {
+      window._closeTradeHistoryPopup(true);
+    }
+  };
+
+  window._closeTradeHistoryPopup = function(fromPopState) {
     var overlay = document.getElementById('trade-history-popup');
     if (!overlay) return;
+    // popstateリスナー解除
+    window.removeEventListener('popstate', window._thpOnPopState);
+    // バックボタン以外で閉じた場合はpushStateを戻す
+    if (!fromPopState) {
+      history.back();
+    }
+    // 背面スクロール復帰
+    document.body.style.overflow = '';
     overlay.classList.remove('thp-overlay--visible');
     setTimeout(function() { overlay.remove(); }, 200);
   };
