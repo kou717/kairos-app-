@@ -8230,8 +8230,9 @@
     if (!el) return;
     var isOpen = _tradePopupState.expanded[idx];
 
-    // 閉じるヘルパー — 現在の高さを固定してからアニメーション
+    // 閉じるヘルパー
     function _collapseDetail(detailEl) {
+      detailEl.style.overflow = 'hidden';
       detailEl.style.maxHeight = detailEl.scrollHeight + 'px';
       void detailEl.offsetHeight;
       detailEl.style.maxHeight = '0';
@@ -8249,25 +8250,36 @@
     }
 
     if (isOpen) {
-      // 閉じる
       _collapseDetail(el);
       _tradePopupState.expanded[idx] = false;
       _tradePopupState._openIdx = undefined;
     } else {
-      // 開く — アニメーション後にmax-height:noneで見切れ防止
+      // 開く
+      el.style.overflow = 'hidden';
       el.classList.add('thp-item__detail--open');
       el.style.maxHeight = 'none';
       var fullHeight = el.scrollHeight;
       el.style.maxHeight = '0';
       void el.offsetHeight;
       el.style.maxHeight = fullHeight + 'px';
-      // トランジション完了後にnoneにして完全に見切れを防ぐ
-      el.addEventListener('transitionend', function onEnd(e) {
-        if (e.propertyName === 'max-height' && _tradePopupState.expanded[idx]) {
+      // アニメーション完了後にoverflow解除+max-height解除で見切れ防止
+      // setTimeoutフォールバック(transitionendが発火しない場合に備える)
+      var unlocked = false;
+      function unlock() {
+        if (unlocked) return;
+        unlocked = true;
+        if (_tradePopupState.expanded[idx]) {
           el.style.maxHeight = 'none';
+          el.style.overflow = 'visible';
         }
-        el.removeEventListener('transitionend', onEnd);
+      }
+      el.addEventListener('transitionend', function onEnd(e) {
+        if (e.propertyName === 'max-height') {
+          unlock();
+          el.removeEventListener('transitionend', onEnd);
+        }
       });
+      setTimeout(unlock, 350); // 0.3s transition + 余裕
       _tradePopupState.expanded[idx] = true;
       _tradePopupState._openIdx = idx;
     }
