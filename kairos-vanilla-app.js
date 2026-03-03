@@ -8232,7 +8232,6 @@
 
     // 閉じるヘルパー
     function _collapseDetail(detailEl) {
-      detailEl.style.overflow = 'hidden';
       detailEl.style.maxHeight = detailEl.scrollHeight + 'px';
       void detailEl.offsetHeight;
       detailEl.style.maxHeight = '0';
@@ -8254,32 +8253,9 @@
       _tradePopupState.expanded[idx] = false;
       _tradePopupState._openIdx = undefined;
     } else {
-      // 開く
-      el.style.overflow = 'hidden';
+      // 開く — 十分大きなmax-heightでアニメーション（計算誤差によるガクつき防止）
       el.classList.add('thp-item__detail--open');
-      el.style.maxHeight = 'none';
-      var fullHeight = el.scrollHeight;
-      el.style.maxHeight = '0';
-      void el.offsetHeight;
-      el.style.maxHeight = fullHeight + 'px';
-      // アニメーション完了後にoverflow解除+max-height解除で見切れ防止
-      // setTimeoutフォールバック(transitionendが発火しない場合に備える)
-      var unlocked = false;
-      function unlock() {
-        if (unlocked) return;
-        unlocked = true;
-        if (_tradePopupState.expanded[idx]) {
-          el.style.maxHeight = 'none';
-          el.style.overflow = 'visible';
-        }
-      }
-      el.addEventListener('transitionend', function onEnd(e) {
-        if (e.propertyName === 'max-height') {
-          unlock();
-          el.removeEventListener('transitionend', onEnd);
-        }
-      });
-      setTimeout(unlock, 350); // 0.3s transition + 余裕
+      el.style.maxHeight = '500px';
       _tradePopupState.expanded[idx] = true;
       _tradePopupState._openIdx = idx;
     }
