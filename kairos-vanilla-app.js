@@ -2523,6 +2523,13 @@
   window.addEventListener('popstate', function(e) {
     var state = e.state;
 
+    // トレード履歴ボトムシートを閉じる
+    var thpOverlay = document.getElementById('trade-history-popup');
+    if (thpOverlay) {
+      window._closeTradeHistoryPopup(true);
+      return;
+    }
+
     // Collector詳細モーダルを閉じる
     var collectorOverlay = document.getElementById('collector-detail-overlay');
     if (collectorOverlay) {
@@ -8137,35 +8144,39 @@
     });
 
     document.body.appendChild(overlay);
-    // 背面スクロール禁止
+
+    // 背面スクロール禁止（モバイル対応: position:fixed + touchmove防止）
+    _tradePopupState._scrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = '-' + _tradePopupState._scrollY + 'px';
+    document.body.style.left = '0';
+    document.body.style.right = '0';
     document.body.style.overflow = 'hidden';
+
     // Animate in
     requestAnimationFrame(function() { overlay.classList.add('thp-overlay--visible'); });
+
     // バックボタンで閉じるためにhistory pushState
     history.pushState({ thpPopup: true }, '');
-    window.addEventListener('popstate', window._thpOnPopState);
 
     _fetchTradeHistoryPage(1);
   }
 
-  window._thpOnPopState = function(e) {
-    var overlay = document.getElementById('trade-history-popup');
-    if (overlay) {
-      window._closeTradeHistoryPopup(true);
-    }
-  };
-
   window._closeTradeHistoryPopup = function(fromPopState) {
     var overlay = document.getElementById('trade-history-popup');
     if (!overlay) return;
-    // popstateリスナー解除
-    window.removeEventListener('popstate', window._thpOnPopState);
     // バックボタン以外で閉じた場合はpushStateを戻す
     if (!fromPopState) {
       history.back();
     }
     // 背面スクロール復帰
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
     document.body.style.overflow = '';
+    window.scrollTo(0, _tradePopupState._scrollY || 0);
+
     overlay.classList.remove('thp-overlay--visible');
     setTimeout(function() { overlay.remove(); }, 200);
   };
