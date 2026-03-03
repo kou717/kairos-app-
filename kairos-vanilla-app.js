@@ -5439,7 +5439,6 @@
         '</div>';
       });
       html += '</div>' +
-        '<div id="exit-reason-trades" class="exit-reason-trades" style="display:none"></div>' +
       '</div>';
     }
 
@@ -8106,24 +8105,59 @@
     return val.toFixed(2);
   }
 
-  // Exit reason trades toggle
-  var _exitReasonOpen = '';
-  window._toggleExitReasonTrades = function(reason, cardEl) {
-    var container = document.getElementById('exit-reason-trades');
-    if (!container) return;
+  // ============================================================
+  // Trade History Popup — shared by Exit Reason & SL Closed
+  // ============================================================
+  var _tradePopupState = { page: 1, total: 0, perPage: 10, type: '', param: '', expanded: {} };
 
-    // Toggle off if same reason tapped again
-    if (_exitReasonOpen === reason) {
-      container.style.display = 'none';
-      _exitReasonOpen = '';
-      return;
-    }
+  function _openTradeHistoryPopup(title, type, param) {
+    _tradePopupState = { page: 1, total: 0, perPage: 10, type: type, param: param, expanded: {} };
 
-    _exitReasonOpen = reason;
-    container.style.display = 'block';
-    container.innerHTML = '<div style="text-align:center;padding:8px;color:rgba(255,255,255,0.4);font-size:12px">読み込み中...</div>';
+    // Remove existing popup
+    var existing = document.getElementById('trade-history-popup');
+    if (existing) existing.remove();
 
-    // Determine current date filter
+    var overlay = document.createElement('div');
+    overlay.id = 'trade-history-popup';
+    overlay.className = 'thp-overlay';
+    overlay.innerHTML = '<div class="thp-content">' +
+      '<div class="thp-header">' +
+        '<span class="thp-header__title">' + title + '</span>' +
+        '<button class="thp-header__close" onclick="window._closeTradeHistoryPopup()">✕</button>' +
+      '</div>' +
+      '<div id="thp-body" class="thp-body">' +
+        '<div class="thp-loading">読み込み中...</div>' +
+      '</div>' +
+      '<div id="thp-pagination" class="thp-pagination" style="display:none"></div>' +
+    '</div>';
+
+    // Close on overlay click
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) window._closeTradeHistoryPopup();
+    });
+
+    document.body.appendChild(overlay);
+    // Animate in
+    requestAnimationFrame(function() { overlay.classList.add('thp-overlay--visible'); });
+
+    _fetchTradeHistoryPage(1);
+  }
+
+  window._closeTradeHistoryPopup = function() {
+    var overlay = document.getElementById('trade-history-popup');
+    if (!overlay) return;
+    overlay.classList.remove('thp-overlay--visible');
+    setTimeout(function() { overlay.remove(); }, 200);
+  };
+
+  function _fetchTradeHistoryPage(page) {
+    var body = document.getElementById('thp-body');
+    if (!body) return;
+    body.innerHTML = '<div class="thp-loading">読み込み中...</div>';
+    _tradePopupState.page = page;
+    _tradePopupState.expanded = {};
+
+    var offset = (page - 1) * _tradePopupState.perPage;
     var dateParam = '';
     if (!_perfAllDates) {
       var sel = document.getElementById('perf-date-filter');
@@ -8131,23 +8165,103 @@
       dateParam = '&date=' + d;
     }
 
-    fetch(BACKEND_URL + '/api/collector/paper-trades/by-exit-reason?reason=' + encodeURIComponent(reason) + dateParam + '&limit=10')
-      .then(function(r) { return r.ok ? r.json() : { trades: [] }; })
+    var url;
+    if (_tradePopupState.type === 'exit-reason') {
+      url = BACKEND_URL + '/api/collector/paper-trades/by-exit-reason?reason=' +
+        encodeURIComponent(_tradePopupState.param) + dateParam +
+        '&limit=' + _tradePopupState.perPage + '&offset=' + offset;
+    } else {
+      url = BACKEND_URL + '/api/collector/sleeping-lion/closed-trades?' +
+        'limit=' + _tradePopupState.perPage + '&offset=' + offset +
+        (dateParam ? dateParam : '');
+    }
+
+    fetch(url)
+      .then(function(r) { return r.ok ? r.json() : { trades: [], total: 0 }; })
       .then(function(data) {
         var trades = data.trades || [];
+        _tradePopupState.total = data.total || 0;
         if (trades.length === 0) {
-          container.innerHTML = '<div style="text-align:center;padding:8px;color:rgba(255,255,255,0.35);font-size:12px">該当トレードなし</div>';
+          body.innerHTML = '<div class="thp-empty">該当トレードなし</div>';
+          var pag = document.getElementById('thp-pagination');
+          if (pag) pag.style.display = 'none';
           return;
         }
-        container.innerHTML = _renderExitReasonTradesList(trades);
+        if (_tradePopupState.type === 'exit-reason') {
+          body.innerHTML = _renderExitReasonPopupList(trades);
+        } else {
+          body.innerHTML = _renderSLPopupList(trades);
+        }
+        _renderTradeHistoryPagination();
       })
       .catch(function() {
-        container.innerHTML = '<div style="text-align:center;padding:8px;color:#ef4444;font-size:12px">取得失敗</div>';
+        body.innerHTML = '<div class="thp-empty" style="color:#ef4444">取得失敗</div>';
       });
+  }
+
+  window._thpGoPage = function(page) {
+    if (page < 1) return;
+    var maxPage = Math.ceil(_tradePopupState.total / _tradePopupState.perPage) || 1;
+    if (page > maxPage) return;
+    _fetchTradeHistoryPage(page);
   };
 
-  function _renderExitReasonTradesList(trades) {
-    var html = '<div class="sl-closed-list" style="margin-top:8px">';
+  function _renderTradeHistoryPagination() {
+    var pag = document.getElementById('thp-pagination');
+    if (!pag) return;
+    var total = _tradePopupState.total;
+    var perPage = _tradePopupState.perPage;
+    var maxPage = Math.ceil(total / perPage) || 1;
+    var page = _tradePopupState.page;
+
+    if (maxPage <= 1) { pag.style.display = 'none'; return; }
+
+    pag.style.display = 'flex';
+    pag.innerHTML = '<button class="thp-pagination__btn" onclick="window._thpGoPage(' + (page - 1) + ')"' + (page <= 1 ? ' disabled' : '') + '>&lt;</button>' +
+      '<span class="thp-pagination__info">' + page + ' / ' + maxPage + ' <span style="color:rgba(255,255,255,0.35)">(' + total + '件)</span></span>' +
+      '<button class="thp-pagination__btn" onclick="window._thpGoPage(' + (page + 1) + ')"' + (page >= maxPage ? ' disabled' : '') + '>&gt;</button>';
+  }
+
+  // Toggle inline detail for a trade item in popup
+  window._thpToggleDetail = function(idx) {
+    var el = document.getElementById('thp-detail-' + idx);
+    if (!el) return;
+    var isOpen = _tradePopupState.expanded[idx];
+    if (isOpen) {
+      el.style.display = 'none';
+      _tradePopupState.expanded[idx] = false;
+    } else {
+      el.style.display = 'block';
+      _tradePopupState.expanded[idx] = true;
+    }
+  };
+
+  function _thpFormatTime(isoStr) {
+    if (!isoStr) return '-';
+    try {
+      var d = new Date(isoStr);
+      return d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' });
+    } catch(e) { return '-'; }
+  }
+
+  function _thpFormatDateTime(isoStr) {
+    if (!isoStr) return '-';
+    try {
+      var d = new Date(isoStr);
+      return d.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric', timeZone: 'Asia/Tokyo' }) + ' ' +
+        d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' });
+    } catch(e) { return '-'; }
+  }
+
+  function _thpTrustBadge(trust) {
+    var color = trust === 'high' ? '#10b981' : trust === 'medium' ? '#f59e0b' : '#ef4444';
+    var label = trust === 'high' ? 'HIGH' : trust === 'medium' ? 'MED' : trust === 'low' ? 'LOW' : (trust || '-').toUpperCase();
+    return '<span class="thp-trust-badge" style="color:' + color + ';border-color:' + color + '">' + label + '</span>';
+  }
+
+  // Exit Reason popup list
+  function _renderExitReasonPopupList(trades) {
+    var html = '<div class="thp-list">';
     for (var i = 0; i < trades.length; i++) {
       var t = trades[i];
       var pnl = t.realized_pnl_pct || 0;
@@ -8155,37 +8269,98 @@
       var pnlSign = pnl >= 0 ? '+' : '';
       var peakPnl = t.peak_pnl_pct || 0;
       var timing = t.entry_timing || '-';
-      var trustColor = t.combined_trust === 'high' ? '#10b981' : t.combined_trust === 'medium' ? '#f59e0b' : '#ef4444';
 
-      var exitTime = '';
-      if (t.exit_at) {
-        try {
-          var d = new Date(t.exit_at);
-          exitTime = d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' });
-        } catch(e) { exitTime = ''; }
-      }
-
-      html += '<div class="sl-closed-item">' +
-        '<div class="sl-closed-item__header">' +
-          '<span class="sl-closed-item__symbol">' + (t.symbol || '?') + '</span>' +
-          '<span class="sl-closed-item__pnl" style="color:' + pnlColor + '">' + pnlSign + pnl.toFixed(2) + '%</span>' +
+      html += '<div class="thp-item" onclick="window._thpToggleDetail(' + i + ')">' +
+        '<div class="thp-item__row">' +
+          '<span class="thp-item__symbol">' + (t.symbol || '?') + '</span>' +
+          _thpTrustBadge(t.combined_trust) +
+          '<span class="thp-item__timing">' + timing + '</span>' +
+          '<span class="thp-item__pnl" style="color:' + pnlColor + '">' + pnlSign + pnl.toFixed(2) + '%</span>' +
         '</div>' +
-        '<div class="sl-closed-item__details">' +
-          '<span>' + timing + '</span>' +
-          '<span style="color:rgba(255,255,255,0.4)">|</span>' +
+        '<div class="thp-item__sub">' +
           '<span>最高 ' + (peakPnl >= 0 ? '+' : '') + peakPnl.toFixed(1) + '%</span>' +
-          '<span style="color:rgba(255,255,255,0.4)">|</span>' +
           '<span>スコア ' + (t.moonshot_score ? t.moonshot_score.toFixed(0) : '-') + '</span>' +
+          '<span>' + _thpFormatTime(t.exit_at) + '</span>' +
         '</div>' +
-        '<div class="sl-closed-item__meta">' +
-          '<span style="color:' + trustColor + '">' + (t.combined_trust || '-') + '</span>' +
-          (exitTime ? '<span>' + exitTime + '</span>' : '') +
+        '<div id="thp-detail-' + i + '" class="thp-item__detail" style="display:none">' +
+          '<div class="thp-detail-grid">' +
+            '<div class="thp-detail-cell"><span class="thp-detail-label">エントリー価格</span><span class="thp-detail-value">' + _slFormatPrice(t.entry_price || 0) + '</span></div>' +
+            '<div class="thp-detail-cell"><span class="thp-detail-label">決済価格</span><span class="thp-detail-value">' + _slFormatPrice(t.exit_price || 0) + '</span></div>' +
+            '<div class="thp-detail-cell"><span class="thp-detail-label">保有時間</span><span class="thp-detail-value">' + _slDurationStr(t.holding_duration || 0) + '</span></div>' +
+            '<div class="thp-detail-cell"><span class="thp-detail-label">ポジションサイズ</span><span class="thp-detail-value">$' + (t.position_size || 0).toFixed(0) + '</span></div>' +
+            '<div class="thp-detail-cell"><span class="thp-detail-label">エントリー</span><span class="thp-detail-value">' + _thpFormatDateTime(t.entry_at) + '</span></div>' +
+            '<div class="thp-detail-cell"><span class="thp-detail-label">決済</span><span class="thp-detail-value">' + _thpFormatDateTime(t.exit_at) + '</span></div>' +
+          '</div>' +
         '</div>' +
       '</div>';
     }
     html += '</div>';
     return html;
   }
+
+  // SL Closed Trades popup list
+  function _renderSLPopupList(trades) {
+    var html = '<div class="thp-list">';
+    for (var i = 0; i < trades.length; i++) {
+      var t = trades[i];
+      var pnl = t.realized_pnl_pct || 0;
+      var pnlColor = pnl > 0 ? '#10b981' : '#ef4444';
+      var pnlSign = pnl >= 0 ? '+' : '';
+      var peakPnl = t.peak_pnl_pct || 0;
+      var holdMin = t.holding_duration ? Math.round(t.holding_duration / 60) : 0;
+      var holdStr = holdMin >= 60 ? Math.floor(holdMin / 60) + 'h' + (holdMin % 60) + 'm' : holdMin + 'm';
+      var awakenMin = t.time_to_awaken_sec ? Math.round(t.time_to_awaken_sec / 60) : 0;
+      var exitJa = _slExitReasonJa(t.exit_reason || '');
+
+      html += '<div class="thp-item" onclick="window._thpToggleDetail(' + i + ')">' +
+        '<div class="thp-item__row">' +
+          '<span class="thp-item__symbol">' + (t.symbol || '?') + '</span>' +
+          _thpTrustBadge(t.combined_trust) +
+          '<span class="thp-item__timing">' + exitJa + '</span>' +
+          '<span class="thp-item__pnl" style="color:' + pnlColor + '">' + pnlSign + pnl.toFixed(2) + '%</span>' +
+        '</div>' +
+        '<div class="thp-item__sub">' +
+          '<span>保有 ' + holdStr + '</span>' +
+          '<span>最高 ' + (peakPnl >= 0 ? '+' : '') + peakPnl.toFixed(1) + '%</span>' +
+          '<span>覚醒 ' + awakenMin + '分</span>' +
+          '<span>' + _thpFormatTime(t.exit_at) + '</span>' +
+        '</div>' +
+        '<div id="thp-detail-' + i + '" class="thp-item__detail" style="display:none">' +
+          '<div class="thp-detail-grid">' +
+            '<div class="thp-detail-cell"><span class="thp-detail-label">エントリー価格</span><span class="thp-detail-value">' + _slFormatPrice(t.entry_price || 0) + '</span></div>' +
+            '<div class="thp-detail-cell"><span class="thp-detail-label">決済価格</span><span class="thp-detail-value">' + _slFormatPrice(t.exit_price || 0) + '</span></div>' +
+            '<div class="thp-detail-cell"><span class="thp-detail-label">ベースライン価格</span><span class="thp-detail-value">' + _slFormatPrice(t.baseline_price || 0) + '</span></div>' +
+            '<div class="thp-detail-cell"><span class="thp-detail-label">スコア</span><span class="thp-detail-value">' + (t.moonshot_score ? t.moonshot_score.toFixed(0) : '-') + '</span></div>' +
+            '<div class="thp-detail-cell"><span class="thp-detail-label">ポジションサイズ</span><span class="thp-detail-value">$' + (t.position_size || 0).toFixed(0) + '</span></div>' +
+            '<div class="thp-detail-cell"><span class="thp-detail-label">流動性</span><span class="thp-detail-value">$' + _slFormatUsd(t.entry_liquidity || 0) + '</span></div>' +
+            '<div class="thp-detail-cell"><span class="thp-detail-label">出来高</span><span class="thp-detail-value">$' + _slFormatUsd(t.entry_volume || 0) + '</span></div>' +
+            '<div class="thp-detail-cell"><span class="thp-detail-label">決済時刻</span><span class="thp-detail-value">' + _thpFormatDateTime(t.exit_at) + '</span></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  // Open Exit Reason trades popup
+  window._toggleExitReasonTrades = function(reason, cardEl) {
+    var exitLabels = {
+      'rugpull_detected': '🚨 ラグプル検知',
+      'emergency_stop': '🛑 緊急損切り', 'trailing_stop': '📉 トレーリング',
+      'moonshot_crash_signal': '💥 暴落検知', 'momentum_death': '📊 勢い消失',
+      'max_hold_time': '⏰ 24h上限', 'time_limit': '⏰ 時間切れ (旧)',
+      'no_liquidity': '💀 流動性喪失', 'historical_data_unavailable': '📭 データ欠損',
+      'no_price_data': '📭 価格なし',
+      'profit_50pct_partial': '🎯 +50%利確', 'profit_100pct_partial': '🚀 +100%利確',
+      'profit_500pct_partial': '🌙 +500%利確',
+      'profit_10x_partial': '🚀 10x利確', 'profit_100x_partial': '🌙 100x利確',
+      'profit_1000x': '✨ 1000x', 'dream_exit_crash_signal': '💥 夢枠暴落',
+      'unknown': '❓ 不明'
+    };
+    var title = exitLabels[reason] || reason;
+    _openTradeHistoryPopup(title, 'exit-reason', reason);
+  };
 
   function _slExitReasonJa(reason) {
     var map = {
@@ -8235,8 +8410,7 @@
       '<div style="text-align:center;font-size:11px;color:rgba(255,255,255,0.35);margin-top:4px">タップで詳細 ▼</div>' +
     '</div>';
 
-    // Closed trades detail container (loaded on tap)
-    html += '<div id="sl-closed-trades" class="sl-closed-trades" style="display:none"></div>';
+    // (Closed trades now shown in popup)
 
     // Funnel: 監視 → 覚醒 → トレード → 勝ち
     var totalWatched = (wl.watching || 0) + (wl.awakened || 0) + (wl.timeout || 0) + (wl.dead || 0);
@@ -8257,90 +8431,9 @@
     return html;
   }
 
-  var _slClosedTradesOpen = false;
   window._toggleSLClosedTrades = function() {
-    var container = document.getElementById('sl-closed-trades');
-    if (!container) return;
-
-    if (_slClosedTradesOpen) {
-      container.style.display = 'none';
-      _slClosedTradesOpen = false;
-      return;
-    }
-
-    _slClosedTradesOpen = true;
-    container.style.display = 'block';
-    container.innerHTML = '<div style="text-align:center;padding:12px;color:rgba(255,255,255,0.4);font-size:12px">読み込み中...</div>';
-
-    // Determine current date filter
-    var dateParam = '';
-    if (!_perfAllDates) {
-      var sel = document.getElementById('perf-date-filter');
-      var d = (sel && sel.value) ? sel.value : _getTodayJST();
-      dateParam = '?date=' + d;
-    }
-
-    fetch(BACKEND_URL + '/api/collector/sleeping-lion/closed-trades' + dateParam)
-      .then(function(r) { return r.ok ? r.json() : { trades: [] }; })
-      .then(function(data) {
-        var trades = data.trades || [];
-        if (trades.length === 0) {
-          container.innerHTML = '<div style="text-align:center;padding:12px;color:rgba(255,255,255,0.35);font-size:12px">クローズ済みトレードなし</div>';
-          return;
-        }
-        container.innerHTML = _renderSLClosedTradesList(trades);
-      })
-      .catch(function() {
-        container.innerHTML = '<div style="text-align:center;padding:12px;color:#ef4444;font-size:12px">取得失敗</div>';
-      });
+    _openTradeHistoryPopup('🦁 眠れる獅子 トレード履歴', 'sl-closed', '');
   };
-
-  function _renderSLClosedTradesList(trades) {
-    var html = '<div class="sl-closed-list">';
-    for (var i = 0; i < trades.length; i++) {
-      var t = trades[i];
-      var pnl = t.realized_pnl_pct || 0;
-      var isWin = pnl > 0;
-      var pnlColor = isWin ? '#10b981' : '#ef4444';
-      var pnlSign = pnl >= 0 ? '+' : '';
-      var peakPnl = t.peak_pnl_pct || 0;
-      var holdMin = t.holding_duration ? Math.round(t.holding_duration / 60) : 0;
-      var holdStr = holdMin >= 60 ? Math.floor(holdMin / 60) + 'h' + (holdMin % 60) + 'm' : holdMin + 'm';
-      var awakenMin = t.time_to_awaken_sec ? Math.round(t.time_to_awaken_sec / 60) : 0;
-      var exitJa = _slExitReasonJa(t.exit_reason || '');
-      var trustColor = t.combined_trust === 'high' ? '#10b981' : t.combined_trust === 'medium' ? '#f59e0b' : '#ef4444';
-
-      // Exit time in JST
-      var exitTime = '';
-      if (t.exit_at) {
-        try {
-          var d = new Date(t.exit_at);
-          exitTime = d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' });
-        } catch(e) { exitTime = ''; }
-      }
-
-      html += '<div class="sl-closed-item">' +
-        '<div class="sl-closed-item__header">' +
-          '<span class="sl-closed-item__symbol">' + (t.symbol || '?') + '</span>' +
-          '<span class="sl-closed-item__pnl" style="color:' + pnlColor + '">' + pnlSign + pnl.toFixed(2) + '%</span>' +
-        '</div>' +
-        '<div class="sl-closed-item__details">' +
-          '<span>' + exitJa + '</span>' +
-          '<span style="color:rgba(255,255,255,0.4)">|</span>' +
-          '<span>保有 ' + holdStr + '</span>' +
-          '<span style="color:rgba(255,255,255,0.4)">|</span>' +
-          '<span>最高 ' + (peakPnl >= 0 ? '+' : '') + peakPnl.toFixed(1) + '%</span>' +
-        '</div>' +
-        '<div class="sl-closed-item__meta">' +
-          '<span style="color:' + trustColor + '">' + (t.combined_trust || '-') + '</span>' +
-          '<span>覚醒 ' + awakenMin + '分</span>' +
-          (exitTime ? '<span>' + exitTime + '</span>' : '') +
-        '</div>' +
-      '</div>';
-    }
-    html += '</div>';
-    return html;
-  }
 
   function _slFunnelStep(label, count, total) {
     var pct = total > 0 ? (count / total * 100) : 0;

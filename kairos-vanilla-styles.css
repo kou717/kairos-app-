@@ -15229,6 +15229,209 @@ body.has-ticker-bar {
   color: rgba(255,255,255,0.35);
   margin-top: 4px;
 }
+
+/* ============================================================
+   Trade History Popup (Exit Reason / SL Closed)
+   ============================================================ */
+.thp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.thp-overlay--visible {
+  opacity: 1;
+}
+.thp-content {
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  background: var(--bg-primary, #0f172a);
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateY(20px);
+  transition: transform 0.2s ease;
+}
+.thp-overlay--visible .thp-content {
+  transform: translateY(0);
+}
+.thp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+.thp-header__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary, #fff);
+}
+.thp-header__close {
+  background: rgba(255,255,255,0.08);
+  border: none;
+  color: rgba(255,255,255,0.6);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.thp-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+  -webkit-overflow-scrolling: touch;
+}
+.thp-loading {
+  text-align: center;
+  padding: 32px 8px;
+  color: rgba(255,255,255,0.4);
+  font-size: 13px;
+}
+.thp-empty {
+  text-align: center;
+  padding: 32px 8px;
+  color: rgba(255,255,255,0.35);
+  font-size: 13px;
+}
+.thp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.thp-item {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.thp-item:active {
+  background: rgba(255,255,255,0.08);
+}
+.thp-item__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.thp-item__symbol {
+  font-weight: 700;
+  font-size: 14px;
+  color: rgba(255,255,255,0.92);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}
+.thp-item__timing {
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+  flex: 1;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.thp-item__pnl {
+  font-weight: 700;
+  font-size: 15px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  min-width: 70px;
+  text-align: right;
+}
+.thp-trust-badge {
+  font-size: 9px;
+  font-weight: 700;
+  border: 1px solid;
+  border-radius: 4px;
+  padding: 1px 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.thp-item__sub {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.thp-item__detail {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.thp-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+}
+.thp-detail-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.thp-detail-label {
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+}
+.thp-detail-value {
+  font-size: 12px;
+  color: rgba(255,255,255,0.8);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.thp-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+.thp-pagination__btn {
+  background: rgba(255,255,255,0.08);
+  border: none;
+  color: rgba(255,255,255,0.8);
+  width: 36px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.thp-pagination__btn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+.thp-pagination__btn:not(:disabled):active {
+  background: rgba(255,255,255,0.15);
+}
+.thp-pagination__info {
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
+  font-weight: 600;
+}
 /* ============================================
    通貨別ストラテジーUI（長期/短期の2択）
    ============================================ */
