@@ -8253,9 +8253,9 @@
       _tradePopupState.expanded[idx] = false;
       _tradePopupState._openIdx = undefined;
     } else {
-      // 開く — 十分大きなmax-heightでアニメーション（計算誤差によるガクつき防止）
+      // 開く — 内容に近いmax-heightでアニメーション速度を自然に
       el.classList.add('thp-item__detail--open');
-      el.style.maxHeight = '500px';
+      el.style.maxHeight = '250px';
       _tradePopupState.expanded[idx] = true;
       _tradePopupState._openIdx = idx;
     }
