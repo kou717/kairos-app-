@@ -8120,7 +8120,7 @@
     var overlay = document.createElement('div');
     overlay.id = 'trade-history-popup';
     overlay.className = 'thp-overlay';
-    overlay.innerHTML = '<div class="thp-content">' +
+    overlay.innerHTML = '<div class="thp-content thp-content--loading">' +
       '<div class="thp-header">' +
         '<span class="thp-header__title">' + title + '</span>' +
         '<button class="thp-header__close" onclick="window._closeTradeHistoryPopup()">✕</button>' +
@@ -8153,6 +8153,11 @@
   function _fetchTradeHistoryPage(page) {
     var body = document.getElementById('thp-body');
     if (!body) return;
+    // ページ切替時は高さを維持しつつ中身だけ差し替え
+    var isPageSwitch = page > 1 || _tradePopupState.page > 1;
+    if (isPageSwitch) {
+      body.style.minHeight = body.offsetHeight + 'px';
+    }
     body.innerHTML = '<div class="thp-loading">読み込み中...</div>';
     _tradePopupState.page = page;
     _tradePopupState.expanded = {};
@@ -8190,13 +8195,16 @@
         var listHtml = _tradePopupState.type === 'exit-reason'
           ? _renderExitReasonPopupList(trades)
           : _renderSLPopupList(trades);
-        body.innerHTML = '<div class="thp-list-animate">' + listHtml + '</div>';
+        body.innerHTML = listHtml;
+        body.style.minHeight = '';
         _renderTradeHistoryPagination();
-        // なめらかにフェードイン+スライド
-        requestAnimationFrame(function() {
-          var animEl = body.querySelector('.thp-list-animate');
-          if (animEl) animEl.classList.add('thp-list-animate--visible');
-        });
+        // ポップアップをスーッと広げる（初回読み込み時のみ）
+        var content = document.querySelector('#trade-history-popup .thp-content');
+        if (content && content.classList.contains('thp-content--loading')) {
+          requestAnimationFrame(function() {
+            content.classList.remove('thp-content--loading');
+          });
+        }
       })
       .catch(function() {
         body.innerHTML = '<div class="thp-empty" style="color:#ef4444">取得失敗</div>';

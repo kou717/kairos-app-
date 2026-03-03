@@ -15259,7 +15259,10 @@ body.has-ticker-bar {
   flex-direction: column;
   overflow: hidden;
   transform: translateY(20px);
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, max-height 0.4s ease;
+}
+.thp-content--loading {
+  max-height: 120px;
 }
 .thp-overlay--visible .thp-content {
   transform: translateY(0);
@@ -15307,15 +15310,6 @@ body.has-ticker-bar {
   padding: 32px 8px;
   color: rgba(255,255,255,0.35);
   font-size: 13px;
-}
-.thp-list-animate {
-  opacity: 0;
-  transform: translateY(12px);
-  transition: opacity 0.35s ease, transform 0.35s ease;
-}
-.thp-list-animate--visible {
-  opacity: 1;
-  transform: translateY(0);
 }
 .thp-list {
   display: flex;
