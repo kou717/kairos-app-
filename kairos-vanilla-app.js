@@ -8043,9 +8043,6 @@
     var pos = item.position_size != null ? item.position_size : 1.0;
     var holdStr = _slHoldingStr(item.entry_at);
 
-    // Exit proximity
-    var trailingPct = peakPnl > 0 ? ((pnl - peakPnl) / peakPnl * 100) : 0;
-
     return '<div class="sl-list-item sl-list-item--trade" onclick="window._openSlDetail(' + idx + ',\'trade\')">' +
       '<div class="sl-list-item__header">' +
         '<span class="sl-list-item__symbol">' + (item.symbol || '???') + '</span>' +
@@ -8057,9 +8054,6 @@
         '<span>' + holdStr + '</span>' +
         '<span>Peak ' + (peakPnl >= 0 ? '+' : '') + peakPnl.toFixed(1) + '%</span>' +
       '</div>' +
-      '<div class="sl-trade-item__exit">' +
-        '<div class="sl-trade-item__exit-label">trailing: peak→now ' + trailingPct.toFixed(0) + '%/-25%</div>' +
-        '<div class="sl-trade-item__exit-label">emergency: entry→now ' + pnl.toFixed(0) + '%/-30%</div>' +
       '</div>' +
     '</div>';
   }
