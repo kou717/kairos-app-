@@ -5367,7 +5367,7 @@
 
     if (slClosed > 0) {
       var origTotal = os.total || 0;
-      var origWinners = os.winners || 0;
+      var origWinners = os.wins || 0;
       var origTotalPnl = (os.avg_pnl_pct || 0) * origTotal;
 
       var newTotal = origTotal + slClosed;
@@ -5375,7 +5375,7 @@
       var newTotalPnl = origTotalPnl + slTotalPnl;
 
       os.total = newTotal;
-      os.winners = newWinners;
+      os.wins = newWinners;
       os.win_rate = newTotal > 0 ? (newWinners / newTotal * 100) : 0;
       os.avg_pnl_pct = newTotal > 0 ? (newTotalPnl / newTotal) : 0;
       merged.overall_summary = os;
