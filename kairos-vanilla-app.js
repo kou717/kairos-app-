@@ -7011,15 +7011,7 @@
         (coin.goplus_honeypot ? '<div class="early-mover__security-hint early-mover__security-hint--danger">\u{1F6AB} ハニーポット警告</div>' :
          coin.security_cross_verified && coin.combined_trust === 'high' ? '<div class="early-mover__security-hint early-mover__security-hint--safe">\u{1F6E1}\uFE0F 2ソース検証済</div>' :
          (coin.combined_trust === 'low' || coin.combined_trust === 'danger') ? '<div class="early-mover__security-hint early-mover__security-hint--warn">\u26A0\uFE0F セキュリティ要注意</div>' : '') +
-        (coin.ai_summary_ja ? '<div class="early-mover__ai-hint">\u{1F916} ' + coin.ai_summary_ja + (coin.ai_model ? ' <span class="ai-model-tag">[' + coin.ai_model.replace('models/', '').replace('-preview', '') + ']</span>' : '') + '</div>' : '') +
-        // 価格予想ミニ
-        (coin.ai_price_prediction && coin.ai_price_prediction['1h'] ?
-          '<div class="early-mover__prediction-mini">' +
-            '<span>🔮 1h: ' + coin.ai_price_prediction['1h'] + '</span>' +
-            '<span>24h: ' + coin.ai_price_prediction['24h'] + '</span>' +
-          '</div>' : '') +
         '<div class="early-mover__footer">' +
-          (coin.ai_potential ? '<span class="early-mover__potential">🎯 ' + coin.ai_potential + '</span>' : '') +
           '<span class="early-mover__sources">' + (coin.sources || []).join(' + ') + '</span>' +
         '</div>' +
       '</div>';
@@ -7206,8 +7198,8 @@
   }
 
   function renderDexAIAnalysis(coin) {
-    var html = '';
-    if (!coin.ai_summary_ja && !coin.ai_reason_ja) return html;
+    // Gemini通貨別AI評価は無効化 (KAIROS_SKIP_AI_EVAL=1)
+    return '';
 
     html += '<div class="dex-detail__ai-section">';
     var modelTag = coin.ai_model ? ' <span class="ai-model-tag">[' + coin.ai_model.replace('models/', '').replace('-preview', '') + ']</span>' : '';
@@ -7390,8 +7382,7 @@
           '</div>' +
         '</div>' +
 
-        // コイン概要説明
-        (coin.ai_description_ja ? '<div class="dex-detail__coin-desc">\u{1F4CB} ' + coin.ai_description_ja + (coin.ai_model ? ' <span class="ai-model-tag">[' + coin.ai_model.replace('models/', '').replace('-preview', '') + ']</span>' : '') + '</div>' : '') +
+        // コイン概要説明（AI無効化中）
 
         // 価格セクション
         '<div class="dex-detail__price-section" onclick="showMetricGuide(\'price_change\',event)" style="cursor:pointer">' +
