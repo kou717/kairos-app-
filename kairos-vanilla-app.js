@@ -5755,43 +5755,6 @@
     // 🔬 パターンエンジン（全履歴データ駆動分析）
     html += _renderPatternEngineSection(patternData);
 
-    // タイミング別成績テーブル（レポートありなら期待値列追加）
-    var timingOrder = ['1m', '5m', '15m', '30m', '1h'];
-    var hasEV = !!reportTiming;
-    html += '<div class="performance-section" style="animation-delay:0.1s">' +
-      '<h3 class="performance-section__title">⏱️ エントリータイミング別</h3>' +
-      '<div class="performance-section__table">' +
-        '<div class="performance-table-header' + (hasEV ? ' performance-table-header--5col' : '') + '">' +
-          '<span>タイミング</span><span>取引</span><span>勝率</span><span>平均PnL</span>' +
-          (hasEV ? '<span>期待値</span>' : '') +
-        '</div>';
-    timingOrder.forEach(function(t) {
-      var s = timingStats[t];
-      if (!s) return;
-      var tPnlClass = (s.avg_pnl_pct || 0) >= 0 ? 'positive' : 'negative';
-      var tPnlSign = (s.avg_pnl_pct || 0) >= 0 ? '+' : '';
-      var evCell = '';
-      if (hasEV) {
-        var rt = reportTiming[t];
-        if (rt && rt.expected_value !== undefined) {
-          var ev = rt.expected_value;
-          var evClass = ev >= 0 ? 'positive' : 'negative';
-          var evSign = ev >= 0 ? '+' : '';
-          evCell = '<span class="' + evClass + '">' + evSign + ev.toFixed(2) + '%</span>';
-        } else {
-          evCell = '<span style="color:rgba(255,255,255,0.25)">-</span>';
-        }
-      }
-      html += '<div class="performance-table-row' + (hasEV ? ' performance-table-row--5col' : '') + '">' +
-        '<span class="performance-table-cell--timing">' + t + '</span>' +
-        '<span>' + s.total + '</span>' +
-        '<span style="color:' + (s.win_rate >= 50 ? '#10b981' : '#ef4444') + '">' + s.win_rate.toFixed(1) + '%</span>' +
-        '<span class="' + tPnlClass + '">' + tPnlSign + (s.avg_pnl_pct || 0).toFixed(2) + '%</span>' +
-        evCell +
-      '</div>';
-    });
-    html += '</div></div>';
-
     // 📊 指標影響度 / 初動分析 / ウェイト → 横3列ボタン（ポップアップ）
     var ranking = (report && report.indicator_ranking) || [];
     var comparison = (report && report.indicator_comparison) || {};
