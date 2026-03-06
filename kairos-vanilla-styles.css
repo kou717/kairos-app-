@@ -1034,7 +1034,7 @@ body {
 }
 
 .home__content {
-  padding: 0 10px 24px;
+  padding: 0 8px 24px;
   padding-top: 48px;
   display: flex;
   flex-direction: column;
@@ -1051,7 +1051,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 16px;
+  padding: 8px 10px;
   background: var(--bg-primary, #0a1628);
   border-bottom: 1px solid rgba(var(--accent-rgb), 0.15);
   min-height: 44px;
@@ -1167,7 +1167,7 @@ body {
 @media (max-width: 768px) {
   .global-header {
     top: 28px; /* モバイルのティッカーバー高さ */
-    padding: 6px 12px 2px;
+    padding: 6px 8px 2px;
     min-height: 48px;
   }
 
@@ -2158,7 +2158,7 @@ body {
 }
 
 .market__content {
-  padding: 0 10px 16px;
+  padding: 0 8px 16px;
   padding-top: 48px;
   display: flex;
   flex-direction: column;
@@ -2498,7 +2498,7 @@ body {
 .ai-screen {
   min-height: 100vh;
   background: var(--bg-primary, #0a1628);
-  padding: 0 10px;
+  padding: 0 8px;
   padding-top: 48px;
   padding-bottom: 200px;
 }
@@ -3867,7 +3867,7 @@ body {
 }
 
 .detail__scroll-content {
-  padding: 20px;
+  padding: 8px;
   padding-top: 158px; /* グローバルヘッダー(76px) + 詳細ヘッダー(~66px) + 余白 */
   padding-bottom: 260px; /* フッター(80px) + トレードバー(70px) + 余裕 */
 }
@@ -12501,7 +12501,7 @@ body.has-ticker-bar {
 }
 
 .dex-detail__scroll-content {
-  padding: 16px;
+  padding: 8px;
   padding-top: 8px;
   padding-bottom: 120px;
 }
@@ -14299,7 +14299,7 @@ body.has-ticker-bar {
 
 /* ===== Detection Screen ===== */
 .detection-screen {
-  padding: 0 16px 100px;
+  padding: 0 8px 100px;
 }
 
 .detection-header {
@@ -14328,7 +14328,7 @@ body.has-ticker-bar {
 
 /* ===== Performance Screen ===== */
 .performance-screen {
-  padding: 0 16px 100px;
+  padding: 0 8px 100px;
 }
 
 .performance-date-filter {
