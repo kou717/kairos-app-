@@ -16115,7 +16115,7 @@ body.has-ticker-bar {
   opacity: 0.6;
 }
 .pattern-engine-screen {
-  padding: 0 8px;
+  padding: 0 8px 80px;
 }
 .pattern-engine__loading {
   text-align: center;
