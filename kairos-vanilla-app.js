@@ -5974,14 +5974,21 @@
   }
 
   function _formatSequence(seq) {
-    // Make sequences more readable - each step on its own line
-    var s = seq.replace(/p:up/g, '📈価格↑').replace(/p:down/g, '📉価格↓').replace(/p:flat/g, '➡️価格→')
-      .replace(/l:up/g, '💧流動性↑').replace(/l:down/g, '💧流動性↓').replace(/l:flat/g, '💧流動性→')
-      .replace(/b:high/g, '🟢BSR高').replace(/b:mid/g, '🟡BSR中').replace(/b:low/g, '🔴BSR低')
-      .replace(/_/g, ' ').replace(/\[/g, '【').replace(/\]/g, '】');
+    // Make sequences more readable - each indicator in fixed-width span for alignment
+    var s = seq
+      .replace(/p:up/g, '<span class="seq-p">📈価格↑</span>')
+      .replace(/p:down/g, '<span class="seq-p">📉価格↓</span>')
+      .replace(/p:flat/g, '<span class="seq-p">➡️価格→</span>')
+      .replace(/l:up/g, '<span class="seq-l">💧流動性↑</span>')
+      .replace(/l:down/g, '<span class="seq-l">💧流動性↓</span>')
+      .replace(/l:flat/g, '<span class="seq-l">💧流動性→</span>')
+      .replace(/b:high/g, '<span class="seq-b">🟢BSR高</span>')
+      .replace(/b:mid/g, '<span class="seq-b">🟡BSR中</span>')
+      .replace(/b:low/g, '<span class="seq-b">🔴BSR低</span>')
+      .replace(/_/g, '').replace(/\[/g, '【').replace(/\]/g, '】');
     // Split steps onto separate lines, align timing labels with fixed-width span
     s = s.replace(/\s*->\s*/g, '<br>');
-    return s.replace(/(\d+[mh])(【)/g, '<span style="display:inline-block;width:26px;text-align:right">$1</span>$2');
+    return s.replace(/(\d+[mh])(【)/g, '<span class="seq-t">$1</span>$2');
   }
 
   function _renderPEModule3(mod) {
