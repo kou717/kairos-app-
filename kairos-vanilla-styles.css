@@ -16073,6 +16073,258 @@ body.has-ticker-bar {
 .perf-trend__phase4-check.--met {
   color: #10b981;
 }
+
+/* ============================================================
+   Pattern Engine Styles
+   ============================================================ */
+.pattern-engine__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: var(--bg-card, #1e293b);
+  border-radius: 8px;
+}
+.pattern-engine__date {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+}
+.pattern-engine__generate-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.pattern-engine__generate-btn:hover {
+  opacity: 0.85;
+}
+.pattern-engine__generate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.pattern-engine__empty {
+  text-align: center;
+  padding: 24px 16px;
+  color: var(--text-secondary, #94a3b8);
+}
+.pattern-engine__empty p {
+  margin-bottom: 12px;
+}
+.pattern-engine__summary {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+.pattern-engine__subtitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #e2e8f0);
+  margin: 14px 0 8px;
+}
+.pattern-engine__badge {
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(99, 102, 241, 0.2);
+  color: #818cf8;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 8px;
+}
+.pattern-engine__skip {
+  font-size: 11px;
+  color: var(--text-secondary, #94a3b8);
+  margin-left: 8px;
+}
+
+/* Tables */
+.pattern-engine__table {
+  overflow-x: auto;
+  margin: 8px 0;
+  -webkit-overflow-scrolling: touch;
+}
+.pattern-engine__table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.pattern-engine__table th {
+  text-align: left;
+  padding: 6px 8px;
+  font-weight: 600;
+  color: var(--text-secondary, #94a3b8);
+  border-bottom: 1px solid var(--border-color, #334155);
+  white-space: nowrap;
+}
+.pattern-engine__table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.3);
+  color: var(--text-primary, #e2e8f0);
+}
+.pattern-engine__table td small {
+  display: block;
+  font-size: 10px;
+  color: var(--text-secondary, #94a3b8);
+}
+.pattern-engine__table .positive {
+  color: #10b981;
+}
+.pattern-engine__table .negative {
+  color: #ef4444;
+}
+
+/* Sequences */
+.pattern-engine__sequence {
+  padding: 8px 12px;
+  margin: 6px 0;
+  border-radius: 8px;
+  border-left: 3px solid var(--border-color, #334155);
+}
+.pattern-engine__sequence--danger {
+  background: rgba(239, 68, 68, 0.08);
+  border-left-color: #ef4444;
+}
+.pattern-engine__sequence--growth {
+  background: rgba(16, 185, 129, 0.08);
+  border-left-color: #10b981;
+}
+.pattern-engine__seq-label {
+  font-size: 11px;
+  color: var(--text-primary, #e2e8f0);
+  margin-bottom: 4px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+.pattern-engine__seq-stats {
+  font-size: 11px;
+  color: var(--text-secondary, #94a3b8);
+}
+.pattern-engine__seq-stats .positive { color: #10b981; }
+.pattern-engine__seq-stats .negative { color: #ef4444; }
+
+/* Stats grid */
+.pattern-engine__stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin: 10px 0;
+}
+@media (min-width: 480px) {
+  .pattern-engine__stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.pattern-engine__stat {
+  text-align: center;
+  padding: 10px 8px;
+  background: var(--bg-card, #1e293b);
+  border-radius: 8px;
+}
+.pattern-engine__stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary, #e2e8f0);
+}
+.pattern-engine__stat-value.positive { color: #10b981; }
+.pattern-engine__stat-value.negative { color: #ef4444; }
+.pattern-engine__stat-label {
+  font-size: 10px;
+  color: var(--text-secondary, #94a3b8);
+  margin-top: 2px;
+}
+
+/* Heatmap */
+.pattern-engine__heatmap {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 3px;
+  margin: 10px 0;
+}
+@media (max-width: 480px) {
+  .pattern-engine__heatmap {
+    grid-template-columns: repeat(8, 1fr);
+  }
+}
+.pattern-engine__heatmap-cell {
+  text-align: center;
+  padding: 6px 2px;
+  border-radius: 4px;
+  color: #fff;
+  min-width: 0;
+}
+.pattern-engine__heatmap-cell--empty {
+  background: rgba(51, 65, 85, 0.3);
+  color: var(--text-secondary, #94a3b8);
+}
+.pattern-engine__heatmap-hour {
+  font-size: 10px;
+  font-weight: 600;
+}
+.pattern-engine__heatmap-wr {
+  font-size: 9px;
+}
+
+/* Conditions */
+.pattern-engine__cond-group {
+  margin: 8px 0 12px;
+  padding: 8px 12px;
+  background: var(--bg-card, #1e293b);
+  border-radius: 8px;
+}
+.pattern-engine__cond-group strong {
+  font-size: 12px;
+  color: var(--text-primary, #e2e8f0);
+}
+.pattern-engine__cond-item {
+  font-size: 11px;
+  color: var(--text-secondary, #94a3b8);
+  padding: 3px 0;
+}
+.pattern-engine__cond-item .positive { color: #10b981; }
+.pattern-engine__cond-item .negative { color: #ef4444; }
+.pattern-engine__cond-label {
+  font-weight: 600;
+  color: var(--text-primary, #e2e8f0);
+}
+
+/* Reason blocks */
+.pattern-engine__reason-block {
+  margin: 10px 0;
+  padding: 10px 12px;
+  background: var(--bg-card, #1e293b);
+  border-radius: 8px;
+}
+.pattern-engine__reason-header {
+  font-size: 12px;
+  color: var(--text-primary, #e2e8f0);
+  margin-bottom: 8px;
+}
+
+/* Impact badges */
+.pattern-engine__impact {
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.pattern-engine__impact--large {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+.pattern-engine__impact--medium {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+.pattern-engine__impact--small {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+}
 /* ============================================
    通貨別ストラテジーUI（長期/短期の2択）
    ============================================ */

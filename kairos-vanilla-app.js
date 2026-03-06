@@ -1311,6 +1311,30 @@
       });
     },
 
+    getPatternAnalysis: function() {
+      var self = this;
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) { reject(new Error('Backend not available')); return; }
+          fetch(self.baseUrl + '/api/collector/pattern-analysis')
+            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
+            .then(resolve).catch(reject);
+        });
+      });
+    },
+
+    generatePatternAnalysis: function() {
+      var self = this;
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) { reject(new Error('Backend not available')); return; }
+          fetch(self.baseUrl + '/api/collector/pattern-analysis/generate', { method: 'POST' })
+            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
+            .then(resolve).catch(reject);
+        });
+      });
+    },
+
     getDailyReportTrend: function(days) {
       var self = this;
       var url = self.baseUrl + '/api/collector/daily-report/trend';
@@ -5352,7 +5376,8 @@
         ? BackendAPI.getDailyAnalysis(effectiveDate).catch(function() { return null; })
         : Promise.resolve(null);
       var trendP = BackendAPI.getDailyReportTrend(30).catch(function() { return null; });
-      dataPromise = Promise.all([statsP, statsDatesP, slStatsP, reportP, analysisP, trendP]);
+      var patternP = BackendAPI.getPatternAnalysis().catch(function() { return null; });
+      dataPromise = Promise.all([statsP, statsDatesP, slStatsP, reportP, analysisP, trendP, patternP]);
     }
 
     dataPromise
@@ -5363,6 +5388,7 @@
         var report = results[3] || null;
         var analysis = results[4] || null;
         var trendData = results[5] || null;
+        var patternData = results[6] || null;
         // レポートがtotal_trades=0ならnull扱い
         if (report && !report.total_trades) report = null;
 
@@ -5384,7 +5410,7 @@
           displayStats = _mergeStatsWithSL(stats, slStats);
         }
 
-        var html = _renderPerformanceContent(displayStats, report, analysis, trendData);
+        var html = _renderPerformanceContent(displayStats, report, analysis, trendData, patternData);
         // SL独立セクションは常に表示（レオON時はマージ済みなので注記付き）
         html += _renderPerformanceSLSection(slStats, _perfIncludeSL);
         // エクスポート＆リセットはSLの下
@@ -5687,7 +5713,7 @@
     if (btn) btn.classList.add('perf-trend__tab--active');
   };
 
-  function _renderPerformanceContent(stats, report, analysis, trendData) {
+  function _renderPerformanceContent(stats, report, analysis, trendData, patternData) {
     var os = stats.overall_summary || {};
     var timingStats = stats.performance_by_timing || {};
     var exitBreakdown = stats.exit_reason_breakdown || {};
@@ -5894,6 +5920,9 @@
       html += _renderAIAnalysisSection(analysis);
     }
 
+    // 🔬 パターンエンジン（全履歴データ駆動分析）
+    html += _renderPatternEngineSection(patternData);
+
     // 📐 初動パターン分析（Phase 2-3）
     if (report && report.pattern_analysis && report.pattern_analysis.sample_size) {
       html += _renderPatternAnalysisSection(report);
@@ -5998,6 +6027,469 @@
 
     return html;
   }
+
+  // ============================================================
+  // Pattern Engine Section
+  // ============================================================
+
+  function _renderPatternEngineSection(data) {
+    var html = '<div class="performance-section pattern-engine" style="animation-delay:0.12s">' +
+      '<h3 class="performance-section__title">🔬 パターンエンジン</h3>';
+
+    if (!data || !data.modules) {
+      html += '<div class="pattern-engine__empty">' +
+        '<p>パターン分析データがありません</p>' +
+        '<button class="pattern-engine__generate-btn" onclick="window._generatePatternAnalysis()">分析を実行</button>' +
+        '</div></div>';
+      return html;
+    }
+
+    var m = data.modules;
+    var dateStr = data.analysis_date || '';
+    var elapsed = data.elapsed_seconds || 0;
+
+    html += '<div class="pattern-engine__header">' +
+      '<span class="pattern-engine__date">最終分析: ' + dateStr + ' (' + elapsed + '秒)</span>' +
+      '<button class="pattern-engine__generate-btn" onclick="window._generatePatternAnalysis()">再分析</button>' +
+      '</div>';
+
+    // Module 1: Survivor Fingerprint
+    html += _renderPEModule1(m.survivor_fingerprint);
+    // Module 2: Collapse Sequences
+    html += _renderPEModule2(m.collapse_sequences);
+    // Module 3: Optimal Entry
+    html += _renderPEModule3(m.optimal_entry);
+    // Module 4: Exit Forensics
+    html += _renderPEModule4(m.exit_forensics);
+    // Module 5: Peak Efficiency
+    html += _renderPEModule5(m.peak_efficiency);
+    // Module 6: Shadow Validation
+    html += _renderPEModule6(m.shadow_validation);
+    // Module 7: Time & Regime
+    html += _renderPEModule7(m.time_regime);
+
+    html += '</div>';
+    return html;
+  }
+
+  function _renderPESkipped(mod, title) {
+    if (!mod || mod.status === 'error') {
+      return '<div class="performance-accordion">' +
+        '<div class="performance-accordion__trigger">' + title + ' <span class="pattern-engine__skip">エラー</span></div></div>';
+    }
+    if (mod.status === 'skipped') {
+      return '<div class="performance-accordion">' +
+        '<div class="performance-accordion__trigger">' + title +
+        ' <span class="pattern-engine__skip">サンプル不足 (' + (mod.actual || 0) + '/' + (mod.min_required || 0) + ')</span></div></div>';
+    }
+    return null;
+  }
+
+  function _renderPEModule1(mod) {
+    var skip = _renderPESkipped(mod, '🎯 勝ちコインの指紋');
+    if (skip) return skip;
+
+    var html = '<div class="performance-accordion">' +
+      '<div class="performance-accordion__trigger">🎯 勝ちコインの指紋 <span class="pattern-engine__badge">' +
+      (mod.top_positive_pairs || []).length + '件</span></div>' +
+      '<div class="performance-accordion__content"><div class="performance-accordion__inner">';
+
+    html += '<p class="pattern-engine__summary">全体勝率 ' + (mod.overall_win_rate || 0) + '% / ' +
+      (mod.total_trades || 0) + '件中、有意な指標ペア ' + (mod.pairs_evaluated || 0) + '通り検証</p>';
+
+    // Positive pairs
+    var pos = mod.top_positive_pairs || [];
+    if (pos.length > 0) {
+      html += '<h4 class="pattern-engine__subtitle">🟢 勝率が高い組み合わせ</h4>' +
+        '<div class="pattern-engine__table"><table>' +
+        '<tr><th>指標1</th><th>指標2</th><th>勝率</th><th>リフト</th><th>件数</th><th>χ²</th></tr>';
+      pos.forEach(function(p) {
+        html += '<tr><td>' + (p.ind1_label || p.ind1) + '<br><small>' + p.cat1 + '</small></td>' +
+          '<td>' + (p.ind2_label || p.ind2) + '<br><small>' + p.cat2 + '</small></td>' +
+          '<td class="positive">' + p.win_rate + '%</td>' +
+          '<td class="positive">+' + p.lift + '%</td>' +
+          '<td>' + p.sample + '</td>' +
+          '<td>' + p.chi2 + '</td></tr>';
+      });
+      html += '</table></div>';
+    }
+
+    // Negative pairs
+    var neg = mod.top_negative_pairs || [];
+    if (neg.length > 0) {
+      html += '<h4 class="pattern-engine__subtitle">🔴 勝率が低い組み合わせ</h4>' +
+        '<div class="pattern-engine__table"><table>' +
+        '<tr><th>指標1</th><th>指標2</th><th>勝率</th><th>リフト</th><th>件数</th></tr>';
+      neg.forEach(function(p) {
+        html += '<tr><td>' + (p.ind1_label || p.ind1) + '<br><small>' + p.cat1 + '</small></td>' +
+          '<td>' + (p.ind2_label || p.ind2) + '<br><small>' + p.cat2 + '</small></td>' +
+          '<td class="negative">' + p.win_rate + '%</td>' +
+          '<td class="negative">' + p.lift + '%</td>' +
+          '<td>' + p.sample + '</td></tr>';
+      });
+      html += '</table></div>';
+    }
+
+    html += '</div></div></div>';
+    return html;
+  }
+
+  function _renderPEModule2(mod) {
+    var skip = _renderPESkipped(mod, '⛓️ 暴落/成長シーケンス');
+    if (skip) return skip;
+
+    var html = '<div class="performance-accordion">' +
+      '<div class="performance-accordion__trigger">⛓️ 暴落/成長シーケンス</div>' +
+      '<div class="performance-accordion__content"><div class="performance-accordion__inner">';
+
+    html += '<p class="pattern-engine__summary">2ステップ: ' + (mod.total_sequences_2step || 0) +
+      '種 / 3ステップ: ' + (mod.total_sequences_3step || 0) + '種</p>';
+
+    // Crash chains
+    var crash = mod.crash_chains || [];
+    if (crash.length > 0) {
+      html += '<h4 class="pattern-engine__subtitle">🔴 暴落チェーン（勝率最低）</h4>';
+      crash.forEach(function(c) {
+        html += '<div class="pattern-engine__sequence pattern-engine__sequence--danger">' +
+          '<div class="pattern-engine__seq-label">' + _formatSequence(c.sequence) + '</div>' +
+          '<div class="pattern-engine__seq-stats">' +
+          '<span class="negative">勝率 ' + c.win_rate + '%</span> · ' +
+          '<span class="negative">平均 ' + c.avg_pnl + '%</span> · ' +
+          c.sample + '件</div></div>';
+      });
+    }
+
+    // Growth chains
+    var growth = mod.growth_chains || [];
+    if (growth.length > 0) {
+      html += '<h4 class="pattern-engine__subtitle">🟢 成長チェーン（勝率最高）</h4>';
+      growth.forEach(function(c) {
+        html += '<div class="pattern-engine__sequence pattern-engine__sequence--growth">' +
+          '<div class="pattern-engine__seq-label">' + _formatSequence(c.sequence) + '</div>' +
+          '<div class="pattern-engine__seq-stats">' +
+          '<span class="positive">勝率 ' + c.win_rate + '%</span> · ' +
+          '<span>' + (c.avg_pnl >= 0 ? '+' : '') + c.avg_pnl + '%</span> · ' +
+          c.sample + '件</div></div>';
+      });
+    }
+
+    html += '</div></div></div>';
+    return html;
+  }
+
+  function _formatSequence(seq) {
+    // Make sequences more readable
+    return seq.replace(/p:up/g, '📈価格↑').replace(/p:down/g, '📉価格↓').replace(/p:flat/g, '➡️価格→')
+      .replace(/l:up/g, '💧流動性↑').replace(/l:down/g, '💧流動性↓').replace(/l:flat/g, '💧流動性→')
+      .replace(/b:high/g, '🟢BSR高').replace(/b:mid/g, '🟡BSR中').replace(/b:low/g, '🔴BSR低')
+      .replace(/_/g, ' ').replace(/\[/g, '【').replace(/\]/g, '】');
+  }
+
+  function _renderPEModule3(mod) {
+    var skip = _renderPESkipped(mod, '⏱️ 最適エントリー条件');
+    if (skip) return skip;
+
+    var html = '<div class="performance-accordion">' +
+      '<div class="performance-accordion__trigger">⏱️ 最適エントリー条件</div>' +
+      '<div class="performance-accordion__content"><div class="performance-accordion__inner">';
+
+    // Timing stats
+    var ts = mod.timing_stats || {};
+    var timingKeys = Object.keys(ts);
+    if (timingKeys.length > 0) {
+      html += '<h4 class="pattern-engine__subtitle">タイミング別成績</h4>' +
+        '<div class="pattern-engine__table"><table>' +
+        '<tr><th>タイミング</th><th>件数</th><th>勝率</th><th>平均PnL</th><th>中央PnL</th></tr>';
+      timingKeys.forEach(function(k) {
+        var t = ts[k];
+        var pClass = t.avg_pnl >= 0 ? 'positive' : 'negative';
+        html += '<tr><td>' + k + '</td><td>' + t.total + '</td>' +
+          '<td>' + t.win_rate + '%</td>' +
+          '<td class="' + pClass + '">' + (t.avg_pnl >= 0 ? '+' : '') + t.avg_pnl + '%</td>' +
+          '<td class="' + pClass + '">' + (t.median_pnl >= 0 ? '+' : '') + t.median_pnl + '%</td></tr>';
+      });
+      html += '</table></div>';
+    }
+
+    // Optimal D1 conditions
+    var oc = mod.optimal_conditions || {};
+    var ocKeys = Object.keys(oc);
+    if (ocKeys.length > 0) {
+      html += '<h4 class="pattern-engine__subtitle">タイミング別の勝率条件</h4>';
+      ocKeys.forEach(function(timing) {
+        var conds = oc[timing];
+        if (!conds || conds.length === 0) return;
+        html += '<div class="pattern-engine__cond-group"><strong>' + timing + '</strong>';
+        conds.forEach(function(c) {
+          var better = c.better === 'above' ? '以上' : '以下';
+          var betterWR = c.better === 'above' ? c.wr_above : c.wr_below;
+          var worseWR = c.better === 'above' ? c.wr_below : c.wr_above;
+          html += '<div class="pattern-engine__cond-item">' +
+            '<span class="pattern-engine__cond-label">' + c.label + '</span>' +
+            ' 閾値' + c.threshold + better + '→ ' +
+            '<span class="positive">' + betterWR + '%</span> vs ' +
+            '<span class="negative">' + worseWR + '%</span>' +
+            ' (差' + (c.diff >= 0 ? '+' : '') + c.diff + '%)' +
+            '</div>';
+        });
+        html += '</div>';
+      });
+    }
+
+    // Paired comparison
+    var pc = mod.paired_comparison || [];
+    if (pc.length > 0) {
+      html += '<h4 class="pattern-engine__subtitle">同一コイン対応比較</h4>' +
+        '<div class="pattern-engine__table"><table>' +
+        '<tr><th>比較</th><th>ペア数</th><th>後者が良い%</th><th>平均差</th><th>有意</th></tr>';
+      pc.forEach(function(p) {
+        html += '<tr><td>' + p.timing1 + ' vs ' + p.timing2 + '</td><td>' + p.n_pairs + '</td>' +
+          '<td>' + p.t2_better_pct + '%</td>' +
+          '<td>' + (p.avg_diff >= 0 ? '+' : '') + p.avg_diff + '%</td>' +
+          '<td>' + (p.significant ? '✅' : '—') + '</td></tr>';
+      });
+      html += '</table></div>';
+    }
+
+    html += '</div></div></div>';
+    return html;
+  }
+
+  function _renderPEModule4(mod) {
+    var skip = _renderPESkipped(mod, '🔍 負けパターン逆追跡');
+    if (skip) return skip;
+
+    var html = '<div class="performance-accordion">' +
+      '<div class="performance-accordion__trigger">🔍 負けパターン逆追跡 <span class="pattern-engine__badge">' +
+      (mod.total_losing_trades || 0) + '件</span></div>' +
+      '<div class="performance-accordion__content"><div class="performance-accordion__inner">';
+
+    // Reason analysis
+    var ra = mod.reason_analysis || {};
+    var raKeys = Object.keys(ra);
+    if (raKeys.length > 0) {
+      html += '<h4 class="pattern-engine__subtitle">終了理由別の特徴</h4>';
+      raKeys.forEach(function(reason) {
+        var a = ra[reason];
+        html += '<div class="pattern-engine__reason-block">' +
+          '<div class="pattern-engine__reason-header">' +
+          '<strong>' + reason + '</strong> (' + a.count + '件 / 平均 ' + a.avg_pnl + '% / 累計損失 ' + a.total_loss_pct + '%)' +
+          '</div>';
+        var feats = a.distinguishing_features || [];
+        if (feats.length > 0) {
+          html += '<div class="pattern-engine__table"><table>' +
+            '<tr><th>特徴</th><th>Cohen\'s d</th><th>グループ平均</th><th>他の平均</th><th>方向</th></tr>';
+          feats.forEach(function(f) {
+            var absD = Math.abs(f.cohens_d);
+            var impact = absD >= 0.8 ? 'large' : (absD >= 0.5 ? 'medium' : 'small');
+            html += '<tr><td>' + (f.label || f.feature) + '</td>' +
+              '<td><span class="pattern-engine__impact pattern-engine__impact--' + impact + '">' + f.cohens_d + '</span></td>' +
+              '<td>' + f.group_avg + '</td><td>' + f.other_avg + '</td>' +
+              '<td>' + (f.direction === 'higher' ? '↑高い' : '↓低い') + '</td></tr>';
+          });
+          html += '</table></div>';
+        }
+        html += '</div>';
+      });
+    }
+
+    // Filter proposals
+    var fp = mod.filter_proposals || [];
+    if (fp.length > 0) {
+      html += '<h4 class="pattern-engine__subtitle">💡 フィルタ提案</h4>' +
+        '<div class="pattern-engine__table"><table>' +
+        '<tr><th>終了理由</th><th>特徴</th><th>d値</th><th>防止可能損失</th><th>件数</th></tr>';
+      fp.slice(0, 5).forEach(function(f) {
+        html += '<tr><td>' + f.exit_reason + '</td>' +
+          '<td>' + (f.label || f.feature) + ' ' + (f.direction === 'higher' ? '↑' : '↓') + '</td>' +
+          '<td>' + f.cohens_d + '</td>' +
+          '<td class="negative">' + f.preventable_loss + '%</td>' +
+          '<td>' + f.preventable_count + '</td></tr>';
+      });
+      html += '</table></div>';
+    }
+
+    html += '</div></div></div>';
+    return html;
+  }
+
+  function _renderPEModule5(mod) {
+    var skip = _renderPESkipped(mod, '💰 利確効率');
+    if (skip) return skip;
+
+    var html = '<div class="performance-accordion">' +
+      '<div class="performance-accordion__trigger">💰 利確効率 <span class="pattern-engine__badge">捕捉率 ' +
+      (mod.overall ? mod.overall.capture_ratio : 0) + '%</span></div>' +
+      '<div class="performance-accordion__content"><div class="performance-accordion__inner">';
+
+    var o = mod.overall || {};
+    html += '<div class="pattern-engine__stats-grid">' +
+      '<div class="pattern-engine__stat"><div class="pattern-engine__stat-value">' + (o.median_peak || 0) + '%</div><div class="pattern-engine__stat-label">中央値ピーク</div></div>' +
+      '<div class="pattern-engine__stat"><div class="pattern-engine__stat-value">' + (o.median_realized || 0) + '%</div><div class="pattern-engine__stat-label">中央値実現</div></div>' +
+      '<div class="pattern-engine__stat"><div class="pattern-engine__stat-value negative">' + (o.median_gap || 0) + '%</div><div class="pattern-engine__stat-label">中央値ギャップ</div></div>' +
+      '<div class="pattern-engine__stat"><div class="pattern-engine__stat-value">' + (o.capture_ratio || 0) + '%</div><div class="pattern-engine__stat-label">利確捕捉率</div></div>' +
+      '</div>';
+
+    // Missed vs captured
+    html += '<p class="pattern-engine__summary">取り損ね(ピーク+50%超→実現マイナス): <strong>' +
+      (mod.missed_profit_trades || 0) + '件</strong> / 成功利確: <strong>' + (mod.captured_trades || 0) + '件</strong></p>';
+
+    var mc = mod.missed_vs_captured_features || {};
+    var mcKeys = Object.keys(mc);
+    if (mcKeys.length > 0) {
+      html += '<h4 class="pattern-engine__subtitle">取り損ね vs 成功の特徴差</h4>' +
+        '<div class="pattern-engine__table"><table>' +
+        '<tr><th>特徴</th><th>Cohen\'s d</th><th>取り損ね平均</th><th>成功平均</th></tr>';
+      mcKeys.forEach(function(k) {
+        var f = mc[k];
+        html += '<tr><td>' + (f.label || k) + '</td><td>' + f.cohens_d + '</td>' +
+          '<td>' + f.missed_avg + '</td><td>' + f.captured_avg + '</td></tr>';
+      });
+      html += '</table></div>';
+    }
+
+    // Timing gap
+    var tg = mod.timing_gap || {};
+    var tgKeys = Object.keys(tg);
+    if (tgKeys.length > 0) {
+      html += '<h4 class="pattern-engine__subtitle">タイミング別ギャップ</h4>' +
+        '<div class="pattern-engine__table"><table>' +
+        '<tr><th>タイミング</th><th>中央ピーク</th><th>中央実現</th><th>ギャップ</th><th>件数</th></tr>';
+      tgKeys.forEach(function(k) {
+        var t = tg[k];
+        html += '<tr><td>' + k + '</td><td>' + t.median_peak + '%</td>' +
+          '<td>' + t.median_realized + '%</td>' +
+          '<td class="negative">' + t.median_gap + '%</td>' +
+          '<td>' + t.sample + '</td></tr>';
+      });
+      html += '</table></div>';
+    }
+
+    html += '</div></div></div>';
+    return html;
+  }
+
+  function _renderPEModule6(mod) {
+    var skip = _renderPESkipped(mod, '🛡️ フィルタ効果検証');
+    if (skip) return skip;
+
+    var html = '<div class="performance-accordion">' +
+      '<div class="performance-accordion__trigger">🛡️ フィルタ効果検証</div>' +
+      '<div class="performance-accordion__content"><div class="performance-accordion__inner">';
+
+    html += '<p class="pattern-engine__summary">Shadow Trades: ' + (mod.total_shadow_trades || 0) +
+      '件 / 実トレード勝率: ' + (mod.actual_win_rate || 0) + '%</p>';
+
+    var fr = mod.filter_results || {};
+    var frKeys = Object.keys(fr);
+    if (frKeys.length > 0) {
+      html += '<div class="pattern-engine__table"><table>' +
+        '<tr><th>フィルタ</th><th>ブロック数</th><th>Shadow勝率</th><th>実勝率</th><th>差</th><th>判定</th></tr>';
+      frKeys.forEach(function(k) {
+        var f = fr[k];
+        var verdictClass = f.verdict === 'effective' ? 'positive' : (f.verdict === 'over_filtering' ? 'negative' : '');
+        html += '<tr><td>' + k + '</td><td>' + f.blocked_count + '</td>' +
+          '<td>' + f.shadow_win_rate + '%</td>' +
+          '<td>' + f.actual_win_rate + '%</td>' +
+          '<td>' + (f.diff >= 0 ? '+' : '') + f.diff + '%</td>' +
+          '<td class="' + verdictClass + '">' + f.verdict_ja + '</td></tr>';
+      });
+      html += '</table></div>';
+    }
+
+    html += '</div></div></div>';
+    return html;
+  }
+
+  function _renderPEModule7(mod) {
+    var skip = _renderPESkipped(mod, '🕐 時間帯・市場環境');
+    if (skip) return skip;
+
+    var html = '<div class="performance-accordion">' +
+      '<div class="performance-accordion__trigger">🕐 時間帯・市場環境</div>' +
+      '<div class="performance-accordion__content"><div class="performance-accordion__inner">';
+
+    // Best/worst hour
+    var best = mod.best_hour || {};
+    var worst = mod.worst_hour || {};
+    html += '<div class="pattern-engine__stats-grid">' +
+      '<div class="pattern-engine__stat"><div class="pattern-engine__stat-value positive">' + (best.hour || '?') + '時</div><div class="pattern-engine__stat-label">ベスト時間帯 (' + (best.win_rate || 0) + '%)</div></div>' +
+      '<div class="pattern-engine__stat"><div class="pattern-engine__stat-value negative">' + (worst.hour || '?') + '時</div><div class="pattern-engine__stat-label">ワースト時間帯 (' + (worst.win_rate || 0) + '%)</div></div>' +
+      '</div>';
+
+    // Hourly heatmap
+    var hs = mod.hourly_stats || {};
+    var hsKeys = Object.keys(hs).sort(function(a, b) { return parseInt(a) - parseInt(b); });
+    if (hsKeys.length > 0) {
+      html += '<h4 class="pattern-engine__subtitle">時間帯別勝率 (JST)</h4>' +
+        '<div class="pattern-engine__heatmap">';
+      for (var h = 0; h < 24; h++) {
+        var hStr = String(h);
+        var data = hs[hStr];
+        if (data) {
+          var wr = data.win_rate;
+          var hue = Math.min(wr * 1.2, 120); // 0% = red(0), 50%+ = green(120)
+          html += '<div class="pattern-engine__heatmap-cell" style="background:hsla(' + hue + ',70%,45%,0.8)" title="' + h + '時: 勝率' + wr + '% (' + data.sample + '件)">' +
+            '<div class="pattern-engine__heatmap-hour">' + h + '</div>' +
+            '<div class="pattern-engine__heatmap-wr">' + wr + '%</div>' +
+            '</div>';
+        } else {
+          html += '<div class="pattern-engine__heatmap-cell pattern-engine__heatmap-cell--empty">' +
+            '<div class="pattern-engine__heatmap-hour">' + h + '</div>' +
+            '<div class="pattern-engine__heatmap-wr">—</div>' +
+            '</div>';
+        }
+      }
+      html += '</div>';
+    }
+
+    // Weekly stats
+    var ws = mod.weekly_stats || {};
+    var wsKeys = Object.keys(ws);
+    if (wsKeys.length > 0) {
+      html += '<h4 class="pattern-engine__subtitle">曜日別勝率</h4>' +
+        '<div class="pattern-engine__table"><table>' +
+        '<tr><th>曜日</th><th>勝率</th><th>平均PnL</th><th>件数</th></tr>';
+      wsKeys.forEach(function(k) {
+        var w = ws[k];
+        var pClass = w.avg_pnl >= 0 ? 'positive' : 'negative';
+        html += '<tr><td>' + k + '</td><td>' + w.win_rate + '%</td>' +
+          '<td class="' + pClass + '">' + (w.avg_pnl >= 0 ? '+' : '') + w.avg_pnl + '%</td>' +
+          '<td>' + w.sample + '</td></tr>';
+      });
+      html += '</table></div>';
+    }
+
+    // Regime stats
+    var rs = mod.regime_stats || {};
+    if (rs.busy_total > 0 || rs.quiet_total > 0) {
+      html += '<h4 class="pattern-engine__subtitle">市場活況度 (日次検出数 中央値: ' + (rs.median_daily_detections || 0) + '件)</h4>' +
+        '<div class="pattern-engine__stats-grid">' +
+        '<div class="pattern-engine__stat"><div class="pattern-engine__stat-value">' + (rs.busy_wr || 0) + '%</div><div class="pattern-engine__stat-label">活況時 (' + (rs.busy_total || 0) + '件)</div></div>' +
+        '<div class="pattern-engine__stat"><div class="pattern-engine__stat-value">' + (rs.quiet_wr || 0) + '%</div><div class="pattern-engine__stat-label">閑散時 (' + (rs.quiet_total || 0) + '件)</div></div>' +
+        '</div>';
+    }
+
+    html += '</div></div></div>';
+    return html;
+  }
+
+  // Global handler for generate button
+  window._generatePatternAnalysis = function() {
+    var btn = document.querySelector('.pattern-engine__generate-btn');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '分析中...';
+    }
+    BackendAPI.generatePatternAnalysis()
+      .then(function() {
+        _loadPerformanceData();
+      })
+      .catch(function(e) {
+        if (btn) { btn.disabled = false; btn.textContent = '再分析'; }
+        console.error('Pattern analysis error:', e);
+      });
+  };
 
   function _renderAIAnalysisSection(analysis) {
     var html = '<div class="performance-section" style="animation-delay:0.16s">' +
@@ -19324,7 +19816,8 @@
       BackendAPI.getSleepingLionStats(_prefetchDate).catch(function() { return { watchlist: {}, trades: {} }; }),
       _prefetchDate ? BackendAPI.getDailyReport(_prefetchDate).catch(function() { return null; }) : Promise.resolve(null),
       _prefetchDate ? BackendAPI.getDailyAnalysis(_prefetchDate).catch(function() { return null; }) : Promise.resolve(null),
-      BackendAPI.getDailyReportTrend(30).catch(function() { return null; })
+      BackendAPI.getDailyReportTrend(30).catch(function() { return null; }),
+      BackendAPI.getPatternAnalysis().catch(function() { return null; })
     ]).catch(function() { return null; });
 
     // 1秒後に成績画面へ（DEXデフォルト）
