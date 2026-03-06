@@ -16111,6 +16111,10 @@ body.has-ticker-bar {
   align-items: flex-end;
   justify-content: center;
   animation: perfPopupFadeIn 0.2s ease;
+  transition: opacity 0.2s ease;
+}
+.perf-popup-overlay--closing {
+  opacity: 0;
 }
 @keyframes perfPopupFadeIn {
   from { opacity: 0; }
@@ -16124,10 +16128,22 @@ body.has-ticker-bar {
   border-radius: 16px 16px 0 0;
   overflow: hidden;
   animation: perfPopupSlideUp 0.25s ease;
+  transition: transform 0.25s ease;
+  will-change: transform;
+}
+.perf-popup-overlay--closing .perf-popup {
+  transform: translateY(100%);
 }
 @keyframes perfPopupSlideUp {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
+}
+.perf-popup__handle {
+  width: 36px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  margin: 8px auto 0;
 }
 .perf-popup__header {
   display: flex;

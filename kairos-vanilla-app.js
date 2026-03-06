@@ -6418,16 +6418,99 @@
     // Create overlay
     var overlay = document.createElement('div');
     overlay.className = 'perf-popup-overlay';
-    overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+    overlay.onclick = function(e) { if (e.target === overlay) _closePerfPopup(overlay); };
     overlay.innerHTML = '<div class="perf-popup">' +
+      '<div class="perf-popup__handle"></div>' +
       '<div class="perf-popup__header">' +
         '<span class="perf-popup__title">' + title + '</span>' +
-        '<button class="perf-popup__close" onclick="this.closest(\'.perf-popup-overlay\').remove()">✕</button>' +
+        '<button class="perf-popup__close">✕</button>' +
       '</div>' +
       '<div class="perf-popup__body">' + body + '</div>' +
     '</div>';
     document.body.appendChild(overlay);
+
+    // Close button
+    overlay.querySelector('.perf-popup__close').onclick = function() { _closePerfPopup(overlay); };
+
+    // Swipe-to-dismiss
+    _initPerfPopupSwipe(overlay);
   };
+
+  function _closePerfPopup(overlay) {
+    overlay.classList.add('perf-popup-overlay--closing');
+    setTimeout(function() { overlay.remove(); }, 250);
+  }
+
+  function _initPerfPopupSwipe(overlay) {
+    var popup = overlay.querySelector('.perf-popup');
+    var bodyEl = overlay.querySelector('.perf-popup__body');
+    var startY = 0;
+    var currentY = 0;
+    var dragging = false;
+
+    function onTouchStart(e) {
+      // Only start drag if body is scrolled to top (or touch is on handle/header)
+      var touch = e.touches[0];
+      startY = touch.clientY;
+      currentY = 0;
+      dragging = false;
+
+      var target = e.target;
+      var isHandle = target.classList.contains('perf-popup__handle') ||
+                     target.classList.contains('perf-popup__header') ||
+                     target.classList.contains('perf-popup__title');
+
+      if (isHandle) {
+        dragging = true;
+        e.preventDefault();
+      }
+      // For body content: only allow drag if scrolled to top
+    }
+
+    function onTouchMove(e) {
+      var touch = e.touches[0];
+      var dy = touch.clientY - startY;
+
+      // If not yet dragging, check if we should start (body scrolled to top + swipe down)
+      if (!dragging) {
+        if (dy > 0 && bodyEl.scrollTop <= 0) {
+          dragging = true;
+        } else {
+          return; // Let normal scroll happen
+        }
+      }
+
+      if (dragging && dy > 0) {
+        e.preventDefault();
+        currentY = dy;
+        popup.style.transition = 'none';
+        popup.style.transform = 'translateY(' + dy + 'px)';
+        // Fade overlay proportionally
+        var opacity = Math.max(0, 1 - dy / 300);
+        overlay.style.background = 'rgba(0,0,0,' + (0.6 * opacity) + ')';
+      }
+    }
+
+    function onTouchEnd() {
+      if (!dragging) return;
+      dragging = false;
+      popup.style.transition = '';
+      overlay.style.background = '';
+
+      if (currentY > 100) {
+        // Dismiss
+        _closePerfPopup(overlay);
+      } else {
+        // Snap back
+        popup.style.transform = '';
+      }
+      currentY = 0;
+    }
+
+    popup.addEventListener('touchstart', onTouchStart, { passive: false });
+    popup.addEventListener('touchmove', onTouchMove, { passive: false });
+    popup.addEventListener('touchend', onTouchEnd);
+  }
 
   function _buildPatternPopupContent() {
     var report = window._perfReport;
