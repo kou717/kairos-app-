@@ -5979,8 +5979,9 @@
       .replace(/l:up/g, '💧流動性↑').replace(/l:down/g, '💧流動性↓').replace(/l:flat/g, '💧流動性→')
       .replace(/b:high/g, '🟢BSR高').replace(/b:mid/g, '🟡BSR中').replace(/b:low/g, '🔴BSR低')
       .replace(/_/g, ' ').replace(/\[/g, '【').replace(/\]/g, '】');
-    // Split steps onto separate lines
-    return s.replace(/\s*->\s*/g, '<br>');
+    // Split steps onto separate lines, align timing labels with fixed-width span
+    s = s.replace(/\s*->\s*/g, '<br>');
+    return s.replace(/(\d+[mh])(【)/g, '<span style="display:inline-block;width:26px;text-align:right">$1</span>$2');
   }
 
   function _renderPEModule3(mod) {
