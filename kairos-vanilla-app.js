@@ -2533,6 +2533,7 @@
     'performance': 'detection',
     'collector': 'detection',
     'sleeping-lion': 'detection',
+    'pattern-engine': 'performance',
     'detection': null  // 検出画面が最上位 → アプリ終了
   };
 
@@ -2747,7 +2748,8 @@
       'market': 'マーケット',
       'ai-compare': 'AI アシスタント',
       'portfolio-detail': 'Portfolio Detail',
-      'collector': 'Collector Monitor'
+      'collector': 'Collector Monitor',
+      'pattern-engine': 'Pattern Engine'
     };
     return titles[screen] || 'Early Detection';
   }
@@ -5829,47 +5831,73 @@
   // ============================================================
 
   function _renderPatternEngineSection(data) {
-    var html = '<div class="performance-section pattern-engine" style="animation-delay:0.12s">' +
-      '<div class="performance-accordion">' +
-        '<div class="performance-accordion__header" onclick="this.parentElement.classList.toggle(\'performance-accordion--expanded\')">' +
-          '<span>🔬 パターンエンジン</span>' +
-          '<span class="performance-accordion__chevron">▼</span>' +
-        '</div>' +
-        '<div class="performance-accordion__body">';
+    var dateInfo = '';
+    if (data && data.analysis_date) {
+      dateInfo = '<span class="pattern-engine__nav-date">' + data.analysis_date + '</span>';
+    }
+    return '<div class="performance-section" style="animation-delay:0.12s">' +
+      '<button class="perf-quick-btn perf-quick-btn--wide" onclick="navigateTo(\'pattern-engine\')">' +
+        '🔬 パターンエンジン' + dateInfo +
+      '</button>' +
+    '</div>';
+  }
 
+  // パターンエンジン専用画面
+  function renderPatternEngineScreen() {
+    var html = '<div class="pattern-engine-screen">';
+
+    // データ読み込み
+    html += '<div id="pattern-engine-content"><div class="pattern-engine__loading">読み込み中...</div></div>';
+    html += '</div>';
+
+    // 非同期でデータ取得
+    setTimeout(function() {
+      BackendAPI.getPatternAnalysis()
+        .then(function(data) {
+          var container = document.getElementById('pattern-engine-content');
+          if (!container) return;
+          container.innerHTML = _renderPatternEngineFullContent(data);
+          _initPerformanceAccordions();
+        })
+        .catch(function() {
+          var container = document.getElementById('pattern-engine-content');
+          if (container) {
+            container.innerHTML = '<div class="pattern-engine__empty">' +
+              '<p>パターン分析データがありません</p>' +
+              '<button class="pattern-engine__generate-btn" onclick="window._generatePatternAnalysis()">分析を実行</button>' +
+            '</div>';
+          }
+        });
+    }, 50);
+
+    return html;
+  }
+
+  function _renderPatternEngineFullContent(data) {
     if (!data || !data.modules) {
-      html += '<div class="pattern-engine__empty">' +
+      return '<div class="pattern-engine__empty">' +
         '<p>パターン分析データがありません</p>' +
         '<button class="pattern-engine__generate-btn" onclick="window._generatePatternAnalysis()">分析を実行</button>' +
-        '</div></div></div></div>';
-      return html;
+      '</div>';
     }
 
     var m = data.modules;
     var dateStr = data.analysis_date || '';
     var elapsed = data.elapsed_seconds || 0;
 
-    html += '<div class="pattern-engine__header">' +
+    var html = '<div class="pattern-engine__header">' +
       '<span class="pattern-engine__date">最終分析: ' + dateStr + ' (' + elapsed + '秒)</span>' +
       '<button class="pattern-engine__generate-btn" onclick="window._generatePatternAnalysis()">再分析</button>' +
-      '</div>';
+    '</div>';
 
-    // Module 1: Survivor Fingerprint
     html += _renderPEModule1(m.survivor_fingerprint);
-    // Module 2: Collapse Sequences
     html += _renderPEModule2(m.collapse_sequences);
-    // Module 3: Optimal Entry
     html += _renderPEModule3(m.optimal_entry);
-    // Module 4: Exit Forensics
     html += _renderPEModule4(m.exit_forensics);
-    // Module 5: Peak Efficiency
     html += _renderPEModule5(m.peak_efficiency);
-    // Module 6: Shadow Validation
     html += _renderPEModule6(m.shadow_validation);
-    // Module 7: Time & Regime
     html += _renderPEModule7(m.time_regime);
 
-    html += '</div></div></div>';
     return html;
   }
 
@@ -6294,7 +6322,18 @@
     }
     BackendAPI.generatePatternAnalysis()
       .then(function() {
-        _loadPerformanceData();
+        if (appState.currentScreen === 'pattern-engine') {
+          // 専用画面: データ再取得して描画
+          BackendAPI.getPatternAnalysis().then(function(data) {
+            var container = document.getElementById('pattern-engine-content');
+            if (container) {
+              container.innerHTML = _renderPatternEngineFullContent(data);
+              _initPerformanceAccordions();
+            }
+          });
+        } else {
+          _loadPerformanceData();
+        }
       })
       .catch(function(e) {
         if (btn) { btn.disabled = false; btn.textContent = '再分析'; }
@@ -8834,6 +8873,9 @@
           break;
         case 'sleeping-lion':
           screenHtml = renderSleepingLionScreen();
+          break;
+        case 'pattern-engine':
+          screenHtml = renderPatternEngineScreen();
           break;
         default:
           screenHtml = renderDetectionScreen();
