@@ -5412,7 +5412,7 @@
 
         var html = _renderPerformanceContent(displayStats, report, analysis, trendData, patternData);
         // SL独立セクションは常に表示（レオON時はマージ済みなので注記付き）
-        html += _renderPerformanceSLSection(slStats, _perfIncludeSL);
+        html += _renderPerformanceSLSection(slStats, _perfIncludeSL, effectiveDate);
         // エクスポート＆リセットはSLの下
         html += _renderExportAndResetSection();
         container.innerHTML = html;
@@ -9932,7 +9932,7 @@
   };
 
   // Performance SL Section — appended to _renderPerformanceContent
-  function _renderPerformanceSLSection(stats, includedInMain) {
+  function _renderPerformanceSLSection(stats, includedInMain, effectiveDate) {
     var tr = stats.trades || {};
     var wl = stats.watchlist || {};
     var totalTrades = (tr.closed || 0);
@@ -9943,8 +9943,15 @@
     var pnlClass = avgPnl >= 0 ? 'positive' : 'negative';
     var pnlSign = avgPnl >= 0 ? '+' : '';
 
+    // Date context: past date vs today vs all
+    var today = _getTodayJST();
+    var isToday = !effectiveDate || effectiveDate === today;
+    var isAll = !effectiveDate;
+    var dateLabel = isAll ? '全期間' : (isToday ? '今日' : _formatDateLabel(effectiveDate));
+
     var html = '<div class="performance-section sl-perf-section" style="animation-delay:0.45s">' +
-      '<h3 class="performance-section__title">🦁 眠れる獅子 成績' + (includedInMain ? ' <span style="font-size:11px;color:#f59e0b;font-weight:400">（上のヒーローに合算済み）</span>' : '') + '</h3>';
+      '<h3 class="performance-section__title">🦁 眠れる獅子 成績 <span style="font-size:12px;color:var(--text-secondary,#94a3b8);font-weight:400">(' + dateLabel + ')</span>' +
+      (includedInMain ? ' <span style="font-size:11px;color:#f59e0b;font-weight:400">合算済み</span>' : '') + '</h3>';
 
     // SL Hero Card — tappable
     html += '<div class="sl-perf-hero" onclick="window._toggleSLClosedTrades()" style="cursor:pointer">' +
@@ -9965,22 +9972,36 @@
       '<div style="text-align:center;font-size:11px;color:rgba(255,255,255,0.35);margin-top:4px">タップで詳細 ▼</div>' +
     '</div>';
 
-    // (Closed trades now shown in popup)
-
-    // Funnel: 監視 → 覚醒 → トレード → 勝ち
-    var totalWatched = (wl.watching || 0) + (wl.awakened || 0) + (wl.timeout || 0) + (wl.dead || 0);
-    var totalAwakened = wl.awakened || 0;
-    var totalTraded = (tr.open || 0) + (tr.closed || 0);
-
-    html += '<div class="sl-funnel">' +
-      _slFunnelStep('監視', totalWatched, totalWatched) +
-      '<span class="sl-funnel__arrow">→</span>' +
-      _slFunnelStep('覚醒', totalAwakened, totalWatched) +
-      '<span class="sl-funnel__arrow">→</span>' +
-      _slFunnelStep('トレード', totalTraded, totalWatched) +
-      '<span class="sl-funnel__arrow">→</span>' +
-      _slFunnelStep('勝ち', winners, totalWatched) +
-    '</div>';
+    // Funnel: adapt based on date context
+    // For past dates: watching/open are current state, so only show resolved/closed items
+    if (isToday || isAll) {
+      // Today or all: show full funnel including current watching and open
+      var totalWatched = (wl.watching || 0) + (wl.awakened || 0) + (wl.timeout || 0) + (wl.dead || 0);
+      var totalAwakened = wl.awakened || 0;
+      var totalTraded = (tr.open || 0) + (tr.closed || 0);
+      html += '<div class="sl-funnel">' +
+        _slFunnelStep('監視', totalWatched, totalWatched) +
+        '<span class="sl-funnel__arrow">→</span>' +
+        _slFunnelStep('覚醒', totalAwakened, totalWatched) +
+        '<span class="sl-funnel__arrow">→</span>' +
+        _slFunnelStep('トレード', totalTraded, totalWatched) +
+        '<span class="sl-funnel__arrow">→</span>' +
+        _slFunnelStep('勝ち', winners, totalWatched) +
+      '</div>';
+    } else {
+      // Past date: only resolved watchlist items + closed trades for that day
+      var resolved = (wl.awakened || 0) + (wl.timeout || 0) + (wl.dead || 0);
+      var base = Math.max(resolved, totalTrades, 1);
+      html += '<div class="sl-funnel">' +
+        _slFunnelStep('覚醒', wl.awakened || 0, base) +
+        '<span class="sl-funnel__arrow">→</span>' +
+        _slFunnelStep('タイムアウト', wl.timeout || 0, base) +
+        '<span class="sl-funnel__arrow">→</span>' +
+        _slFunnelStep('トレード', totalTrades, base) +
+        '<span class="sl-funnel__arrow">→</span>' +
+        _slFunnelStep('勝ち', winners, base) +
+      '</div>';
+    }
 
     html += '</div>';
     return html;
