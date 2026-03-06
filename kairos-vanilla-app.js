@@ -5792,145 +5792,33 @@
     });
     html += '</div></div>';
 
-    // 📊 指標影響度ランキング（レポートがある場合のみ）
+    // 📊 指標影響度 / 初動分析 / ウェイト → 横3列ボタン（ポップアップ）
     var ranking = (report && report.indicator_ranking) || [];
-    if (ranking.length > 0) {
-      var topItems = ranking.slice(0, 5);
-      var hasMore = ranking.length > 5;
-      html += '<div class="performance-section" style="animation-delay:0.12s">' +
-        '<div class="performance-accordion">' +
-          '<div class="performance-accordion__header" onclick="this.parentElement.classList.toggle(\'performance-accordion--expanded\')">' +
-            '<span>📊 指標影響度ランキング</span>' +
-            '<span class="performance-accordion__chevron">▼</span>' +
-          '</div>' +
-          '<div class="performance-accordion__body">';
-      // 上位5件は常時表示（アコーディオン外でも見える部分として先頭に）
-      html += '<div class="perf-report-ranking">';
-      topItems.forEach(function(item, idx) {
-        var name = INDICATOR_LABELS[item.indicator] || item.indicator;
-        var badgeCls = 'perf-report-ranking__badge--' + item.impact;
-        var impactJa = item.impact === 'large' ? '大' : item.impact === 'medium' ? '中' : item.impact === 'small' ? '小' : '微';
-        var dirLabel = item.direction === 'winners_higher' ? '勝ち↑' : '負け↑';
-        var dirCls = item.direction === 'winners_higher' ? 'positive' : 'negative';
-        html += '<div class="perf-report-ranking__item">' +
-          '<span class="perf-report-ranking__rank">' + (idx + 1) + '</span>' +
-          '<span class="perf-report-ranking__name">' + name + '</span>' +
-          '<span class="perf-report-ranking__d ' + dirCls + '">' + dirLabel + '</span>' +
-          '<span class="perf-report-ranking__badge ' + badgeCls + '">' + impactJa + '</span>' +
-        '</div>';
-      });
-      // 残りをアコーディオン内に
-      if (hasMore) {
-        ranking.slice(5).forEach(function(item, idx) {
-          var name = INDICATOR_LABELS[item.indicator] || item.indicator;
-          var badgeCls = 'perf-report-ranking__badge--' + item.impact;
-          var impactJa = item.impact === 'large' ? '大' : item.impact === 'medium' ? '中' : item.impact === 'small' ? '小' : '微';
-          var dirLabel = item.direction === 'winners_higher' ? '勝ち↑' : '負け↑';
-          var dirCls = item.direction === 'winners_higher' ? 'positive' : 'negative';
-          html += '<div class="perf-report-ranking__item">' +
-            '<span class="perf-report-ranking__rank">' + (idx + 6) + '</span>' +
-            '<span class="perf-report-ranking__name">' + name + '</span>' +
-            '<span class="perf-report-ranking__d ' + dirCls + '">' + dirLabel + '</span>' +
-            '<span class="perf-report-ranking__badge ' + badgeCls + '">' + impactJa + '</span>' +
-          '</div>';
-        });
+    var comparison = (report && report.indicator_comparison) || {};
+    var hasPattern = report && report.pattern_analysis && report.pattern_analysis.sample_size;
+    var hasWeight = report && report.weight_analysis && report.weight_analysis.dimensions;
+
+    if (ranking.length > 0 || hasPattern || hasWeight) {
+      // Store data for popups
+      window._perfReport = report;
+      window._perfComparison = comparison;
+
+      html += '<div class="perf-quick-btns">';
+      if (ranking.length > 0) {
+        html += '<button class="perf-quick-btn" onclick="window._openPerfPopup(\'ranking\')">📊 指標影響度<br>ランキング</button>';
+      }
+      if (hasPattern) {
+        html += '<button class="perf-quick-btn" onclick="window._openPerfPopup(\'pattern\')">📐 初動分析<br>パターン</button>';
+      }
+      if (hasWeight) {
+        html += '<button class="perf-quick-btn" onclick="window._openPerfPopup(\'weight\')">📊 ウェイト<br>分析</button>';
       }
       html += '</div>';
-      html += '</div></div></div>';
-    }
-
-    // 📈 勝ち vs 負け 指標比較（レポートがある場合のみ）
-    var comparison = (report && report.indicator_comparison) || {};
-    var compTimings = Object.keys(comparison);
-    if (compTimings.length > 0) {
-      // 全タイミング統合の平均を計算
-      var merged = {};
-      compTimings.forEach(function(timing) {
-        var tc = comparison[timing];
-        Object.keys(tc).forEach(function(ind) {
-          if (!merged[ind]) merged[ind] = { wSum: 0, lSum: 0, wN: 0, lN: 0 };
-          var d = tc[ind];
-          if (d.winners_avg !== null) { merged[ind].wSum += d.winners_avg * d.winners_n; merged[ind].wN += d.winners_n; }
-          if (d.losers_avg !== null) { merged[ind].lSum += d.losers_avg * d.losers_n; merged[ind].lN += d.losers_n; }
-        });
-      });
-
-      var mergedKeys = Object.keys(merged).filter(function(k) { return merged[k].wN > 0 && merged[k].lN > 0; });
-      if (mergedKeys.length > 0) {
-        html += '<div class="performance-section" style="animation-delay:0.14s">' +
-          '<div class="performance-accordion">' +
-            '<div class="performance-accordion__header" onclick="this.parentElement.classList.toggle(\'performance-accordion--expanded\')">' +
-              '<span>📈 勝ち vs 負け 指標比較</span>' +
-              '<span class="performance-accordion__chevron">▼</span>' +
-            '</div>' +
-            '<div class="performance-accordion__body">' +
-              '<div class="perf-report-compare">' +
-                '<div class="perf-report-compare__row perf-report-compare__row--header">' +
-                  '<span class="perf-report-compare__cell">指標</span>' +
-                  '<span class="perf-report-compare__cell">勝ち平均</span>' +
-                  '<span class="perf-report-compare__cell">負け平均</span>' +
-                  '<span class="perf-report-compare__cell">差分</span>' +
-                '</div>';
-
-        mergedKeys.forEach(function(ind) {
-          var m = merged[ind];
-          var wAvg = m.wN > 0 ? m.wSum / m.wN : 0;
-          var lAvg = m.lN > 0 ? m.lSum / m.lN : 0;
-          var diff = wAvg - lAvg;
-          var diffClass = diff >= 0 ? 'positive' : 'negative';
-          var diffSign = diff >= 0 ? '+' : '';
-          var name = INDICATOR_LABELS[ind] || ind;
-
-          html += '<div class="perf-report-compare__row">' +
-            '<span class="perf-report-compare__cell perf-report-compare__cell--name">' + name + '</span>' +
-            '<span class="perf-report-compare__cell">' + _formatIndicatorVal(ind, wAvg) + '</span>' +
-            '<span class="perf-report-compare__cell">' + _formatIndicatorVal(ind, lAvg) + '</span>' +
-            '<span class="perf-report-compare__cell ' + diffClass + '">' + diffSign + _formatIndicatorVal(ind, diff) + '</span>' +
-          '</div>';
-        });
-
-        html += '</div>';
-
-        // タイミング別内訳（折りたたみ内に表示）
-        compTimings.sort().forEach(function(timing) {
-          var tc = comparison[timing];
-          var keys = Object.keys(tc).filter(function(k) { return tc[k].winners_avg !== null && tc[k].losers_avg !== null; });
-          if (keys.length === 0) return;
-          html += '<div class="perf-report-compare__timing-label">' + timing + '</div>' +
-            '<div class="perf-report-compare">';
-          keys.forEach(function(ind) {
-            var d = tc[ind];
-            var diff = d.diff || 0;
-            var diffClass = diff >= 0 ? 'positive' : 'negative';
-            var diffSign = diff >= 0 ? '+' : '';
-            var name = INDICATOR_LABELS[ind] || ind;
-            html += '<div class="perf-report-compare__row perf-report-compare__row--sub">' +
-              '<span class="perf-report-compare__cell perf-report-compare__cell--name">' + name + '</span>' +
-              '<span class="perf-report-compare__cell">' + _formatIndicatorVal(ind, d.winners_avg) + '</span>' +
-              '<span class="perf-report-compare__cell">' + _formatIndicatorVal(ind, d.losers_avg) + '</span>' +
-              '<span class="perf-report-compare__cell ' + diffClass + '">' + diffSign + _formatIndicatorVal(ind, diff) + '</span>' +
-            '</div>';
-          });
-          html += '</div>';
-        });
-
-        html += '</div></div></div>';
-      }
     }
 
     // 🤖 AI分析セクション（日次分析がある場合のみ）
     if (analysis) {
       html += _renderAIAnalysisSection(analysis);
-    }
-
-    // 📐 初動パターン分析（Phase 2-3）
-    if (report && report.pattern_analysis && report.pattern_analysis.sample_size) {
-      html += _renderPatternAnalysisSection(report);
-    }
-
-    // 📊 ウェイト分析（Phase 2-4）
-    if (report && report.weight_analysis && report.weight_analysis.dimensions) {
-      html += _renderWeightAnalysisSection(report);
     }
 
     // クローズ理由グリッド
@@ -6492,6 +6380,76 @@
         '</div>';
       });
       body += '</div>';
+    } else if (type === 'ranking') {
+      title = '📊 指標影響度ランキング';
+      var report = window._perfReport;
+      var ranking = (report && report.indicator_ranking) || [];
+      var comparison = window._perfComparison || {};
+      body = '<div class="perf-popup__section">';
+      // Ranking list
+      body += '<div class="perf-report-ranking">';
+      ranking.forEach(function(item, idx) {
+        var name = INDICATOR_LABELS[item.indicator] || item.indicator;
+        var badgeCls = 'perf-report-ranking__badge--' + item.impact;
+        var impactJa = item.impact === 'large' ? '大' : item.impact === 'medium' ? '中' : item.impact === 'small' ? '小' : '微';
+        var dirLabel = item.direction === 'winners_higher' ? '勝ち↑' : '負け↑';
+        var dirCls = item.direction === 'winners_higher' ? 'positive' : 'negative';
+        body += '<div class="perf-report-ranking__item">' +
+          '<span class="perf-report-ranking__rank">' + (idx + 1) + '</span>' +
+          '<span class="perf-report-ranking__name">' + name + '</span>' +
+          '<span class="perf-report-ranking__d ' + dirCls + '">' + dirLabel + '</span>' +
+          '<span class="perf-report-ranking__badge ' + badgeCls + '">' + impactJa + '</span>' +
+        '</div>';
+      });
+      body += '</div>';
+      // Indicator comparison (merged)
+      var compTimings = Object.keys(comparison);
+      if (compTimings.length > 0) {
+        var merged = {};
+        compTimings.forEach(function(timing) {
+          var tc = comparison[timing];
+          Object.keys(tc).forEach(function(ind) {
+            if (!merged[ind]) merged[ind] = { wSum: 0, lSum: 0, wN: 0, lN: 0 };
+            var d = tc[ind];
+            if (d.winners_avg !== null) { merged[ind].wSum += d.winners_avg * d.winners_n; merged[ind].wN += d.winners_n; }
+            if (d.losers_avg !== null) { merged[ind].lSum += d.losers_avg * d.losers_n; merged[ind].lN += d.losers_n; }
+          });
+        });
+        var mergedKeys = Object.keys(merged).filter(function(k) { return merged[k].wN > 0 && merged[k].lN > 0; });
+        if (mergedKeys.length > 0) {
+          body += '<div style="margin-top:14px;font-size:13px;font-weight:600;color:var(--text-primary,#e2e8f0)">勝ち vs 負け 指標比較</div>' +
+            '<div class="perf-report-compare" style="margin-top:6px">' +
+              '<div class="perf-report-compare__row perf-report-compare__row--header">' +
+                '<span class="perf-report-compare__cell">指標</span>' +
+                '<span class="perf-report-compare__cell">勝ち</span>' +
+                '<span class="perf-report-compare__cell">負け</span>' +
+                '<span class="perf-report-compare__cell">差</span>' +
+              '</div>';
+          mergedKeys.forEach(function(ind) {
+            var m = merged[ind];
+            var wAvg = m.wN > 0 ? m.wSum / m.wN : 0;
+            var lAvg = m.lN > 0 ? m.lSum / m.lN : 0;
+            var diff = wAvg - lAvg;
+            var diffClass = diff >= 0 ? 'positive' : 'negative';
+            var diffSign = diff >= 0 ? '+' : '';
+            var name = INDICATOR_LABELS[ind] || ind;
+            body += '<div class="perf-report-compare__row">' +
+              '<span class="perf-report-compare__cell perf-report-compare__cell--name">' + name + '</span>' +
+              '<span class="perf-report-compare__cell">' + _formatIndicatorVal(ind, wAvg) + '</span>' +
+              '<span class="perf-report-compare__cell">' + _formatIndicatorVal(ind, lAvg) + '</span>' +
+              '<span class="perf-report-compare__cell ' + diffClass + '">' + diffSign + _formatIndicatorVal(ind, diff) + '</span>' +
+            '</div>';
+          });
+          body += '</div>';
+        }
+      }
+      body += '</div>';
+    } else if (type === 'pattern') {
+      title = '📐 初動分析パターン';
+      body = _buildPatternPopupContent();
+    } else if (type === 'weight') {
+      title = '📊 ウェイト分析';
+      body = _buildWeightPopupContent();
     }
 
     // Create overlay
@@ -6507,6 +6465,143 @@
     '</div>';
     document.body.appendChild(overlay);
   };
+
+  function _buildPatternPopupContent() {
+    var report = window._perfReport;
+    if (!report || !report.pattern_analysis) return '';
+    var pa = report.pattern_analysis;
+    var ss = pa.sample_size || {};
+    var html = '<div class="perf-popup__section">';
+    html += '<div style="font-size:12px;color:var(--text-secondary,#94a3b8);margin-bottom:10px">' +
+      '分析対象: ' + (ss.total || 0) + '件（勝ち ' + (ss.winners || 0) + ' / 負け ' + (ss.losers || 0) + '）</div>';
+
+    // Curve shape grid
+    var curveDist = pa.curve_distribution || {};
+    html += '<div style="font-size:13px;font-weight:600;color:var(--text-primary,#e2e8f0);margin-bottom:8px">カーブ形状別の勝率</div>' +
+      '<div class="pattern-analysis__curve-grid">';
+    for (var i = 0; i < 4; i++) {
+      var cd = curveDist[String(i)] || curveDist[i] || { count: 0, win_rate: 0, avg_pnl: 0 };
+      var wrColor = cd.win_rate >= 50 ? '#10b981' : cd.count > 0 ? '#ef4444' : 'rgba(255,255,255,0.3)';
+      var pnlClass = cd.avg_pnl >= 0 ? 'positive' : 'negative';
+      var pnlSign = cd.avg_pnl >= 0 ? '+' : '';
+      html += '<div class="pattern-analysis__curve-card">' +
+        '<div class="pattern-analysis__curve-icon">' + CURVE_SHAPE_ICONS[i] + '</div>' +
+        '<div class="pattern-analysis__curve-name">' + CURVE_SHAPE_LABELS[i] + '</div>' +
+        '<div class="pattern-analysis__curve-wr" style="color:' + wrColor + '">' +
+          (cd.count > 0 ? cd.win_rate.toFixed(1) + '%' : '-') + '</div>' +
+        '<div class="pattern-analysis__curve-detail">' +
+          (cd.count > 0 ? cd.count + '件 / <span class="' + pnlClass + '">' + pnlSign + cd.avg_pnl.toFixed(2) + '%</span>' : '') +
+        '</div></div>';
+    }
+    html += '</div>';
+
+    // Feature ranking
+    var ranking = pa.feature_ranking || [];
+    if (ranking.length > 0) {
+      html += '<div style="font-size:13px;font-weight:600;color:var(--text-primary,#e2e8f0);margin:14px 0 8px">特徴量影響度</div>' +
+        '<div class="perf-report-ranking">';
+      ranking.forEach(function(item, idx) {
+        var name = PATTERN_FEATURE_LABELS[item.feature] || item.feature;
+        var badgeCls = 'perf-report-ranking__badge--' + item.impact;
+        var impactJa = item.impact === 'large' ? '大' : item.impact === 'medium' ? '中' : item.impact === 'small' ? '小' : '微';
+        var dirLabel = item.direction === 'winners_higher' ? '勝ち↑' : '負け↑';
+        var dirCls = item.direction === 'winners_higher' ? 'positive' : 'negative';
+        html += '<div class="perf-report-ranking__item">' +
+          '<span class="perf-report-ranking__rank">' + (idx + 1) + '</span>' +
+          '<span class="perf-report-ranking__name">' + name + '</span>' +
+          '<span class="perf-report-ranking__d ' + dirCls + '">' + dirLabel + '</span>' +
+          '<span class="perf-report-ranking__badge ' + badgeCls + '">' + impactJa + '</span>' +
+        '</div>';
+      });
+      html += '</div>';
+    }
+
+    // Thresholds
+    var thresholds = pa.thresholds || [];
+    if (thresholds.length > 0) {
+      html += '<div style="font-size:13px;font-weight:600;color:var(--text-primary,#e2e8f0);margin:14px 0 8px">主要閾値</div>' +
+        '<div class="pattern-analysis__threshold-table">' +
+          '<div class="pattern-analysis__threshold-header"><span>特徴量</span><span>閾値</span><span>以上</span><span>以下</span></div>';
+      thresholds.forEach(function(t) {
+        var name = PATTERN_FEATURE_LABELS[t.feature] || t.feature;
+        html += '<div class="pattern-analysis__threshold-row">' +
+          '<span>' + name + '</span><span>' + t.threshold.toFixed(2) + '</span>' +
+          '<span style="color:' + (t.win_rate_above >= 50 ? '#10b981' : '#ef4444') + '">' + t.win_rate_above.toFixed(1) + '%</span>' +
+          '<span style="color:' + (t.win_rate_below >= 50 ? '#10b981' : '#ef4444') + '">' + t.win_rate_below.toFixed(1) + '%</span>' +
+        '</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function _buildWeightPopupContent() {
+    var report = window._perfReport;
+    if (!report || !report.weight_analysis) return '';
+    var wa = report.weight_analysis;
+    var html = '<div class="perf-popup__section">';
+    html += '<div style="font-size:12px;color:var(--text-secondary,#94a3b8);margin-bottom:10px">' +
+      '分析期間: ' + wa.days_analyzed + '日分</div>';
+
+    // Dimension table
+    html += '<div class="weight-analysis__dimension-table">' +
+      '<div class="weight-analysis__table-header"><span>次元</span><span>現在</span><span>推奨</span><span>差</span><span>安定</span></div>';
+    (wa.dimensions || []).forEach(function(dim) {
+      var name = DIMENSION_LABELS[dim.dimension] || dim.dimension;
+      var gapSign = dim.gap >= 0 ? '+' : '';
+      var gapCls = dim.gap > 3 ? 'weight-analysis__gap--positive' : dim.gap < -3 ? 'weight-analysis__gap--negative' : '';
+      var stabColor = STABILITY_COLORS[dim.stability] || '#94a3b8';
+      var stabLabel = STABILITY_LABELS[dim.stability] || dim.stability;
+      html += '<div class="weight-analysis__table-row">' +
+        '<span class="weight-analysis__cell--name">' + name + '</span>' +
+        '<span>' + dim.current_weight + '</span>' +
+        '<span>' + dim.recommended_weight.toFixed(1) + '</span>' +
+        '<span class="' + gapCls + '">' + gapSign + dim.gap.toFixed(1) + '</span>' +
+        '<span style="color:' + stabColor + '">' + stabLabel + '</span>' +
+      '</div>';
+      var maxW = 40;
+      html += '<div class="weight-analysis__bar-row">' +
+        '<div class="weight-analysis__bar--current" style="width:' + (Math.min(dim.current_weight, maxW) / maxW * 100) + '%"></div>' +
+        '<div class="weight-analysis__bar--recommended" style="width:' + (Math.min(dim.recommended_weight, maxW) / maxW * 100) + '%"></div>' +
+      '</div>';
+    });
+    html += '</div>';
+
+    // Top indicators
+    var topInd = wa.top_indicators || [];
+    if (topInd.length > 0) {
+      var indicatorLabels = {
+        volume_24h: '24h出来高', volume_1h: '1h出来高',
+        d1_volume_change_pct: '出来高変化', d1_price_change_pct: '価格変化',
+        d1_buy_sell_ratio: 'BSR', age_hours: '経過時間',
+        social_interactions: 'SNS反応数', social_sentiment: 'SNS感情',
+        d1_holder_count: 'ホルダー数', holder_top10_pct: 'Top10保有率',
+        rugcheck_score: 'Rugcheck', lp_locked_pct: 'LP Lock%',
+        moonshot_score: 'Moonshot', liquidity_usd: '流動性',
+        d1_liquidity_change_pct: '流動性変化'
+      };
+      html += '<div style="font-size:13px;font-weight:600;color:var(--text-primary,#e2e8f0);margin:14px 0 8px">影響度TOP指標</div>' +
+        '<div class="perf-report-ranking">';
+      topInd.forEach(function(item, idx) {
+        var name = indicatorLabels[item.indicator] || item.indicator;
+        var dimName = DIMENSION_LABELS[item.dimension] || item.dimension;
+        var badgeCls = 'perf-report-ranking__badge--' + item.impact;
+        var impactJa = item.impact === 'large' ? '大' : item.impact === 'medium' ? '中' : item.impact === 'small' ? '小' : '微';
+        var dirLabel = item.direction === 'winners_higher' ? '勝ち↑' : '負け↑';
+        var dirCls = item.direction === 'winners_higher' ? 'positive' : 'negative';
+        html += '<div class="perf-report-ranking__item">' +
+          '<span class="perf-report-ranking__rank">' + (idx + 1) + '</span>' +
+          '<span class="perf-report-ranking__name">' + name + ' <span style="font-size:10px;color:rgba(255,255,255,0.4)">(' + dimName + ')</span></span>' +
+          '<span class="perf-report-ranking__d ' + dirCls + '">' + dirLabel + '</span>' +
+          '<span class="perf-report-ranking__badge ' + badgeCls + '">' + impactJa + '</span>' +
+        '</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+    return html;
+  }
 
   function _renderAIAnalysisSection(analysis) {
     var html = '<div class="performance-section" style="animation-delay:0.16s">' +

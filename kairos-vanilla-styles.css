@@ -16094,7 +16094,7 @@ body.has-ticker-bar {
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s;
   text-align: center;
-  white-space: nowrap;
+  line-height: 1.4;
 }
 .perf-quick-btn:active {
   background: rgba(99, 102, 241, 0.15);
@@ -16196,6 +16196,11 @@ body.has-ticker-bar {
 }
 .perf-popup__pnl.positive { color: #10b981; }
 .perf-popup__pnl.negative { color: #ef4444; }
+.perf-popup__section {
+  padding: 0;
+}
+.perf-popup__section .positive { color: #10b981; }
+.perf-popup__section .negative { color: #ef4444; }
 
 /* ============================================================
    Pattern Engine Styles
