@@ -6494,15 +6494,20 @@
     function onTouchEnd() {
       if (!dragging) return;
       dragging = false;
-      popup.style.transition = '';
-      overlay.style.background = '';
 
       if (currentY > 100) {
-        // Dismiss
-        _closePerfPopup(overlay);
+        // Smoothly slide from current position to bottom
+        popup.style.transition = 'transform 0.25s ease';
+        overlay.style.transition = 'background 0.25s ease';
+        popup.style.transform = 'translateY(100%)';
+        overlay.style.background = 'rgba(0,0,0,0)';
+        setTimeout(function() { overlay.remove(); }, 250);
       } else {
         // Snap back
+        popup.style.transition = 'transform 0.2s ease';
+        overlay.style.transition = 'background 0.2s ease';
         popup.style.transform = '';
+        overlay.style.background = '';
       }
       currentY = 0;
     }
