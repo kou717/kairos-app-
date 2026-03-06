@@ -16326,6 +16326,13 @@ body.has-ticker-bar {
 .pattern-engine__table .negative {
   color: #ef4444;
 }
+.pattern-engine__verdict-row {
+  font-size: 10px;
+  font-weight: 600;
+  padding-top: 2px !important;
+  padding-bottom: 10px !important;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.5) !important;
+}
 
 /* Sequences */
 .pattern-engine__sequence {

@@ -6183,15 +6183,15 @@
     var frKeys = Object.keys(fr);
     if (frKeys.length > 0) {
       html += '<div class="pattern-engine__table"><table>' +
-        '<tr><th>フィルタ</th><th>ブロック数</th><th>Shadow勝率</th><th>実勝率</th><th>差</th><th>判定</th></tr>';
+        '<tr><th>フィルタ</th><th>ブロック数</th><th>Shadow勝率</th><th>実勝率</th><th>差</th></tr>';
       frKeys.forEach(function(k) {
         var f = fr[k];
         var verdictClass = f.verdict === 'effective' ? 'positive' : (f.verdict === 'over_filtering' ? 'negative' : '');
         html += '<tr><td>' + k + '</td><td>' + f.blocked_count + '</td>' +
           '<td>' + f.shadow_win_rate + '%</td>' +
           '<td>' + f.actual_win_rate + '%</td>' +
-          '<td>' + (f.diff >= 0 ? '+' : '') + f.diff + '%</td>' +
-          '<td class="' + verdictClass + '">' + f.verdict_ja + '</td></tr>';
+          '<td>' + (f.diff >= 0 ? '+' : '') + f.diff + '%</td></tr>' +
+          '<tr><td colspan="5" class="pattern-engine__verdict-row ' + verdictClass + '">' + f.verdict_ja + '</td></tr>';
       });
       html += '</table></div>';
     }
