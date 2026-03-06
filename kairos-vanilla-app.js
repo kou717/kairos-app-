@@ -5752,6 +5752,9 @@
     // 📈 勝率トレンド（Phase 3-2）
     html += _renderWinRateTrendSection(trendData);
 
+    // 🔬 パターンエンジン（全履歴データ駆動分析）
+    html += _renderPatternEngineSection(patternData);
+
     // タイミング別成績テーブル（レポートありなら期待値列追加）
     var timingOrder = ['1m', '5m', '15m', '30m', '1h'];
     var hasEV = !!reportTiming;
@@ -5919,9 +5922,6 @@
     if (analysis) {
       html += _renderAIAnalysisSection(analysis);
     }
-
-    // 🔬 パターンエンジン（全履歴データ駆動分析）
-    html += _renderPatternEngineSection(patternData);
 
     // 📐 初動パターン分析（Phase 2-3）
     if (report && report.pattern_analysis && report.pattern_analysis.sample_size) {
