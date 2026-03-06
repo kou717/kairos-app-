@@ -5974,11 +5974,13 @@
   }
 
   function _formatSequence(seq) {
-    // Make sequences more readable
-    return seq.replace(/p:up/g, '📈価格↑').replace(/p:down/g, '📉価格↓').replace(/p:flat/g, '➡️価格→')
+    // Make sequences more readable - each step on its own line
+    var s = seq.replace(/p:up/g, '📈価格↑').replace(/p:down/g, '📉価格↓').replace(/p:flat/g, '➡️価格→')
       .replace(/l:up/g, '💧流動性↑').replace(/l:down/g, '💧流動性↓').replace(/l:flat/g, '💧流動性→')
       .replace(/b:high/g, '🟢BSR高').replace(/b:mid/g, '🟡BSR中').replace(/b:low/g, '🔴BSR低')
       .replace(/_/g, ' ').replace(/\[/g, '【').replace(/\]/g, '】');
+    // Split steps onto separate lines
+    return s.replace(/\s*->\s*/g, '<br>');
   }
 
   function _renderPEModule3(mod) {
@@ -6081,7 +6083,7 @@
             html += '<tr><td>' + (f.label || f.feature) + '</td>' +
               '<td><span class="pattern-engine__impact pattern-engine__impact--' + impact + '">' + f.cohens_d + '</span></td>' +
               '<td>' + f.group_avg + '</td><td>' + f.other_avg + '</td>' +
-              '<td>' + (f.direction === 'higher' ? '↑高い' : '↓低い') + '</td></tr>';
+              '<td style="white-space:nowrap">' + (f.direction === 'higher' ? '↑高い' : '↓低い') + '</td></tr>';
           });
           html += '</table></div>';
         }
