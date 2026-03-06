@@ -19248,10 +19248,14 @@
     initTickerBar();
 
     // スプラッシュ中にPerformanceデータをプリフェッチ（DOM不要のAPI呼び出しのみ）
+    var _prefetchDate = _perfAllDates ? null : _getTodayJST();
     window._perfPrefetch = Promise.all([
-      BackendAPI.getCollectorStats(_perfAllDates ? null : _getTodayJST()),
+      BackendAPI.getCollectorStats(_prefetchDate),
       _perfDatesList ? Promise.resolve({ dates: _perfDatesList }) : BackendAPI.getCollectorStatsDates().catch(function() { return { dates: [] }; }),
-      BackendAPI.getSleepingLionStats(_perfAllDates ? null : _getTodayJST()).catch(function() { return { watchlist: {}, trades: {} }; })
+      BackendAPI.getSleepingLionStats(_prefetchDate).catch(function() { return { watchlist: {}, trades: {} }; }),
+      _prefetchDate ? BackendAPI.getDailyReport(_prefetchDate).catch(function() { return null; }) : Promise.resolve(null),
+      _prefetchDate ? BackendAPI.getDailyAnalysis(_prefetchDate).catch(function() { return null; }) : Promise.resolve(null),
+      BackendAPI.getDailyReportTrend(30).catch(function() { return null; })
     ]).catch(function() { return null; });
 
     // 1秒後に成績画面へ（DEXデフォルト）
