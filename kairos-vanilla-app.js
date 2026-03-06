@@ -5836,7 +5836,7 @@
       dateInfo = '<span class="pattern-engine__nav-date">' + data.analysis_date + '</span>';
     }
     return '<div class="performance-section" style="animation-delay:0.12s">' +
-      '<button class="perf-quick-btn perf-quick-btn--wide" onclick="navigateTo(\'pattern-engine\')">' +
+      '<button class="perf-quick-btn perf-quick-btn--wide" onclick="window.KairosApp.navigate(\'pattern-engine\')">' +
         '🔬 パターンエンジン' + dateInfo +
       '</button>' +
     '</div>';
