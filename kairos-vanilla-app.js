@@ -5830,13 +5830,18 @@
 
   function _renderPatternEngineSection(data) {
     var html = '<div class="performance-section pattern-engine" style="animation-delay:0.12s">' +
-      '<h3 class="performance-section__title">🔬 パターンエンジン</h3>';
+      '<div class="performance-accordion">' +
+        '<div class="performance-accordion__header" onclick="this.parentElement.classList.toggle(\'performance-accordion--expanded\')">' +
+          '<span>🔬 パターンエンジン</span>' +
+          '<span class="performance-accordion__chevron">▼</span>' +
+        '</div>' +
+        '<div class="performance-accordion__body">';
 
     if (!data || !data.modules) {
       html += '<div class="pattern-engine__empty">' +
         '<p>パターン分析データがありません</p>' +
         '<button class="pattern-engine__generate-btn" onclick="window._generatePatternAnalysis()">分析を実行</button>' +
-        '</div></div>';
+        '</div></div></div></div>';
       return html;
     }
 
@@ -5864,7 +5869,7 @@
     // Module 7: Time & Regime
     html += _renderPEModule7(m.time_regime);
 
-    html += '</div>';
+    html += '</div></div></div>';
     return html;
   }
 
