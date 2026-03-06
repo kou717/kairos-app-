@@ -5954,76 +5954,21 @@
       '</div>';
     }
 
-    // ベスト/ワースト取引（アコーディオン）
+    // ベスト / ワースト / 信頼度 → 横3列ボタン（ポップアップ表示）
+    html += '<div class="perf-quick-btns">';
     if (bestTrades.length > 0) {
-      html += '<div class="performance-section" style="animation-delay:0.2s">' +
-        '<div class="performance-accordion">' +
-          '<div class="performance-accordion__header" onclick="this.parentElement.classList.toggle(\'performance-accordion--expanded\')">' +
-            '<span>🏆 ベスト取引 (Top 5)</span>' +
-            '<span class="performance-accordion__chevron">▼</span>' +
-          '</div>' +
-          '<div class="performance-accordion__body">';
-      bestTrades.forEach(function(t) {
-        var sign = (t.realized_pnl_pct || 0) >= 0 ? '+' : '';
-        var peakVal = t.peak_pnl_pct || 0;
-        var peakSign = peakVal >= 0 ? '+' : '';
-        html += '<div class="performance-trade-item">' +
-          '<span class="performance-trade-item__symbol">' + t.symbol + '</span>' +
-          '<span class="performance-trade-item__timing">' + t.entry_timing + '</span>' +
-          '<span class="performance-trade-item__peak">⤴' + peakSign + peakVal.toFixed(1) + '%</span>' +
-          '<span class="performance-trade-item__pnl positive">' + sign + (t.realized_pnl_pct || 0).toFixed(2) + '%</span>' +
-        '</div>';
-      });
-      html += '</div></div></div>';
+      window._perfBestTrades = bestTrades;
+      html += '<button class="perf-quick-btn perf-quick-btn--best" onclick="window._openPerfPopup(\'best\')">🏆 Best 5</button>';
     }
-
     if (worstTrades.length > 0) {
-      html += '<div class="performance-section" style="animation-delay:0.25s">' +
-        '<div class="performance-accordion">' +
-          '<div class="performance-accordion__header" onclick="this.parentElement.classList.toggle(\'performance-accordion--expanded\')">' +
-            '<span>💀 ワースト取引 (Top 5)</span>' +
-            '<span class="performance-accordion__chevron">▼</span>' +
-          '</div>' +
-          '<div class="performance-accordion__body">';
-      worstTrades.forEach(function(t) {
-        var sign = (t.realized_pnl_pct || 0) >= 0 ? '+' : '';
-        var peakVal = t.peak_pnl_pct || 0;
-        var peakSign = peakVal >= 0 ? '+' : '';
-        html += '<div class="performance-trade-item">' +
-          '<span class="performance-trade-item__symbol">' + t.symbol + '</span>' +
-          '<span class="performance-trade-item__timing">' + t.entry_timing + '</span>' +
-          '<span class="performance-trade-item__peak">⤴' + peakSign + peakVal.toFixed(1) + '%</span>' +
-          '<span class="performance-trade-item__pnl negative">' + sign + (t.realized_pnl_pct || 0).toFixed(2) + '%</span>' +
-        '</div>';
-      });
-      html += '</div></div></div>';
+      window._perfWorstTrades = worstTrades;
+      html += '<button class="perf-quick-btn perf-quick-btn--worst" onclick="window._openPerfPopup(\'worst\')">💀 Worst 5</button>';
     }
-
-    // 信頼度別成績（アコーディオン）
-    var trustKeys = Object.keys(trustStats);
-    if (trustKeys.length > 0) {
-      html += '<div class="performance-section" style="animation-delay:0.3s">' +
-        '<div class="performance-accordion">' +
-          '<div class="performance-accordion__header" onclick="this.parentElement.classList.toggle(\'performance-accordion--expanded\')">' +
-            '<span>🛡️ 信頼度別成績</span>' +
-            '<span class="performance-accordion__chevron">▼</span>' +
-          '</div>' +
-          '<div class="performance-accordion__body">';
-      var trustOrder = ['high', 'medium', 'low', 'danger'];
-      var trustLabels = { 'high': '🟢 High', 'medium': '🟡 Medium', 'low': '🟠 Low', 'danger': '🔴 Danger', 'unknown': '⚪ Unknown' };
-      trustOrder.forEach(function(key) {
-        var ts = trustStats[key];
-        if (!ts) return;
-        var tsPnlClass = (ts.avg_pnl_pct || 0) >= 0 ? 'positive' : 'negative';
-        var tsPnlSign = (ts.avg_pnl_pct || 0) >= 0 ? '+' : '';
-        html += '<div class="performance-trade-item">' +
-          '<span class="performance-trade-item__symbol">' + (trustLabels[key] || key) + '</span>' +
-          '<span class="performance-trade-item__timing">' + ts.total + '件 / ' + ts.win_rate.toFixed(1) + '%</span>' +
-          '<span class="performance-trade-item__pnl ' + tsPnlClass + '">' + tsPnlSign + ts.avg_pnl_pct.toFixed(2) + '%</span>' +
-        '</div>';
-      });
-      html += '</div></div></div>';
+    if (Object.keys(trustStats).length > 0) {
+      window._perfTrustStats = trustStats;
+      html += '<button class="perf-quick-btn perf-quick-btn--trust" onclick="window._openPerfPopup(\'trust\')">🛡️ 信頼度別</button>';
     }
+    html += '</div>';
 
     return html;
   }
@@ -6489,6 +6434,78 @@
         if (btn) { btn.disabled = false; btn.textContent = '再分析'; }
         console.error('Pattern analysis error:', e);
       });
+  };
+
+  // ベスト/ワースト/信頼度ポップアップ
+  window._openPerfPopup = function(type) {
+    var title = '';
+    var body = '';
+
+    if (type === 'best') {
+      title = '🏆 Best 5';
+      var trades = window._perfBestTrades || [];
+      body = '<div class="perf-popup__list">';
+      trades.forEach(function(t, i) {
+        var pnl = t.realized_pnl_pct || 0;
+        var peak = t.peak_pnl_pct || 0;
+        body += '<div class="perf-popup__item">' +
+          '<span class="perf-popup__rank">#' + (i + 1) + '</span>' +
+          '<span class="perf-popup__symbol">' + t.symbol + '</span>' +
+          '<span class="perf-popup__timing">' + t.entry_timing + '</span>' +
+          '<span class="perf-popup__peak">⤴' + (peak >= 0 ? '+' : '') + peak.toFixed(1) + '%</span>' +
+          '<span class="perf-popup__pnl positive">+' + pnl.toFixed(2) + '%</span>' +
+        '</div>';
+      });
+      body += '</div>';
+    } else if (type === 'worst') {
+      title = '💀 Worst 5';
+      var trades = window._perfWorstTrades || [];
+      body = '<div class="perf-popup__list">';
+      trades.forEach(function(t, i) {
+        var pnl = t.realized_pnl_pct || 0;
+        var peak = t.peak_pnl_pct || 0;
+        body += '<div class="perf-popup__item">' +
+          '<span class="perf-popup__rank">#' + (i + 1) + '</span>' +
+          '<span class="perf-popup__symbol">' + t.symbol + '</span>' +
+          '<span class="perf-popup__timing">' + t.entry_timing + '</span>' +
+          '<span class="perf-popup__peak">⤴' + (peak >= 0 ? '+' : '') + peak.toFixed(1) + '%</span>' +
+          '<span class="perf-popup__pnl negative">' + pnl.toFixed(2) + '%</span>' +
+        '</div>';
+      });
+      body += '</div>';
+    } else if (type === 'trust') {
+      title = '🛡️ 信頼度別成績';
+      var ts = window._perfTrustStats || {};
+      var trustOrder = ['high', 'medium', 'low', 'danger'];
+      var trustLabels = { high: '🟢 High', medium: '🟡 Medium', low: '🟠 Low', danger: '🔴 Danger' };
+      body = '<div class="perf-popup__list">';
+      trustOrder.forEach(function(key) {
+        var s = ts[key];
+        if (!s) return;
+        var pClass = (s.avg_pnl_pct || 0) >= 0 ? 'positive' : 'negative';
+        var pSign = (s.avg_pnl_pct || 0) >= 0 ? '+' : '';
+        body += '<div class="perf-popup__item">' +
+          '<span class="perf-popup__symbol">' + (trustLabels[key] || key) + '</span>' +
+          '<span class="perf-popup__timing">' + s.total + '件</span>' +
+          '<span class="perf-popup__peak">勝率 ' + s.win_rate.toFixed(1) + '%</span>' +
+          '<span class="perf-popup__pnl ' + pClass + '">' + pSign + s.avg_pnl_pct.toFixed(2) + '%</span>' +
+        '</div>';
+      });
+      body += '</div>';
+    }
+
+    // Create overlay
+    var overlay = document.createElement('div');
+    overlay.className = 'perf-popup-overlay';
+    overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+    overlay.innerHTML = '<div class="perf-popup">' +
+      '<div class="perf-popup__header">' +
+        '<span class="perf-popup__title">' + title + '</span>' +
+        '<button class="perf-popup__close" onclick="this.closest(\'.perf-popup-overlay\').remove()">✕</button>' +
+      '</div>' +
+      '<div class="perf-popup__body">' + body + '</div>' +
+    '</div>';
+    document.body.appendChild(overlay);
   };
 
   function _renderAIAnalysisSection(analysis) {
