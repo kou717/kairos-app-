@@ -14729,6 +14729,151 @@ body.has-ticker-bar {
   border-top: 1px solid rgba(255,255,255,0.06);
 }
 
+/* Phase 2-3: Pattern Analysis */
+.pattern-analysis__sample {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+  margin-bottom: 12px;
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+}
+.pattern-analysis__subtitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #d4a853;
+  margin: 14px 0 8px;
+}
+.pattern-analysis__curve-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.pattern-analysis__curve-card {
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: center;
+}
+.pattern-analysis__curve-icon {
+  font-size: 20px;
+  margin-bottom: 2px;
+}
+.pattern-analysis__curve-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary, #e2e8f0);
+  margin-bottom: 4px;
+}
+.pattern-analysis__curve-wr {
+  font-size: 18px;
+  font-weight: 700;
+}
+.pattern-analysis__curve-detail {
+  font-size: 11px;
+  color: var(--text-secondary, #94a3b8);
+  margin-top: 2px;
+}
+.pattern-analysis__threshold-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.pattern-analysis__threshold-header {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 4px;
+  padding: 6px 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary, #94a3b8);
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.pattern-analysis__threshold-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 4px;
+  padding: 7px 0;
+  font-size: 12px;
+  color: var(--text-primary, #e2e8f0);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.pattern-analysis__threshold-row span:first-child {
+  font-weight: 500;
+}
+.pattern-analysis__threshold-row span:not(:first-child) {
+  text-align: right;
+}
+.pattern-analysis__threshold-header span:not(:first-child) {
+  text-align: right;
+}
+
+/* Phase 2-4: Weight Analysis */
+.weight-analysis__dimension-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 8px;
+}
+.weight-analysis__table-header {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
+  gap: 4px;
+  padding: 6px 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary, #94a3b8);
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.weight-analysis__table-header span:not(:first-child) {
+  text-align: right;
+}
+.weight-analysis__table-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
+  gap: 4px;
+  padding: 6px 0;
+  font-size: 12px;
+  color: var(--text-primary, #e2e8f0);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.weight-analysis__table-row span:not(:first-child) {
+  text-align: right;
+}
+.weight-analysis__cell--name {
+  font-weight: 500;
+}
+.weight-analysis__gap--positive {
+  color: #10b981;
+  font-weight: 600;
+}
+.weight-analysis__gap--negative {
+  color: #ef4444;
+  font-weight: 600;
+}
+.weight-analysis__bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 0 6px;
+}
+.weight-analysis__bar--current {
+  height: 4px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+  min-width: 2px;
+}
+.weight-analysis__bar--recommended {
+  height: 4px;
+  background: #6366f1;
+  border-radius: 2px;
+  min-width: 2px;
+  opacity: 0.8;
+}
+
 /* Export mode toggle */
 .performance-export-mode {
   display: flex;
@@ -15727,6 +15872,131 @@ body.has-ticker-bar {
   margin-top: 6px;
   padding-top: 6px;
   border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+/* ============================================================
+   Win Rate Trend (Phase 3-2)
+   ============================================================ */
+.perf-trend__dir-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.08);
+  color: var(--text-secondary, #94a3b8);
+  margin-left: auto;
+  margin-right: 8px;
+}
+.perf-trend__dir-badge.positive {
+  background: rgba(16,185,129,0.15);
+  color: #10b981;
+}
+.perf-trend__dir-badge.negative {
+  background: rgba(239,68,68,0.15);
+  color: #ef4444;
+}
+.perf-trend__averages {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.perf-trend__avg-item {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+}
+.perf-trend__avg-label {
+  font-size: 11px;
+  color: var(--text-secondary, #94a3b8);
+  margin-bottom: 4px;
+}
+.perf-trend__avg-value {
+  font-size: 20px;
+  font-weight: 700;
+}
+.perf-trend__avg-value.positive { color: #10b981; }
+.perf-trend__avg-value.negative { color: #ef4444; }
+.perf-trend__avg-sub {
+  font-size: 10px;
+  color: var(--text-secondary, #94a3b8);
+  margin-top: 2px;
+}
+.perf-trend__chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 80px;
+  padding: 0 4px;
+  margin-bottom: 12px;
+  position: relative;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.perf-trend__ref-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 50%;
+  height: 1px;
+  background: rgba(255,255,255,0.15);
+  pointer-events: none;
+}
+.perf-trend__ref-label {
+  position: absolute;
+  right: 2px;
+  bottom: calc(50% + 2px);
+  font-size: 9px;
+  color: rgba(255,255,255,0.3);
+  pointer-events: none;
+}
+.perf-trend__bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+.perf-trend__bar {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+  transition: height 0.3s ease;
+}
+.perf-trend__bar-label {
+  font-size: 7px;
+  color: rgba(255,255,255,0.3);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.perf-trend__table {
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.perf-trend__table-header {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr 1fr 1fr;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary, #94a3b8);
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.perf-trend__table-row {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr 1fr 1fr;
+  padding: 5px 10px;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.perf-trend__table-row:last-child {
+  border-bottom: none;
 }
 /* ============================================
    通貨別ストラテジーUI（長期/短期の2択）

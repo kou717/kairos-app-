@@ -1309,6 +1309,20 @@
             .then(resolve).catch(reject);
         });
       });
+    },
+
+    getDailyReportTrend: function(days) {
+      var self = this;
+      var url = self.baseUrl + '/api/collector/daily-report/trend';
+      if (days) url += '?days=' + days;
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) { reject(new Error('Backend not available')); return; }
+          fetch(url)
+            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
+            .then(resolve).catch(reject);
+        });
+      });
     }
   };
 
@@ -5337,7 +5351,8 @@
       var analysisP = effectiveDate
         ? BackendAPI.getDailyAnalysis(effectiveDate).catch(function() { return null; })
         : Promise.resolve(null);
-      dataPromise = Promise.all([statsP, statsDatesP, slStatsP, reportP, analysisP]);
+      var trendP = BackendAPI.getDailyReportTrend(30).catch(function() { return null; });
+      dataPromise = Promise.all([statsP, statsDatesP, slStatsP, reportP, analysisP, trendP]);
     }
 
     dataPromise
@@ -5347,6 +5362,7 @@
         var slStats = results[2];
         var report = results[3] || null;
         var analysis = results[4] || null;
+        var trendData = results[5] || null;
         // レポートがtotal_trades=0ならnull扱い
         if (report && !report.total_trades) report = null;
 
@@ -5368,7 +5384,7 @@
           displayStats = _mergeStatsWithSL(stats, slStats);
         }
 
-        var html = _renderPerformanceContent(displayStats, report, analysis);
+        var html = _renderPerformanceContent(displayStats, report, analysis, trendData);
         // SL独立セクションは常に表示（レオON時はマージ済みなので注記付き）
         html += _renderPerformanceSLSection(slStats, _perfIncludeSL);
         // エクスポート＆リセットはSLの下
@@ -5506,7 +5522,94 @@
     d1_buy_sell_ratio: 'BSR', d1_holder_count: 'ホルダー数'
   };
 
-  function _renderPerformanceContent(stats, report, analysis) {
+  function _renderWinRateTrendSection(trendData) {
+    // trendDataがnullまたはデータ2件未満なら非表示
+    if (!trendData || !trendData.trend || trendData.trend.length < 2) return '';
+
+    var trend = trendData.trend;
+    var r7 = trendData.rolling_7d;
+    var r30 = trendData.rolling_30d;
+    var dir = trendData.direction || 'stable';
+
+    // 方向バッジ
+    var dirLabel = dir === 'improving' ? '↑ 改善中' : dir === 'declining' ? '↓ 悪化中' : '→ 安定';
+    var dirClass = dir === 'improving' ? 'positive' : dir === 'declining' ? 'negative' : '';
+
+    var html = '<div class="performance-section" style="animation-delay:0.05s">' +
+      '<div class="performance-accordion">' +
+        '<div class="performance-accordion__header" onclick="this.parentElement.classList.toggle(\'performance-accordion--expanded\')">' +
+          '<span>📈 勝率トレンド</span>' +
+          '<span class="perf-trend__dir-badge ' + dirClass + '">' + dirLabel + '</span>' +
+          '<span class="performance-accordion__chevron">▼</span>' +
+        '</div>' +
+        '<div class="performance-accordion__body">';
+
+    // ローリング平均カード
+    html += '<div class="perf-trend__averages">';
+    if (r7) {
+      var r7Class = r7.win_rate >= 50 ? 'positive' : 'negative';
+      var r7PnlSign = r7.avg_pnl >= 0 ? '+' : '';
+      html += '<div class="perf-trend__avg-item">' +
+        '<div class="perf-trend__avg-label">7日平均</div>' +
+        '<div class="perf-trend__avg-value ' + r7Class + '">' + r7.win_rate.toFixed(1) + '%</div>' +
+        '<div class="perf-trend__avg-sub">' + r7PnlSign + r7.avg_pnl.toFixed(2) + '% PnL / ' + r7.total_trades + '件</div>' +
+      '</div>';
+    }
+    if (r30) {
+      var r30Class = r30.win_rate >= 50 ? 'positive' : 'negative';
+      var r30PnlSign = r30.avg_pnl >= 0 ? '+' : '';
+      html += '<div class="perf-trend__avg-item">' +
+        '<div class="perf-trend__avg-label">30日平均</div>' +
+        '<div class="perf-trend__avg-value ' + r30Class + '">' + r30.win_rate.toFixed(1) + '%</div>' +
+        '<div class="perf-trend__avg-sub">' + r30PnlSign + r30.avg_pnl.toFixed(2) + '% PnL / ' + r30.total_trades + '件</div>' +
+      '</div>';
+    }
+    html += '</div>';
+
+    // ミニバーチャート
+    var maxTrades = 1;
+    trend.forEach(function(d) { if (d.total_closed > maxTrades) maxTrades = d.total_closed; });
+
+    html += '<div class="perf-trend__chart">' +
+      '<div class="perf-trend__ref-line"></div>' +
+      '<div class="perf-trend__ref-label">50%</div>';
+    trend.forEach(function(d) {
+      var wr = d.win_rate || 0;
+      var barH = Math.max(wr, 2); // 最低2%の高さ
+      var barColor = wr >= 50 ? '#10b981' : '#ef4444';
+      var dateLabel = d.date.slice(5); // "MM-DD"
+      html += '<div class="perf-trend__bar-col">' +
+        '<div class="perf-trend__bar" style="height:' + barH + '%;background:' + barColor + '" title="' + d.date + ': ' + wr.toFixed(1) + '% (' + d.total_closed + '件)"></div>' +
+        '<div class="perf-trend__bar-label">' + dateLabel + '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+
+    // 日別サマリーテーブル
+    html += '<div class="perf-trend__table">' +
+      '<div class="perf-trend__table-header">' +
+        '<span>日付</span><span>取引</span><span>勝率</span><span>平均PnL</span>' +
+      '</div>';
+    // 新しい日付順（降順）
+    var sorted = trend.slice().reverse();
+    sorted.forEach(function(d) {
+      var wrClass = d.win_rate >= 50 ? 'positive' : 'negative';
+      var pnlClass = d.avg_pnl >= 0 ? 'positive' : 'negative';
+      var pnlSign = d.avg_pnl >= 0 ? '+' : '';
+      html += '<div class="perf-trend__table-row">' +
+        '<span>' + d.date.slice(5) + '</span>' +
+        '<span>' + d.total_closed + '</span>' +
+        '<span class="' + wrClass + '">' + d.win_rate.toFixed(1) + '%</span>' +
+        '<span class="' + pnlClass + '">' + pnlSign + d.avg_pnl.toFixed(2) + '%</span>' +
+      '</div>';
+    });
+    html += '</div>';
+
+    html += '</div></div></div>';
+    return html;
+  }
+
+  function _renderPerformanceContent(stats, report, analysis, trendData) {
     var os = stats.overall_summary || {};
     var timingStats = stats.performance_by_timing || {};
     var exitBreakdown = stats.exit_reason_breakdown || {};
@@ -5541,6 +5644,9 @@
         '</div>' +
       '</div>' +
     '</div>';
+
+    // 📈 勝率トレンド（Phase 3-2）
+    html += _renderWinRateTrendSection(trendData);
 
     // タイミング別成績テーブル（レポートありなら期待値列追加）
     var timingOrder = ['1m', '5m', '15m', '30m', '1h'];
@@ -5708,6 +5814,16 @@
     // 🤖 AI分析セクション（日次分析がある場合のみ）
     if (analysis) {
       html += _renderAIAnalysisSection(analysis);
+    }
+
+    // 📐 初動パターン分析（Phase 2-3）
+    if (report && report.pattern_analysis && report.pattern_analysis.sample_size) {
+      html += _renderPatternAnalysisSection(report);
+    }
+
+    // 📊 ウェイト分析（Phase 2-4）
+    if (report && report.weight_analysis && report.weight_analysis.dimensions) {
+      html += _renderWeightAnalysisSection(report);
     }
 
     // クローズ理由グリッド
@@ -5940,6 +6056,209 @@
     }
     // SNS反応・SNS感情・スコア・BSR等 — 単位なし
     return val.toFixed(2);
+  }
+
+  // Phase 2-3: パターン分析定数
+  var PATTERN_FEATURE_LABELS = {
+    price_acceleration: '価格加速度',
+    volume_acceleration: '出来高加速度',
+    holder_growth_slope: 'ホルダー増加速度',
+    bsr_trend: 'BSRトレンド',
+    liq_volatility: '流動性ボラティリティ',
+    max_drawdown_pct: '最大ドローダウン',
+    recovery_ratio: '回復率',
+    unique_buyer_ratio: '買い手多様性',
+    avg_tx_size_trend: '平均取引サイズ傾向'
+  };
+  var CURVE_SHAPE_LABELS = ['急騰急落', '階段上昇', '遅延上昇', '横ばい'];
+  var CURVE_SHAPE_ICONS = ['⚡', '📈', '🐌', '➡️'];
+
+  function _renderPatternAnalysisSection(report) {
+    var pa = report.pattern_analysis;
+    if (!pa || !pa.sample_size) return '';
+
+    var ss = pa.sample_size;
+    var html = '<div class="performance-section" style="animation-delay:0.17s">' +
+      '<div class="performance-accordion">' +
+        '<div class="performance-accordion__header" onclick="this.parentElement.classList.toggle(\'performance-accordion--expanded\')">' +
+          '<span>📐 初動パターン分析</span>' +
+          '<span class="performance-accordion__chevron">▼</span>' +
+        '</div>' +
+        '<div class="performance-accordion__body">';
+
+    // サンプルサイズ
+    html += '<div class="pattern-analysis__sample">' +
+      '分析対象: ' + ss.total + '件（勝ち ' + ss.winners + ' / 負け ' + ss.losers + '）' +
+    '</div>';
+
+    // カーブ形状別の勝率（2x2グリッド）
+    var curveDist = pa.curve_distribution || {};
+    html += '<div class="pattern-analysis__subtitle">カーブ形状別の勝率</div>' +
+      '<div class="pattern-analysis__curve-grid">';
+    for (var i = 0; i < 4; i++) {
+      var cd = curveDist[String(i)] || curveDist[i] || { count: 0, win_rate: 0, avg_pnl: 0 };
+      var wrColor = cd.win_rate >= 50 ? '#10b981' : cd.count > 0 ? '#ef4444' : 'rgba(255,255,255,0.3)';
+      var pnlClass = cd.avg_pnl >= 0 ? 'positive' : 'negative';
+      var pnlSign = cd.avg_pnl >= 0 ? '+' : '';
+      html += '<div class="pattern-analysis__curve-card">' +
+        '<div class="pattern-analysis__curve-icon">' + CURVE_SHAPE_ICONS[i] + '</div>' +
+        '<div class="pattern-analysis__curve-name">' + CURVE_SHAPE_LABELS[i] + '</div>' +
+        '<div class="pattern-analysis__curve-wr" style="color:' + wrColor + '">' +
+          (cd.count > 0 ? cd.win_rate.toFixed(1) + '%' : '-') +
+        '</div>' +
+        '<div class="pattern-analysis__curve-detail">' +
+          (cd.count > 0 ? cd.count + '件 / ' + '<span class="' + pnlClass + '">' + pnlSign + cd.avg_pnl.toFixed(2) + '%</span>' : '') +
+        '</div>' +
+      '</div>';
+    }
+    html += '</div>';
+
+    // 特徴量影響度ランキング（Cohen's d）
+    var ranking = pa.feature_ranking || [];
+    if (ranking.length > 0) {
+      html += '<div class="pattern-analysis__subtitle">特徴量影響度ランキング</div>' +
+        '<div class="perf-report-ranking">';
+      ranking.forEach(function(item, idx) {
+        var name = PATTERN_FEATURE_LABELS[item.feature] || item.feature;
+        var badgeCls = 'perf-report-ranking__badge--' + item.impact;
+        var impactJa = item.impact === 'large' ? '大' : item.impact === 'medium' ? '中' : item.impact === 'small' ? '小' : '微';
+        var dirLabel = item.direction === 'winners_higher' ? '勝ち↑' : '負け↑';
+        var dirCls = item.direction === 'winners_higher' ? 'positive' : 'negative';
+        html += '<div class="perf-report-ranking__item">' +
+          '<span class="perf-report-ranking__rank">' + (idx + 1) + '</span>' +
+          '<span class="perf-report-ranking__name">' + name + '</span>' +
+          '<span class="perf-report-ranking__d ' + dirCls + '">' + dirLabel + '</span>' +
+          '<span class="perf-report-ranking__badge ' + badgeCls + '">' + impactJa + '</span>' +
+        '</div>';
+      });
+      html += '</div>';
+    }
+
+    // 主要閾値テーブル
+    var thresholds = pa.thresholds || [];
+    if (thresholds.length > 0) {
+      html += '<div class="pattern-analysis__subtitle">主要閾値</div>' +
+        '<div class="pattern-analysis__threshold-table">' +
+          '<div class="pattern-analysis__threshold-header">' +
+            '<span>特徴量</span><span>閾値</span><span>以上勝率</span><span>以下勝率</span>' +
+          '</div>';
+      thresholds.forEach(function(t) {
+        var name = PATTERN_FEATURE_LABELS[t.feature] || t.feature;
+        var aboveColor = t.win_rate_above >= 50 ? '#10b981' : '#ef4444';
+        var belowColor = t.win_rate_below >= 50 ? '#10b981' : '#ef4444';
+        html += '<div class="pattern-analysis__threshold-row">' +
+          '<span>' + name + '</span>' +
+          '<span>' + t.threshold.toFixed(2) + '</span>' +
+          '<span style="color:' + aboveColor + '">' + t.win_rate_above.toFixed(1) + '%</span>' +
+          '<span style="color:' + belowColor + '">' + t.win_rate_below.toFixed(1) + '%</span>' +
+        '</div>';
+      });
+      html += '</div>';
+    }
+
+    html += '</div></div></div>';
+    return html;
+  }
+
+  // ========== Phase 2-4: Weight Analysis ==========
+  var DIMENSION_LABELS = {
+    holder: 'ホルダー分散',
+    volume: '出来高',
+    velocity: '変動速度',
+    buy_pressure: '買い圧',
+    freshness: '鮮度',
+    social: 'SNS話題度',
+    safety: '安全性',
+    liquidity: '流動性'
+  };
+  var STABILITY_LABELS = { high: '安定', medium: '中', low: '不安定' };
+  var STABILITY_COLORS = { high: '#10b981', medium: '#f59e0b', low: '#ef4444' };
+
+  function _renderWeightAnalysisSection(report) {
+    var wa = report.weight_analysis;
+    if (!wa || !wa.dimensions || wa.dimensions.length === 0) return '';
+
+    var html = '<div class="performance-section" style="animation-delay:0.19s">' +
+      '<div class="performance-accordion">' +
+        '<div class="performance-accordion__header" onclick="this.parentElement.classList.toggle(\'performance-accordion--expanded\')">' +
+          '<span>📊 ウェイト分析</span>' +
+          '<span class="performance-accordion__chevron">▼</span>' +
+        '</div>' +
+        '<div class="performance-accordion__body">';
+
+    // 分析期間
+    html += '<div class="pattern-analysis__sample">' +
+      '分析期間: ' + wa.days_analyzed + '日分のレポートを集約' +
+    '</div>';
+
+    // 次元比較テーブル
+    html += '<div class="pattern-analysis__subtitle">次元別ウェイト比較</div>' +
+      '<div class="weight-analysis__dimension-table">' +
+        '<div class="weight-analysis__table-header">' +
+          '<span>次元</span><span>現在</span><span>推奨</span><span>差分</span><span>安定度</span>' +
+        '</div>';
+
+    wa.dimensions.forEach(function(dim) {
+      var name = DIMENSION_LABELS[dim.dimension] || dim.dimension;
+      var gapSign = dim.gap >= 0 ? '+' : '';
+      var gapCls = dim.gap > 3 ? 'weight-analysis__gap--positive' :
+                   dim.gap < -3 ? 'weight-analysis__gap--negative' : '';
+      var stabColor = STABILITY_COLORS[dim.stability] || '#94a3b8';
+      var stabLabel = STABILITY_LABELS[dim.stability] || dim.stability;
+
+      html += '<div class="weight-analysis__table-row">' +
+        '<span class="weight-analysis__cell--name">' + name + '</span>' +
+        '<span>' + dim.current_weight + '</span>' +
+        '<span>' + dim.recommended_weight.toFixed(1) + '</span>' +
+        '<span class="' + gapCls + '">' + gapSign + dim.gap.toFixed(1) + '</span>' +
+        '<span style="color:' + stabColor + '">' + stabLabel + '</span>' +
+      '</div>';
+
+      // 視覚バー
+      var maxW = 40;
+      var currW = Math.min(dim.current_weight, maxW);
+      var recW = Math.min(dim.recommended_weight, maxW);
+      html += '<div class="weight-analysis__bar-row">' +
+        '<div class="weight-analysis__bar--current" style="width:' + (currW / maxW * 100) + '%"></div>' +
+        '<div class="weight-analysis__bar--recommended" style="width:' + (recW / maxW * 100) + '%"></div>' +
+      '</div>';
+    });
+    html += '</div>';
+
+    // 影響度TOP指標
+    var topInd = wa.top_indicators || [];
+    if (topInd.length > 0) {
+      html += '<div class="pattern-analysis__subtitle">影響度TOP指標（全日統合）</div>' +
+        '<div class="perf-report-ranking">';
+      var indicatorLabels = {
+        volume_24h: '24h出来高', volume_1h: '1h出来高',
+        d1_volume_change_pct: '出来高変化', d1_price_change_pct: '価格変化',
+        d1_buy_sell_ratio: 'BSR', age_hours: '経過時間',
+        social_interactions: 'SNS反応数', social_sentiment: 'SNS感情',
+        d1_holder_count: 'ホルダー数', holder_top10_pct: 'Top10保有率',
+        rugcheck_score: 'Rugcheckスコア', lp_locked_pct: 'LP Lock%',
+        moonshot_score: 'Moonshotスコア', liquidity_usd: '流動性',
+        d1_liquidity_change_pct: '流動性変化'
+      };
+      topInd.forEach(function(item, idx) {
+        var name = indicatorLabels[item.indicator] || item.indicator;
+        var dimName = DIMENSION_LABELS[item.dimension] || item.dimension;
+        var badgeCls = 'perf-report-ranking__badge--' + item.impact;
+        var impactJa = item.impact === 'large' ? '大' : item.impact === 'medium' ? '中' : item.impact === 'small' ? '小' : '微';
+        var dirLabel = item.direction === 'winners_higher' ? '勝ち↑' : '負け↑';
+        var dirCls = item.direction === 'winners_higher' ? 'positive' : 'negative';
+        html += '<div class="perf-report-ranking__item">' +
+          '<span class="perf-report-ranking__rank">' + (idx + 1) + '</span>' +
+          '<span class="perf-report-ranking__name">' + name + ' <span style="font-size:10px;color:rgba(255,255,255,0.4)">(' + dimName + ')</span></span>' +
+          '<span class="perf-report-ranking__d ' + dirCls + '">' + dirLabel + '</span>' +
+          '<span class="perf-report-ranking__badge ' + badgeCls + '">' + impactJa + '</span>' +
+        '</div>';
+      });
+      html += '</div>';
+    }
+
+    html += '</div></div></div>';
+    return html;
   }
 
   // Separated from _renderPerformanceContent — rendered AFTER SL section
