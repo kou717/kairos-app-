@@ -7402,42 +7402,42 @@
       desc: 'ホルダー数とTop10保有率から「本物のコミュニティがあるか」を評価。',
       good: 'ホルダー500人以上+Top10が50%以下 → 保有が分散 → 実需あり、上昇が持続しやすい',
       bad: 'ホルダー20人+Top10が100% → 仕手筋の独占 → ラグプル予備軍',
-      max: 30
+      max: 20
     },
     'Volume': {
       title: '出来高（Volume）',
-      desc: '24時間の取引量を対数スケールで評価します。取引量が多いほど、そのコインに注目が集まっていることを意味します。',
-      good: '出来高が多い → 多くの人が売買している → 注目度が高い',
-      bad: '出来高が少ない → まだ誰も気づいていないか、興味がない',
-      max: 15
+      desc: '24時間の取引量を対数スケールで評価。勝率との相関が最も強い指標(r=+0.26)。高Volume帯の勝率は低Volume帯の4.5倍。',
+      good: '出来高が多い → 多くの人が売買 → 流動性が高く安全に売買できる',
+      bad: '出来高が少ない → 流動性不足 → 売りたい時に売れない',
+      max: 25
     },
     'Velocity': {
       title: '価格変動速度（Velocity）',
-      desc: '直近5分・1時間・24時間の価格変動の大きさと方向を評価します。急上昇中のコインほど高スコアになります。',
-      good: '急上昇中 → 買いが殺到している可能性。初動を捉えるチャンス',
-      bad: '変動が小さい → まだ動き出していない、または停滞中',
-      max: 15
+      desc: '直近5分・1時間・24時間の価格変動の大きさと方向を評価。',
+      good: '急上昇中 → 買いが殺到している可能性',
+      bad: '変動が小さい → まだ動き出していない',
+      max: 10
     },
     'Buy圧': {
-      title: '買い圧力（Buy Pressure）',
-      desc: '買いトランザクション数と売りトランザクション数の比率です。買いが売りより多ければ、価格が上がりやすい状態です。',
-      good: '買い > 売り → 需要が供給を上回っている → 価格上昇圧力',
-      bad: '売り > 買い → 利確や損切りが多い → 下落リスク',
-      max: 15
+      title: '取引バランス（Trade Balance）',
+      desc: '買い/売りの比率バランスを評価。データ分析で「買い比率45-60%」が最も勝率が高く、70%超は逆にピーク後の暴落リスクが高い。',
+      good: '買い比率45-60% → 自然な需要 → 健全な上昇',
+      bad: '買い比率70%超 → 過熱状態 → ピーク付近で暴落リスク大',
+      max: 10
     },
     '鮮度': {
-      title: 'プールの新しさ（Freshness）',
-      desc: 'DEXにプールが作られてからの経過時間。新しいプールほど「初動」の可能性が高く、高スコアになります。',
-      good: '作成1時間以内 → まさに今始まったばかり。最も早い段階',
-      bad: '24時間以上経過 → すでに初動は過ぎている可能性',
-      max: 12
+      title: 'コイン成熟度（Maturity）',
+      desc: 'プール作成からの経過時間。データ分析で「3-12時間」が最高勝率(37%)。1時間未満は不安定(7%)、24時間超はモメンタム消失。',
+      good: '3-12時間 → 初期の荒れが落ち着き、本物の需要が見える段階',
+      bad: '1時間未満 → まだ不安定。24時間超 → 初動は終了済み',
+      max: 15
     },
     'SNS': {
       title: 'SNS話題度（Social Buzz）',
-      desc: 'X(Twitter)・Reddit・YouTubeでの言及数・いいね・リプライ・RT数をLunarCrushで計測。「ネットで急に話題になっているか」を数値化します。',
-      good: '反応数が急増+ポジティブ感情 → SNSで火がつき始めている → 爆発の前兆',
-      bad: 'SNSでの言及なし → まだ誰も知らない。もしくはAPIキー未設定',
-      max: 13
+      desc: 'SNSでの言及数をLunarCrushで計測。現状のデータでは勝率との相関が弱いため、配点は控えめ。',
+      good: '反応数が急増 → SNSで火がつき始めている可能性',
+      bad: 'SNSでの言及なし → まだ認知されていない',
+      max: 5
     }
   };
 
@@ -8125,12 +8125,12 @@
         // スコア内訳バー
         '<div class="dex-detail__score-section">' +
           '<div class="dex-detail__section-title">📊 スコア内訳 <span style="font-size:10px;color:#64748b">（タップで意味を確認）</span></div>' +
-          renderScoreBar('ホルダー', bd.holder_distribution || 0, 30) +
-          renderScoreBar('Volume', bd.volume || 0, 15) +
-          renderScoreBar('Velocity', bd.velocity || 0, 15) +
-          renderScoreBar('Buy圧', bd.buy_pressure || 0, 15) +
-          renderScoreBar('鮮度', bd.freshness || 0, 12) +
-          renderScoreBar('SNS', bd.social_buzz || 0, 13) +
+          renderScoreBar('Volume', bd.volume || 0, 25) +
+          renderScoreBar('ホルダー', bd.holder_distribution || 0, 20) +
+          renderScoreBar('鮮度', bd.freshness || 0, 15) +
+          renderScoreBar('Buy圧', bd.buy_pressure || 0, 10) +
+          renderScoreBar('Velocity', bd.velocity || 0, 10) +
+          renderScoreBar('SNS', bd.social_buzz || 0, 5) +
           (bd.safety != null && bd.safety !== 0 ? '<div style="font-size:11px;color:' + (bd.safety > 0 ? '#22c55e' : '#ef4444') + ';margin-top:4px">🛡️ Safety: ' + (bd.safety > 0 ? '+' : '') + bd.safety + '</div>' : '') +
         '</div>' +
 
