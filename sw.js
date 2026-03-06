@@ -1,7 +1,7 @@
 // KAIROS Service Worker v19.16 - Urgent Moonshot Alert + Worker Integration
-const CACHE_NAME = 'kairos-v19-64';
-const STATIC_CACHE = 'kairos-static-v19-64';
-const DYNAMIC_CACHE = 'kairos-dynamic-v19-40';
+const CACHE_NAME = 'kairos-v19-34';
+const STATIC_CACHE = 'kairos-static-v19-34';
+const DYNAMIC_CACHE = 'kairos-dynamic-v19-34';
 
 // 静的アセット（必ずキャッシュ）
 const STATIC_ASSETS = [
@@ -20,7 +20,7 @@ const EXTERNAL_ASSETS = [
 
 // インストール
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing KAIROS v19.34...');
+  console.log('[SW] Installing KAIROS v19.18...');
   event.waitUntil(
     Promise.all([
       // 静的アセットをキャッシュ
@@ -47,12 +47,12 @@ self.addEventListener('install', (event) => {
 
 // アクティベーション
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating KAIROS v19.34...');
+  console.log('[SW] Activating KAIROS v19.18...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter(name => !name.includes('v19-58'))
+          .filter(name => !name.includes('v19-16'))
           .map(name => {
             console.log('[SW] Deleting old cache:', name);
             return caches.delete(name);
@@ -227,4 +227,4 @@ self.addEventListener('message', (event) => {
   }
 });
 
-console.log('[SW] KAIROS Service Worker v19.34 loaded');
+console.log('[SW] KAIROS Service Worker v19.16 loaded');

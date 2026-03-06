@@ -14618,6 +14618,117 @@ body.has-ticker-bar {
 .performance-trade-item__pnl.positive { color: #10b981; }
 .performance-trade-item__pnl.negative { color: #ef4444; }
 
+/* 5-column table (with EV column) */
+.performance-table-header--5col {
+  grid-template-columns: 80px 1fr 1fr 1fr 1fr;
+}
+.performance-table-row--5col {
+  grid-template-columns: 80px 1fr 1fr 1fr 1fr;
+}
+
+/* Daily report: Indicator ranking */
+.perf-report-ranking {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.perf-report-ranking__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 13px;
+}
+.perf-report-ranking__rank {
+  width: 22px;
+  text-align: center;
+  font-weight: 700;
+  color: #d4a853;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.perf-report-ranking__name {
+  flex: 1;
+  color: var(--text-primary, #e2e8f0);
+}
+.perf-report-ranking__d {
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 50px;
+  text-align: right;
+}
+.perf-report-ranking__badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  min-width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.perf-report-ranking__badge--large {
+  background: rgba(16,185,129,0.2);
+  color: #10b981;
+}
+.perf-report-ranking__badge--medium {
+  background: rgba(245,158,11,0.2);
+  color: #f59e0b;
+}
+.perf-report-ranking__badge--small {
+  background: rgba(148,163,184,0.15);
+  color: #94a3b8;
+}
+.perf-report-ranking__badge--negligible {
+  background: rgba(148,163,184,0.08);
+  color: rgba(148,163,184,0.5);
+}
+
+/* Daily report: Indicator comparison */
+.perf-report-compare {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.perf-report-compare__row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 4px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 12px;
+  color: var(--text-primary, #e2e8f0);
+}
+.perf-report-compare__row--header {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary, #94a3b8);
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.perf-report-compare__row--sub {
+  font-size: 11px;
+  color: rgba(255,255,255,0.6);
+}
+.perf-report-compare__cell {
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.perf-report-compare__cell--name {
+  text-align: left;
+  font-weight: 500;
+}
+.perf-report-compare__timing-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #d4a853;
+  margin: 10px 0 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
 /* Export mode toggle */
 .performance-export-mode {
   display: flex;
@@ -15448,6 +15559,174 @@ body.has-ticker-bar {
   font-size: 13px;
   color: rgba(255,255,255,0.7);
   font-weight: 600;
+}
+
+/* ============================================================
+   AI Analysis Section (Phase 2-2)
+   ============================================================ */
+.ai-analysis__summary {
+  background: rgba(59,130,246,0.12);
+  border: 1px solid rgba(59,130,246,0.25);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-primary, #e2e8f0);
+  margin-bottom: 14px;
+}
+.ai-analysis__section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary, #94a3b8);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 14px 0 8px;
+}
+.ai-analysis__insight {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.ai-analysis__insight-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.ai-analysis__insight-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+}
+.ai-analysis__insight-conf {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.08);
+}
+.ai-analysis__insight-conf.positive { background: rgba(16,185,129,0.2); color: #10b981; }
+.ai-analysis__insight-conf.negative { background: rgba(239,68,68,0.2); color: #ef4444; }
+.ai-analysis__insight-desc {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+  line-height: 1.5;
+}
+.ai-analysis__threshold-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ai-analysis__threshold {
+  display: grid;
+  grid-template-columns: 1fr auto 2fr;
+  gap: 8px;
+  align-items: center;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.ai-analysis__threshold-indicator {
+  color: var(--text-primary, #e2e8f0);
+  font-weight: 600;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.ai-analysis__threshold-value {
+  color: #22c55e;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.ai-analysis__threshold-effect {
+  color: var(--text-secondary, #94a3b8);
+}
+.ai-analysis__tomorrow {
+  background: rgba(16,185,129,0.08);
+  border: 1px solid rgba(16,185,129,0.2);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.ai-analysis__tomorrow-summary {
+  font-size: 13px;
+  color: var(--text-primary, #e2e8f0);
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+.ai-analysis__filter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.ai-analysis__filter {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+.ai-analysis__filter-ind {
+  color: var(--text-primary, #e2e8f0);
+  font-weight: 600;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.ai-analysis__filter-op {
+  color: #22c55e;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.ai-analysis__filter-reason {
+  color: var(--text-secondary, #94a3b8);
+}
+.ai-analysis__avoid-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #f59e0b;
+  margin: 8px 0 4px;
+}
+.ai-analysis__avoid-item {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+  padding: 2px 0;
+}
+.ai-analysis__focus-timing {
+  font-size: 13px;
+  color: var(--text-primary, #e2e8f0);
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.ai-analysis__focus-timing strong {
+  color: #22c55e;
+}
+.ai-analysis__trend {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.ai-analysis__trend-dir {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.ai-analysis__trend-dir.positive { color: #10b981; }
+.ai-analysis__trend-dir.negative { color: #ef4444; }
+.ai-analysis__trend-item {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+  padding: 2px 0;
+  line-height: 1.5;
+}
+.ai-analysis__trend-concern {
+  font-size: 12px;
+  color: #f59e0b;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.06);
 }
 /* ============================================
    通貨別ストラテジーUI（長期/短期の2択）
