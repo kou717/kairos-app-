@@ -5634,6 +5634,48 @@
       '</div>';
     });
     html += '</div>';
+
+    // Phase 4 移行判定バナー
+    html += _renderPhase4ReadinessCheck(data);
+
+    return html;
+  }
+
+  function _renderPhase4ReadinessCheck(data) {
+    var r7 = data.rolling_7d;
+    var trend = data.trend || [];
+    // 条件: 14日以上 + 7日平均PnLプラス + 7日平均勝率40%以上
+    var hasDays = trend.length >= 14;
+    var hasPositivePnl = r7 && r7.avg_pnl > 0;
+    var hasWinRate = r7 && r7.win_rate >= 40;
+    var met = [hasDays, hasPositivePnl, hasWinRate];
+    var allMet = met[0] && met[1] && met[2];
+
+    if (allMet) {
+      return '<div class="perf-trend__phase4 perf-trend__phase4--ready">' +
+        '<div class="perf-trend__phase4-icon">🚀</div>' +
+        '<div class="perf-trend__phase4-text">' +
+          '<div class="perf-trend__phase4-title">Phase 4 移行の時期が来ました</div>' +
+          '<div class="perf-trend__phase4-sub">自動売買の準備を始めましょう</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    // 条件未達成 → 進捗チェックリスト（控えめに表示）
+    var html = '<div class="perf-trend__phase4">' +
+      '<div class="perf-trend__phase4-title">Phase 4 移行条件</div>' +
+      '<div class="perf-trend__phase4-checks">' +
+        '<div class="perf-trend__phase4-check' + (hasDays ? ' --met' : '') + '">' +
+          (hasDays ? '✅' : '⬜') + ' データ14日以上（現在 ' + trend.length + '日）' +
+        '</div>' +
+        '<div class="perf-trend__phase4-check' + (hasPositivePnl ? ' --met' : '') + '">' +
+          (hasPositivePnl ? '✅' : '⬜') + ' 7日平均PnLがプラス（現在 ' + (r7 ? (r7.avg_pnl >= 0 ? '+' : '') + r7.avg_pnl.toFixed(2) + '%' : '-') + '）' +
+        '</div>' +
+        '<div class="perf-trend__phase4-check' + (hasWinRate ? ' --met' : '') + '">' +
+          (hasWinRate ? '✅' : '⬜') + ' 7日平均勝率40%以上（現在 ' + (r7 ? r7.win_rate.toFixed(1) + '%' : '-') + '）' +
+        '</div>' +
+      '</div>' +
+    '</div>';
     return html;
   }
 

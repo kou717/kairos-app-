@@ -16022,6 +16022,57 @@ body.has-ticker-bar {
 .perf-trend__table-row:last-child {
   border-bottom: none;
 }
+/* Phase 4 readiness */
+.perf-trend__phase4 {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.perf-trend__phase4--ready {
+  background: rgba(16,185,129,0.08);
+  border-color: rgba(16,185,129,0.25);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: phase4pulse 2s ease-in-out infinite;
+}
+@keyframes phase4pulse {
+  0%, 100% { border-color: rgba(16,185,129,0.25); }
+  50% { border-color: rgba(16,185,129,0.5); }
+}
+.perf-trend__phase4-icon {
+  font-size: 24px;
+}
+.perf-trend__phase4-text {
+  flex: 1;
+}
+.perf-trend__phase4-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+  margin-bottom: 2px;
+}
+.perf-trend__phase4--ready .perf-trend__phase4-title {
+  font-size: 14px;
+  color: #10b981;
+}
+.perf-trend__phase4-sub {
+  font-size: 11px;
+  color: var(--text-secondary, #94a3b8);
+}
+.perf-trend__phase4-checks {
+  margin-top: 6px;
+}
+.perf-trend__phase4-check {
+  font-size: 11px;
+  color: var(--text-secondary, #94a3b8);
+  padding: 2px 0;
+}
+.perf-trend__phase4-check.--met {
+  color: #10b981;
+}
 /* ============================================
    通貨別ストラテジーUI（長期/短期の2択）
    ============================================ */
