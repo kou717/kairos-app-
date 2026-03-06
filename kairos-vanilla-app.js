@@ -5523,17 +5523,18 @@
   };
 
   function _renderWinRateTrendSection(trendData) {
-    // trendDataがnullまたはデータ2件未満なら非表示
-    if (!trendData || !trendData.trend || trendData.trend.length < 2) return '';
+    // trendDataがnullなら非表示
+    if (!trendData) return '';
+    var pt = trendData.pt || {};
+    var sl = trendData.sl || {};
+    var hasPT = pt.trend && pt.trend.length >= 2;
+    var hasSL = sl.trend && sl.trend.length >= 2;
+    if (!hasPT && !hasSL) return '';
 
-    var trend = trendData.trend;
-    var r7 = trendData.rolling_7d;
-    var r30 = trendData.rolling_30d;
-    var dir = trendData.direction || 'stable';
-
-    // 方向バッジ
-    var dirLabel = dir === 'improving' ? '↑ 改善中' : dir === 'declining' ? '↓ 悪化中' : '→ 安定';
-    var dirClass = dir === 'improving' ? 'positive' : dir === 'declining' ? 'negative' : '';
+    // アコーディオンヘッダーのバッジはPTの方向を使う（PTがなければSL）
+    var mainDir = hasPT ? (pt.direction || 'stable') : (sl.direction || 'stable');
+    var dirLabel = mainDir === 'improving' ? '↑ 改善中' : mainDir === 'declining' ? '↓ 悪化中' : '→ 安定';
+    var dirClass = mainDir === 'improving' ? 'positive' : mainDir === 'declining' ? 'negative' : '';
 
     var html = '<div class="performance-section" style="animation-delay:0.05s">' +
       '<div class="performance-accordion">' +
@@ -5543,6 +5544,39 @@
           '<span class="performance-accordion__chevron">▼</span>' +
         '</div>' +
         '<div class="performance-accordion__body">';
+
+    // タブ（PT/SL両方ある場合のみ表示）
+    if (hasPT && hasSL) {
+      html += '<div class="perf-trend__tabs">' +
+        '<button class="perf-trend__tab perf-trend__tab--active" onclick="window._switchTrendTab(\'pt\', this)">🎯 ペーパートレード</button>' +
+        '<button class="perf-trend__tab" onclick="window._switchTrendTab(\'sl\', this)">🦁 眠れる獅子</button>' +
+      '</div>';
+    }
+
+    // PT パネル
+    if (hasPT) {
+      html += '<div class="perf-trend__panel" data-trend-tab="pt">';
+      html += _renderTrendPanelContent(pt);
+      html += '</div>';
+    }
+
+    // SL パネル
+    if (hasSL) {
+      var slHidden = hasPT ? ' style="display:none"' : '';
+      html += '<div class="perf-trend__panel"' + slHidden + ' data-trend-tab="sl">';
+      html += _renderTrendPanelContent(sl);
+      html += '</div>';
+    }
+
+    html += '</div></div></div>';
+    return html;
+  }
+
+  function _renderTrendPanelContent(data) {
+    var trend = data.trend;
+    var r7 = data.rolling_7d;
+    var r30 = data.rolling_30d;
+    var html = '';
 
     // ローリング平均カード
     html += '<div class="perf-trend__averages">';
@@ -5567,17 +5601,14 @@
     html += '</div>';
 
     // ミニバーチャート
-    var maxTrades = 1;
-    trend.forEach(function(d) { if (d.total_closed > maxTrades) maxTrades = d.total_closed; });
-
     html += '<div class="perf-trend__chart">' +
       '<div class="perf-trend__ref-line"></div>' +
       '<div class="perf-trend__ref-label">50%</div>';
     trend.forEach(function(d) {
       var wr = d.win_rate || 0;
-      var barH = Math.max(wr, 2); // 最低2%の高さ
+      var barH = Math.max(wr, 2);
       var barColor = wr >= 50 ? '#10b981' : '#ef4444';
-      var dateLabel = d.date.slice(5); // "MM-DD"
+      var dateLabel = d.date.slice(5);
       html += '<div class="perf-trend__bar-col">' +
         '<div class="perf-trend__bar" style="height:' + barH + '%;background:' + barColor + '" title="' + d.date + ': ' + wr.toFixed(1) + '% (' + d.total_closed + '件)"></div>' +
         '<div class="perf-trend__bar-label">' + dateLabel + '</div>' +
@@ -5590,7 +5621,6 @@
       '<div class="perf-trend__table-header">' +
         '<span>日付</span><span>取引</span><span>勝率</span><span>平均PnL</span>' +
       '</div>';
-    // 新しい日付順（降順）
     var sorted = trend.slice().reverse();
     sorted.forEach(function(d) {
       var wrClass = d.win_rate >= 50 ? 'positive' : 'negative';
@@ -5604,10 +5634,16 @@
       '</div>';
     });
     html += '</div>';
-
-    html += '</div></div></div>';
     return html;
   }
+
+  window._switchTrendTab = function(tab, btn) {
+    var panels = document.querySelectorAll('.perf-trend__panel');
+    var tabs = document.querySelectorAll('.perf-trend__tab');
+    tabs.forEach(function(t) { t.classList.remove('perf-trend__tab--active'); });
+    panels.forEach(function(p) { p.style.display = p.getAttribute('data-trend-tab') === tab ? '' : 'none'; });
+    if (btn) btn.classList.add('perf-trend__tab--active');
+  };
 
   function _renderPerformanceContent(stats, report, analysis, trendData) {
     var os = stats.overall_summary || {};

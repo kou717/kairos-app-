@@ -15895,6 +15895,30 @@ body.has-ticker-bar {
   background: rgba(239,68,68,0.15);
   color: #ef4444;
 }
+.perf-trend__tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  padding: 3px;
+}
+.perf-trend__tab {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary, #94a3b8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.perf-trend__tab--active {
+  background: rgba(255,255,255,0.1);
+  color: var(--text-primary, #f1f5f9);
+}
 .perf-trend__averages {
   display: grid;
   grid-template-columns: 1fr 1fr;
