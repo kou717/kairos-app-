@@ -9302,7 +9302,7 @@
   // ============================================================
 
   var _slAutoRefresh = null;
-  var _slCache = { stats: null, watchlist: null, time: 0 };
+  var _slCache = { stats: null, watchlist: null, closedTrades: null, time: 0 };
   window._slCache = _slCache;
 
   function renderSleepingLionScreen() {
@@ -9334,12 +9334,13 @@
     // Stale-while-revalidate: show cached data immediately, refresh in background
     var hasCachedData = _slCache.stats && _slCache.time > 0;
     if (hasCachedData) {
-      container.innerHTML = _renderSleepingLionContent(_slCache.stats, _slCache.watchlist || []);
+      container.innerHTML = _renderSleepingLionContent(_slCache.stats, _slCache.watchlist || [], _slCache.closedTrades || []);
     }
 
     // Skip healthCheck overhead — fetch directly (backend returns error if unavailable)
     var statsUrl = BACKEND_URL + '/api/collector/sleeping-lion/stats?date=' + _getTodayJST();
     var watchlistUrl = BACKEND_URL + '/api/collector/sleeping-lion/watchlist';
+    var closedUrl = BACKEND_URL + '/api/collector/sleeping-lion/closed-trades?date=' + _getTodayJST() + '&limit=20';
 
     Promise.all([
       fetch(statsUrl).then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); }).catch(function() {
@@ -9347,15 +9348,19 @@
       }),
       fetch(watchlistUrl).then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); }).catch(function() {
         return _slCache.watchlist ? { items: _slCache.watchlist } : { items: [] };
+      }),
+      fetch(closedUrl).then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); }).catch(function() {
+        return _slCache.closedTrades ? { trades: _slCache.closedTrades } : { trades: [] };
       })
     ]).then(function(results) {
       var stats = results[0];
       var watchlistData = results[1];
-      _slCache = { stats: stats, watchlist: watchlistData.items || [], time: Date.now() };
+      var closedData = results[2];
+      _slCache = { stats: stats, watchlist: watchlistData.items || [], closedTrades: closedData.trades || [], time: Date.now() };
       window._slCache = _slCache;
       if (appState.currentScreen === 'sleeping-lion') {
         var c = document.getElementById('sl-content');
-        if (c) c.innerHTML = _renderSleepingLionContent(stats, watchlistData.items || []);
+        if (c) c.innerHTML = _renderSleepingLionContent(stats, watchlistData.items || [], closedData.trades || []);
       }
     }).catch(function(err) {
       if (!hasCachedData) {
@@ -9368,7 +9373,7 @@
     });
   }
 
-  function _renderSleepingLionContent(stats, items) {
+  function _renderSleepingLionContent(stats, items, closedTradesFromApi) {
     var wl = stats.watchlist || {};
     var tr = stats.trades || {};
     var html = '';
@@ -9381,17 +9386,14 @@
       _slStatusCard('💀', '死亡', wl.dead || 0, 'dead') +
     '</div>';
 
-    // Separate items by category
+    // Separate watchlist items by category
     var watching = [];
     var openTrades = [];
-    var closedTrades = [];
     (items || []).forEach(function(item) {
       if (item.status === 'watching') {
         watching.push(item);
       } else if (item.trade_id && item.trade_status && item.trade_status !== 'closed') {
         openTrades.push(item);
-      } else if (item.trade_id && item.trade_status === 'closed') {
-        closedTrades.push(item);
       }
     });
 
@@ -9419,15 +9421,15 @@
     }
     html += '</div>';
 
-    // セクション4: 最近のクローズ (max 10)
-    var recentClosed = closedTrades.slice(0, 10);
+    // セクション4: 最近のクローズ (closed-trades APIから取得)
+    var closedTrades = closedTradesFromApi || [];
     html += '<div class="sl-list">' +
-      '<div class="sl-list__title">📋 最近のクローズ (' + recentClosed.length + ')</div>';
-    if (recentClosed.length === 0) {
-      html += '<div class="sl-list__empty">クローズ済みのトレードはありません</div>';
+      '<div class="sl-list__title">📋 本日のクローズ (' + closedTrades.length + ')</div>';
+    if (closedTrades.length === 0) {
+      html += '<div class="sl-list__empty">本日のクローズ済みトレードはありません</div>';
     } else {
-      recentClosed.forEach(function(item, idx) {
-        html += _renderSlClosedItem(item, idx);
+      closedTrades.forEach(function(item, idx) {
+        html += _renderSlClosedItemFromTrade(item, idx);
       });
     }
     html += '</div>';
@@ -9511,6 +9513,27 @@
     '</div>';
   }
 
+  function _renderSlClosedItemFromTrade(trade, idx) {
+    var pnl = trade.realized_pnl_pct || 0;
+    var pnlClass = pnl >= 0 ? 'positive' : 'negative';
+    var pnlSign = pnl >= 0 ? '+' : '';
+    var exitReason = _exitReasonJa(trade.exit_reason || '');
+    var holdStr = trade.holding_duration ? _slDurationStr(trade.holding_duration) : '-';
+    var peakPnl = trade.peak_pnl_pct || 0;
+
+    return '<div class="sl-list-item sl-list-item--closed" onclick="window._openSlClosedDetail(' + idx + ')">' +
+      '<div class="sl-list-item__header">' +
+        '<span class="sl-list-item__symbol">' + (trade.symbol || '???') + '</span>' +
+        '<span class="sl-trade-item__pnl ' + pnlClass + '">' + pnlSign + pnl.toFixed(2) + '%</span>' +
+      '</div>' +
+      '<div class="sl-list-item__meta">' +
+        '<span>' + exitReason + '</span>' +
+        '<span>' + holdStr + '</span>' +
+        '<span>Peak ' + (peakPnl >= 0 ? '+' : '') + peakPnl.toFixed(1) + '%</span>' +
+      '</div>' +
+    '</div>';
+  }
+
   function _slProgressBar(label, target, pct) {
     pct = Math.max(0, Math.min(100, pct));
     var color = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#64748b';
@@ -9536,6 +9559,38 @@
     }
     var item = filtered[idx];
     if (!item) return;
+    _showSlDetailPopup(item);
+  };
+
+  window._openSlClosedDetail = function(idx) {
+    var trades = _slCache.closedTrades || [];
+    var trade = trades[idx];
+    if (!trade) return;
+    // Convert closed-trades API format to watchlist-like format for popup
+    var item = {
+      symbol: trade.symbol,
+      token_address: trade.token_address,
+      trade_id: trade.id,
+      trade_status: 'closed',
+      status: 'closed',
+      entry_at: trade.entry_at_ts || trade.entry_at,
+      entry_price: trade.entry_price,
+      current_price: trade.exit_price,
+      peak_price: trade.entry_price * (1 + (trade.peak_pnl_pct || 0) / 100),
+      unrealized_pnl_pct: trade.realized_pnl_pct,
+      realized_pnl_pct: trade.realized_pnl_pct,
+      peak_pnl_pct: trade.peak_pnl_pct,
+      position_size: trade.position_size,
+      exit_at: trade.exit_at_ts || trade.exit_at,
+      exit_reason: trade.exit_reason,
+      holding_duration: trade.holding_duration,
+      entry_liquidity: trade.entry_liquidity,
+      entry_volume: trade.entry_volume,
+      moonshot_score: trade.moonshot_score,
+      combined_trust: trade.combined_trust,
+      baseline_price: trade.baseline_price,
+      time_to_awaken_sec: trade.time_to_awaken_sec
+    };
     _showSlDetailPopup(item);
   };
 
