@@ -9479,13 +9479,13 @@
     var ptIsPos = d.ptSimPnl >= 0;
     var slIsPos = d.slSimPnl >= 0;
     html += '<div class="rt-split" id="rt-split">' +
-      '<div class="rt-split__card">' +
+      '<div class="rt-split__card" id="rt-pt-card">' +
         '<div class="rt-split__header"><span class="rt-split__icon">📊</span><span class="rt-split__title">通常トレード</span></div>' +
         '<div class="rt-split__amount ' + (ptIsPos ? 'positive' : 'negative') + '" id="rt-pt-amount">' + (ptIsPos ? '+' : '') + _formatRtYen(d.ptSimPnl) + '</div>' +
         '<div class="rt-split__pnl ' + (ptIsPos ? 'positive' : 'negative') + '" id="rt-pt-pnl">' + (ptIsPos ? '+' : '') + d.ptPnlTotal.toFixed(1) + '%</div>' +
         '<div class="rt-split__meta" id="rt-pt-meta">' + d.ptWins + '勝' + d.ptLosses + '敗</div>' +
       '</div>' +
-      '<div class="rt-split__card rt-split__card--sl">' +
+      '<div class="rt-split__card rt-split__card--sl" id="rt-sl-card">' +
         '<div class="rt-split__header"><span class="rt-split__icon">🦁</span><span class="rt-split__title">眠れる獅子</span></div>' +
         '<div class="rt-split__amount ' + (slIsPos ? 'positive' : 'negative') + '" id="rt-sl-amount">' + (slIsPos ? '+' : '') + _formatRtYen(d.slSimPnl) + '</div>' +
         '<div class="rt-split__pnl ' + (slIsPos ? 'positive' : 'negative') + '" id="rt-sl-pnl">' + (slIsPos ? '+' : '') + d.slPnlTotal.toFixed(1) + '%</div>' +
@@ -9624,14 +9624,17 @@
       return;
     }
 
-    // Update hero with flash
+    // Update hero
     var pnlSign = d.isPositive ? '+' : '';
     var newValueText = _formatRtYen(d.portfolioValue);
     var newPnlText = pnlSign + _formatRtYen(d.totalPnlJpy) + ' (' + pnlSign + d.portfolioPct.toFixed(1) + '%)';
-    _rtUpdateEl('rt-hero-value', newValueText, d.isPositive);
+
+    var prevHeroVal = _rtPrevValues['rt-hero-value'];
+    heroValue.textContent = newValueText;
     var heroPnl = document.getElementById('rt-hero-pnl');
     if (heroPnl) {
-      _rtUpdateEl('rt-hero-pnl', newPnlText, d.isPositive);
+      heroPnl.textContent = newPnlText;
+      heroPnl.className = 'rt-hero__pnl ' + (d.isPositive ? 'positive' : 'negative');
     }
     var heroSub = document.getElementById('rt-hero-sub');
     if (heroSub) {
@@ -9640,21 +9643,50 @@
     var hero = document.getElementById('rt-hero');
     if (hero) {
       hero.className = 'rt-hero ' + (d.isPositive ? 'rt-hero--positive' : 'rt-hero--negative');
+      // Flash the entire hero card
+      if (prevHeroVal !== undefined && prevHeroVal !== newValueText) {
+        var prevNum = parseFloat(prevHeroVal.replace(/[¥,\s]/g, ''));
+        var curNum = parseFloat(newValueText.replace(/[¥,\s]/g, ''));
+        _rtFlashCard(hero, curNum >= prevNum);
+      }
     }
+    _rtPrevValues['rt-hero-value'] = newValueText;
 
-    // Update PT split
+    // Update PT split — flash the card
     var ptIsPos = d.ptSimPnl >= 0;
-    _rtUpdateEl('rt-pt-amount', (ptIsPos ? '+' : '') + _formatRtYen(d.ptSimPnl), ptIsPos);
-    _rtUpdateEl('rt-pt-pnl', (ptIsPos ? '+' : '') + d.ptPnlTotal.toFixed(1) + '%', ptIsPos);
+    var ptAmountText = (ptIsPos ? '+' : '') + _formatRtYen(d.ptSimPnl);
+    var ptPnlText = (ptIsPos ? '+' : '') + d.ptPnlTotal.toFixed(1) + '%';
+    var ptCard = document.getElementById('rt-pt-card');
+    var prevPtAmount = _rtPrevValues['rt-pt-amount'];
+
+    var ptAmountEl = document.getElementById('rt-pt-amount');
+    if (ptAmountEl) { ptAmountEl.textContent = ptAmountText; ptAmountEl.className = 'rt-split__amount ' + (ptIsPos ? 'positive' : 'negative'); }
+    var ptPnlEl = document.getElementById('rt-pt-pnl');
+    if (ptPnlEl) { ptPnlEl.textContent = ptPnlText; ptPnlEl.className = 'rt-split__pnl ' + (ptIsPos ? 'positive' : 'negative'); }
     var ptMeta = document.getElementById('rt-pt-meta');
     if (ptMeta) ptMeta.textContent = d.ptWins + '勝' + d.ptLosses + '敗';
+    if (ptCard && prevPtAmount !== undefined && prevPtAmount !== ptAmountText) {
+      _rtFlashCard(ptCard, ptIsPos);
+    }
+    _rtPrevValues['rt-pt-amount'] = ptAmountText;
 
-    // Update SL split
+    // Update SL split — flash the card
     var slIsPos = d.slSimPnl >= 0;
-    _rtUpdateEl('rt-sl-amount', (slIsPos ? '+' : '') + _formatRtYen(d.slSimPnl), slIsPos);
-    _rtUpdateEl('rt-sl-pnl', (slIsPos ? '+' : '') + d.slPnlTotal.toFixed(1) + '%', slIsPos);
+    var slAmountText = (slIsPos ? '+' : '') + _formatRtYen(d.slSimPnl);
+    var slPnlText = (slIsPos ? '+' : '') + d.slPnlTotal.toFixed(1) + '%';
+    var slCard = document.getElementById('rt-sl-card');
+    var prevSlAmount = _rtPrevValues['rt-sl-amount'];
+
+    var slAmountEl = document.getElementById('rt-sl-amount');
+    if (slAmountEl) { slAmountEl.textContent = slAmountText; slAmountEl.className = 'rt-split__amount ' + (slIsPos ? 'positive' : 'negative'); }
+    var slPnlEl = document.getElementById('rt-sl-pnl');
+    if (slPnlEl) { slPnlEl.textContent = slPnlText; slPnlEl.className = 'rt-split__pnl ' + (slIsPos ? 'positive' : 'negative'); }
     var slMeta = document.getElementById('rt-sl-meta');
     if (slMeta) slMeta.textContent = d.slWins + '勝' + d.slLosses + '敗';
+    if (slCard && prevSlAmount !== undefined && prevSlAmount !== slAmountText) {
+      _rtFlashCard(slCard, slIsPos);
+    }
+    _rtPrevValues['rt-sl-amount'] = slAmountText;
 
     // Only replace active trades section
     var activeContainer = document.getElementById('rt-active-container');
@@ -9665,21 +9697,13 @@
 
   var _rtPrevValues = {};
 
-  function _rtUpdateEl(id, text, isPositive) {
-    var el = document.getElementById(id);
-    if (!el) return;
-    var prev = _rtPrevValues[id];
-    el.textContent = text;
-    el.className = el.className.replace(/positive|negative|rt-flash-up|rt-flash-down/g, '').trim() + ' ' + (isPositive ? 'positive' : 'negative');
-    if (prev !== undefined && prev !== text) {
-      // Determine direction: try to parse numbers
-      var prevNum = parseFloat(prev.replace(/[¥,%+\s]/g, ''));
-      var curNum = parseFloat(text.replace(/[¥,%+\s]/g, ''));
-      var flashClass = (curNum >= prevNum) ? 'rt-flash-up' : 'rt-flash-down';
-      el.classList.add(flashClass);
-      setTimeout(function() { el.classList.remove(flashClass); }, 850);
-    }
-    _rtPrevValues[id] = text;
+  function _rtFlashCard(el, isUp) {
+    var cls = isUp ? 'rt-flash-up' : 'rt-flash-down';
+    el.classList.remove('rt-flash-up', 'rt-flash-down');
+    // Force reflow to restart animation
+    void el.offsetWidth;
+    el.classList.add(cls);
+    setTimeout(function() { el.classList.remove(cls); }, 1300);
   }
 
   window._toggleRtSettings = function() {
