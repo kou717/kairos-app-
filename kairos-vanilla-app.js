@@ -9617,10 +9617,9 @@
         'アクティブ ' + d.allOpenTrades.length + '口 | ' +
         '本日 ' + (d.ptCount + d.slCount) + '決済' +
       '</div>' +
-      (!settings.isActive ?
-        '<div class="rt-hero__status rt-hero__status--inactive">ペーパーモード</div>' :
-        '<div class="rt-hero__status rt-hero__status--active">稼働中</div>'
-      ) +
+      '<div class="rt-hero__status ' + (!settings.isActive ? 'rt-hero__status--inactive' : 'rt-hero__status--active') + '" id="rt-hero-status">' +
+        (!settings.isActive ? 'ペーパーモード' : '稼働中') +
+      '</div>' +
     '</div>';
 
     // --- Wallet Bar ---
@@ -9801,15 +9800,27 @@
     var container = document.getElementById('rt-content');
     if (!container) return;
     var settings = _getRealTradingSettings();
-    var d = _rtCalcData(settings);
+    var d;
+    try {
+      d = _rtCalcData(settings);
+    } catch(e) {
+      console.error('[RT] calcData error:', e);
+      return;
+    }
 
     // DOM surgery: update values in-place without replacing entire HTML
     var heroValue = document.getElementById('rt-hero-value');
     if (!heroValue) {
       // First render — full HTML
-      container.innerHTML = _buildRealTradingHTML(settings);
+      try {
+        container.innerHTML = _buildRealTradingHTML(settings);
+      } catch(e) {
+        console.error('[RT] build error:', e);
+      }
       return;
     }
+
+    try {
 
     // Update hero
     var pnlSign = d.isPositive ? '+' : '';
@@ -9897,6 +9908,11 @@
 
     // Active trades: smooth DOM diff (no blackout)
     _rtUpdateActiveTrades(d);
+
+    } catch(e) {
+      console.error('[RT] DOM surgery error:', e);
+      // Don't fall back to full re-render — just skip this cycle
+    }
   }
 
   var _rtPrevValues = {};
