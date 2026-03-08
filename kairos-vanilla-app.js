@@ -9517,10 +9517,17 @@
     _loadRealTradingData();
 
     var settings = _getRealTradingSettings();
+    var content = '';
+    try {
+      content = _buildRealTradingHTML(settings);
+    } catch(e) {
+      console.error('[RT] render error:', e);
+      content = '<div style="padding:20px;color:#f88">画面描画エラー: ' + e.message + '</div>';
+    }
 
     return '<div class="rt-screen">' +
       '<div class="rt-screen__content" id="rt-content">' +
-        _buildRealTradingHTML(settings) +
+        content +
       '</div>' +
     '</div>';
   }
