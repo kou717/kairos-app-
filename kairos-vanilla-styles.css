@@ -1800,14 +1800,16 @@ body {
   z-index: 100;
 }
 
-/* 左：メニューボタン（nav-mode-btnと完全同一サイズ） */
+/* 左：メニューボタン（nav-mode-btnと同じ縦長サイズ） */
 .menu-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 3px;
-  padding: 10px 14px;
+  width: 48px;
+  min-width: 48px;
+  padding: 10px 0;
   background: linear-gradient(135deg, #1e3a5f, #162d4a);
   border: none;
   border-radius: 12px;
@@ -1828,7 +1830,7 @@ body {
 }
 
 .menu-btn__label {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   color: #fff;
 }
@@ -9880,7 +9882,9 @@ button.moonshot-btn.moonshot-btn--active {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  padding: 10px 14px;
+  width: 48px;
+  min-width: 48px;
+  padding: 10px 0;
   border: none;
   border-radius: 12px;
   cursor: pointer;
