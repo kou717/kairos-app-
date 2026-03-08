@@ -16614,23 +16614,21 @@ body.has-ticker-bar {
 
 /* 数値変化フラッシュ */
 @keyframes rtFlashUp {
-  0% { background: rgba(34,197,94,0.35); box-shadow: 0 0 16px rgba(34,197,94,0.4); }
+  0% { background: rgba(34,197,94,0.3); box-shadow: inset 0 0 30px rgba(34,197,94,0.3); }
   100% { background: transparent; box-shadow: none; }
 }
 
 @keyframes rtFlashDown {
-  0% { background: rgba(239,68,68,0.35); box-shadow: 0 0 16px rgba(239,68,68,0.4); }
+  0% { background: rgba(239,68,68,0.3); box-shadow: inset 0 0 30px rgba(239,68,68,0.3); }
   100% { background: transparent; box-shadow: none; }
 }
 
 .rt-flash-up {
   animation: rtFlashUp 1.2s ease-out !important;
-  border-radius: 6px;
 }
 
 .rt-flash-down {
   animation: rtFlashDown 1.2s ease-out !important;
-  border-radius: 6px;
 }
 
 .rt-hero__label {
