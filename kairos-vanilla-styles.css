@@ -16506,6 +16506,491 @@ body.has-ticker-bar {
   background: rgba(99, 102, 241, 0.15);
   color: #818cf8;
 }
+
+/* ============================================
+   Real Trading Screen
+   ============================================ */
+
+.rt-screen {
+  padding: 8px 16px 100px;
+}
+
+.rt-screen__content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* --- Hero Card (Portfolio) --- */
+.rt-hero {
+  background: linear-gradient(135deg,
+    rgba(var(--accent-rgb, 212,168,83), 0.12) 0%,
+    rgba(var(--accent-rgb, 212,168,83), 0.04) 50%,
+    rgba(var(--accent-rgb, 212,168,83), 0.08) 100%
+  );
+  border: 1px solid rgba(var(--accent-rgb, 212,168,83), 0.35);
+  border-radius: 20px;
+  padding: 28px 24px 20px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.5),
+    0 0 40px rgba(var(--accent-rgb, 212,168,83), 0.1),
+    inset 0 1px 0 rgba(255,215,0,0.2);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  animation: slideUp 0.4s ease-out both;
+}
+
+.rt-hero::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(from 0deg, transparent 0%, rgba(var(--accent-rgb, 212,168,83), 0.06) 10%, transparent 20%);
+  animation: heroShine 8s linear infinite;
+  pointer-events: none;
+}
+
+.rt-hero--positive::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, rgba(34,197,94,0.05), transparent 60%);
+  pointer-events: none;
+}
+
+.rt-hero--negative::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, rgba(239,68,68,0.05), transparent 60%);
+  pointer-events: none;
+}
+
+.rt-hero__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent, #d4a853);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  position: relative;
+  z-index: 1;
+}
+
+.rt-hero__value {
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--text-primary, #faf8f5);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  margin: 8px 0 4px;
+  line-height: 1.1;
+  position: relative;
+  z-index: 1;
+}
+
+.rt-hero__pnl {
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 2px;
+  position: relative;
+  z-index: 1;
+}
+
+.rt-hero__pnl.positive { color: #22c55e; }
+.rt-hero__pnl.negative { color: #ef4444; }
+
+.rt-hero__sub {
+  font-size: 12px;
+  color: var(--text-tertiary, #8b7355);
+  margin-top: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.rt-hero__status {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 12px;
+  border-radius: 20px;
+  margin-top: 10px;
+  position: relative;
+  z-index: 1;
+}
+
+.rt-hero__status--active {
+  background: rgba(34,197,94,0.15);
+  color: #22c55e;
+  border: 1px solid rgba(34,197,94,0.3);
+}
+
+.rt-hero__status--inactive {
+  background: rgba(var(--accent-rgb, 212,168,83), 0.1);
+  color: var(--accent, #d4a853);
+  border: 1px solid rgba(var(--accent-rgb, 212,168,83), 0.25);
+}
+
+/* --- PT / SL Split Cards --- */
+.rt-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  animation: slideUp 0.4s ease-out 0.1s both;
+}
+
+.rt-split__card {
+  background: var(--surface-card, rgba(255,255,255,0.05));
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.1));
+  border-radius: 14px;
+  padding: 14px;
+  text-align: center;
+}
+
+.rt-split__card--sl {
+  border-color: rgba(var(--accent-rgb, 212,168,83), 0.25);
+}
+
+.rt-split__header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.rt-split__icon {
+  font-size: 14px;
+}
+
+.rt-split__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.rt-split__amount {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rt-split__amount.positive { color: #22c55e; }
+.rt-split__amount.negative { color: #ef4444; }
+
+.rt-split__pnl {
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.rt-split__pnl.positive { color: rgba(34,197,94,0.7); }
+.rt-split__pnl.negative { color: rgba(239,68,68,0.7); }
+
+.rt-split__meta {
+  font-size: 11px;
+  color: var(--text-tertiary, #8b7355);
+  margin-top: 4px;
+}
+
+/* --- Active Trades --- */
+.rt-active {
+  animation: slideUp 0.4s ease-out 0.2s both;
+}
+
+.rt-active__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 0 2px;
+}
+
+.rt-active__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #faf8f5);
+}
+
+.rt-active__count {
+  font-size: 12px;
+  color: var(--text-tertiary, #8b7355);
+}
+
+.rt-active__empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-tertiary, #8b7355);
+  font-size: 13px;
+  background: var(--surface-card, rgba(255,255,255,0.03));
+  border-radius: 12px;
+  border: 1px dashed var(--border-subtle, rgba(255,255,255,0.08));
+}
+
+/* --- Trade Card --- */
+.rt-trade {
+  background: var(--surface-card, rgba(255,255,255,0.05));
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.1));
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  transition: all 0.3s ease;
+}
+
+/* Tier glow effects */
+.rt-trade--silver {
+  border-color: rgba(192,192,192,0.3);
+  box-shadow: 0 0 12px rgba(192,192,192,0.08);
+}
+
+.rt-trade--gold {
+  border-color: rgba(var(--accent-rgb, 212,168,83), 0.4);
+  box-shadow: 0 0 16px rgba(var(--accent-rgb, 212,168,83), 0.12);
+  animation: rtGoldPulse 3s ease-in-out infinite;
+}
+
+.rt-trade--moon {
+  border-color: rgba(168,85,247,0.4);
+  box-shadow: 0 0 20px rgba(168,85,247,0.15);
+  background: linear-gradient(135deg, rgba(168,85,247,0.08), rgba(236,72,153,0.05));
+  animation: rtMoonPulse 2s ease-in-out infinite;
+}
+
+.rt-trade--legendary {
+  border-color: rgba(255,215,0,0.5);
+  box-shadow: 0 0 30px rgba(255,215,0,0.2), 0 0 60px rgba(255,215,0,0.08);
+  background: linear-gradient(135deg,
+    rgba(255,215,0,0.1) 0%,
+    rgba(255,140,0,0.06) 30%,
+    rgba(168,85,247,0.06) 60%,
+    rgba(59,130,246,0.06) 100%
+  );
+  animation: rtLegendaryPulse 2s ease-in-out infinite;
+}
+
+@keyframes rtGoldPulse {
+  0%, 100% { box-shadow: 0 0 16px rgba(var(--accent-rgb, 212,168,83), 0.12); }
+  50% { box-shadow: 0 0 24px rgba(var(--accent-rgb, 212,168,83), 0.2); }
+}
+
+@keyframes rtMoonPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(168,85,247,0.15); }
+  50% { box-shadow: 0 0 32px rgba(168,85,247,0.25); }
+}
+
+@keyframes rtLegendaryPulse {
+  0%, 100% {
+    box-shadow: 0 0 30px rgba(255,215,0,0.2), 0 0 60px rgba(255,215,0,0.08);
+    border-color: rgba(255,215,0,0.5);
+  }
+  33% {
+    box-shadow: 0 0 35px rgba(255,140,0,0.25), 0 0 70px rgba(255,140,0,0.1);
+    border-color: rgba(255,140,0,0.5);
+  }
+  66% {
+    box-shadow: 0 0 35px rgba(168,85,247,0.25), 0 0 70px rgba(168,85,247,0.1);
+    border-color: rgba(168,85,247,0.5);
+  }
+}
+
+.rt-trade__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rt-trade__badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.rt-trade__badge--sl {
+  background: rgba(var(--accent-rgb, 212,168,83), 0.15);
+}
+
+.rt-trade__badge--pt {
+  background: rgba(168,85,247,0.15);
+  color: #a855f7;
+}
+
+.rt-trade__symbol {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary, #faf8f5);
+  flex: 1;
+}
+
+.rt-trade__pnl {
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rt-trade__pnl.positive { color: #22c55e; }
+.rt-trade__pnl.negative { color: #ef4444; }
+
+/* Progress bar */
+.rt-trade__bar {
+  height: 3px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 2px;
+  margin: 8px 0;
+  overflow: hidden;
+}
+
+.rt-trade__bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.rt-trade__bar-fill--pos {
+  background: linear-gradient(90deg, #22c55e, #4ade80);
+}
+
+.rt-trade__bar-fill--neg {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+.rt-trade--gold .rt-trade__bar-fill--pos {
+  background: linear-gradient(90deg, #d4a853, #ffd700);
+}
+
+.rt-trade--moon .rt-trade__bar-fill--pos {
+  background: linear-gradient(90deg, #a855f7, #ec4899);
+}
+
+.rt-trade--legendary .rt-trade__bar-fill--pos {
+  background: linear-gradient(90deg, #ffd700, #ff8c00, #a855f7, #3b82f6);
+  background-size: 200% 100%;
+  animation: rtRainbowBar 3s linear infinite;
+}
+
+@keyframes rtRainbowBar {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+.rt-trade__bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.rt-trade__jpy {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.rt-trade__jpy.positive { color: rgba(34,197,94,0.8); }
+.rt-trade__jpy.negative { color: rgba(239,68,68,0.8); }
+
+.rt-trade__hold {
+  color: var(--text-tertiary, #8b7355);
+}
+
+.rt-trade__peak {
+  color: var(--text-tertiary, #8b7355);
+  font-size: 11px;
+}
+
+/* --- Settings Section --- */
+.rt-settings {
+  background: var(--surface-card, rgba(255,255,255,0.04));
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+  border-radius: 14px;
+  overflow: hidden;
+  animation: slideUp 0.4s ease-out 0.3s both;
+}
+
+.rt-settings__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+
+.rt-settings__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #faf8f5);
+}
+
+.rt-settings__arrow {
+  font-size: 16px;
+  color: var(--text-tertiary, #8b7355);
+  transition: transform 0.2s ease;
+}
+
+.rt-settings__body {
+  padding: 0 16px 16px;
+}
+
+.rt-settings__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+}
+
+.rt-settings__row label {
+  font-size: 13px;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.rt-settings__row select {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary, #faf8f5);
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.15));
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  appearance: auto;
+}
+
+.rt-settings__toggles {
+  display: flex;
+  gap: 12px;
+}
+
+.rt-settings__toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+  cursor: pointer;
+}
+
+.rt-settings__toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent, #d4a853);
+}
+
+/* --- Bottom nav adjustment for 5 items --- */
+.bottom-nav {
+  gap: 0 !important;
+}
+
+.bottom-nav .nav-item {
+  min-width: 0;
+  flex: 1;
+  padding: 6px 2px;
+}
+
+.bottom-nav .nav-item__label {
+  font-size: 10px;
+}
 /* ============================================
    通貨別ストラテジーUI（長期/短期の2択）
    ============================================ */
