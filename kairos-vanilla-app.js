@@ -9642,7 +9642,9 @@
     }
     var hero = document.getElementById('rt-hero');
     if (hero) {
-      hero.className = 'rt-hero ' + (d.isPositive ? 'rt-hero--positive' : 'rt-hero--negative');
+      // Toggle positive/negative without resetting other classes/animations
+      hero.classList.remove('rt-hero--positive', 'rt-hero--negative');
+      hero.classList.add(d.isPositive ? 'rt-hero--positive' : 'rt-hero--negative');
       // Flash the entire hero card
       if (prevHeroVal !== undefined && prevHeroVal !== newValueText) {
         var prevNum = parseFloat(prevHeroVal.replace(/[¥,\s]/g, ''));
@@ -9948,12 +9950,11 @@
     var peakEl = card.querySelector('.rt-trade__peak');
     if (peakEl) { var peakPnl = t.peak_pnl_pct || pnl; peakEl.textContent = 'Peak ' + (peakPnl >= 0 ? '+' : '') + peakPnl.toFixed(0) + '%'; }
 
-    var tierClass = 'rt-trade';
-    if (pnl >= 10000) tierClass += ' rt-trade--legendary';
-    else if (pnl >= 1000) tierClass += ' rt-trade--moon';
-    else if (pnl >= 100) tierClass += ' rt-trade--gold';
-    else if (pnl >= 50) tierClass += ' rt-trade--silver';
-    card.className = tierClass;
+    card.classList.remove('rt-trade--legendary', 'rt-trade--moon', 'rt-trade--gold', 'rt-trade--silver');
+    if (pnl >= 10000) card.classList.add('rt-trade--legendary');
+    else if (pnl >= 1000) card.classList.add('rt-trade--moon');
+    else if (pnl >= 100) card.classList.add('rt-trade--gold');
+    else if (pnl >= 50) card.classList.add('rt-trade--silver');
     card.setAttribute('data-rt-key', _rtTradeKey(item));
   }
 
