@@ -1311,6 +1311,44 @@
       });
     },
 
+    getSolRate: function() {
+      var self = this;
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) { reject(new Error('Backend not available')); return; }
+          fetch(self.baseUrl + '/api/collector/real-trading/sol-rate')
+            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
+            .then(resolve).catch(reject);
+        });
+      });
+    },
+
+    getWalletInfo: function() {
+      var self = this;
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) { reject(new Error('Backend not available')); return; }
+          fetch(self.baseUrl + '/api/collector/real-trading/wallet')
+            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
+            .then(resolve).catch(reject);
+        });
+      });
+    },
+
+    getRealTrades: function(status) {
+      var self = this;
+      var url = self.baseUrl + '/api/collector/real-trading/trades';
+      if (status) url += '?status=' + encodeURIComponent(status);
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) { reject(new Error('Backend not available')); return; }
+          fetch(url)
+            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
+            .then(resolve).catch(reject);
+        });
+      });
+    },
+
     getDailyReport: function(date) {
       var self = this;
       var url = self.baseUrl + '/api/collector/daily-report';
@@ -9345,6 +9383,8 @@
 
   var _rtAutoRefresh = null;
   var _rtCache = { data: null, time: 0 };
+  var _rtWalletCache = { data: null, time: 0 };
+  var _rtSolRateCache = { data: null, time: 0 };
   var _rtCounterAnimation = null;
   var _rtLastHash = '';
 
@@ -9381,7 +9421,10 @@
       BackendAPI.getCollectorStats(dateStr),
       BackendAPI.getSleepingLionStats(dateStr),
       BackendAPI.getSleepingLionWatchlist(),
-      BackendAPI.getCollectorPaperTrades('open', 1)
+      BackendAPI.getCollectorPaperTrades('open', 1),
+      BackendAPI.getWalletInfo().catch(function() { return null; }),
+      BackendAPI.getSolRate().catch(function() { return null; }),
+      BackendAPI.getRealTrades('open').catch(function() { return { trades: [] }; })
     ]).then(function(results) {
       var newData = {
         ptStats: results[0],
@@ -9389,6 +9432,11 @@
         slWatchlist: results[2],
         ptOpenTrades: results[3]
       };
+
+      if (results[4]) _rtWalletCache = { data: results[4], time: Date.now() };
+      if (results[5]) _rtSolRateCache = { data: results[5], time: Date.now() };
+      newData.realTrades = results[6] ? results[6].trades || [] : [];
+
       var newHash = _rtHashData(newData);
 
       // Only update DOM if data actually changed
@@ -9567,6 +9615,32 @@
       ) +
     '</div>';
 
+    // --- Wallet Bar ---
+    var w = _rtWalletCache.data;
+    var sr = _rtSolRateCache.data;
+    var walletConfigured = w && w.configured;
+    var balanceSol = w ? w.balance_sol : 0;
+    var solJpy = sr ? sr.sol_jpy : 0;
+    var balanceJpy = balanceSol * solJpy;
+    var realOpenTrades = (_rtCache.data && _rtCache.data.realTrades) ? _rtCache.data.realTrades.length : 0;
+
+    html += '<div class="rt-wallet" id="rt-wallet">' +
+      '<div class="rt-wallet__row">' +
+        '<span class="rt-wallet__label">Wallet</span>' +
+        '<span class="rt-wallet__status ' + (walletConfigured ? 'rt-wallet__status--ok' : 'rt-wallet__status--ng') + '">' +
+          (walletConfigured ? '接続済み' : '未接続') +
+        '</span>' +
+      '</div>' +
+      '<div class="rt-wallet__row">' +
+        '<span class="rt-wallet__balance">' + balanceSol.toFixed(4) + ' SOL</span>' +
+        '<span class="rt-wallet__jpy">≈ ¥' + Math.round(balanceJpy).toLocaleString() + '</span>' +
+      '</div>' +
+      '<div class="rt-wallet__row rt-wallet__row--sub">' +
+        '<span class="rt-wallet__rate">1 SOL = ¥' + Math.round(solJpy).toLocaleString() + '</span>' +
+        '<span class="rt-wallet__real-count">実弾 ' + realOpenTrades + '口</span>' +
+      '</div>' +
+    '</div>';
+
     // --- PT / SL Split Cards ---
     var ptIsPos = d.ptSimPnl >= 0;
     var slIsPos = d.slSimPnl >= 0;
@@ -9595,6 +9669,18 @@
         '<span class="rt-settings__arrow" id="rt-settings-arrow">›</span>' +
       '</div>' +
       '<div class="rt-settings__body" id="rt-settings-body" style="display:none">' +
+        '<div class="rt-settings__row rt-settings__row--highlight">' +
+          '<label>実弾モード</label>' +
+          '<label class="rt-settings__switch">' +
+            '<input type="checkbox" ' + (settings.isActive ? 'checked' : '') + ' onchange="window._toggleRtActive(this.checked)">' +
+            '<span class="rt-settings__slider"></span>' +
+          '</label>' +
+        '</div>' +
+        (walletConfigured ?
+          '<div class="rt-settings__wallet-info">' +
+            '<span class="rt-settings__wallet-addr">' + (w.pubkey || '').substring(0, 8) + '...' + (w.pubkey || '').slice(-4) + '</span>' +
+          '</div>' : ''
+        ) +
         '<div class="rt-settings__row">' +
           '<label>一口投資額</label>' +
           '<select id="rt-per-trade" onchange="window._updateRtSetting(\'perTradeJpy\', parseInt(this.value))">' +
@@ -9745,6 +9831,24 @@
       }
     }
     _rtPrevValues['rt-hero-value'] = newValueText;
+
+    // Update wallet bar
+    var walletEl = document.getElementById('rt-wallet');
+    if (walletEl) {
+      var w2 = _rtWalletCache.data;
+      var sr2 = _rtSolRateCache.data;
+      var bal2 = w2 ? w2.balance_sol : 0;
+      var sj2 = sr2 ? sr2.sol_jpy : 0;
+      var realCount2 = (_rtCache.data && _rtCache.data.realTrades) ? _rtCache.data.realTrades.length : 0;
+      var balEls = walletEl.querySelectorAll('.rt-wallet__balance');
+      if (balEls[0]) balEls[0].textContent = bal2.toFixed(4) + ' SOL';
+      var jpyEls = walletEl.querySelectorAll('.rt-wallet__jpy');
+      if (jpyEls[0]) jpyEls[0].textContent = '≈ ¥' + Math.round(bal2 * sj2).toLocaleString();
+      var rateEls = walletEl.querySelectorAll('.rt-wallet__rate');
+      if (rateEls[0]) rateEls[0].textContent = '1 SOL = ¥' + Math.round(sj2).toLocaleString();
+      var rcountEls = walletEl.querySelectorAll('.rt-wallet__real-count');
+      if (rcountEls[0]) rcountEls[0].textContent = '実弾 ' + realCount2 + '口';
+    }
 
     // Update PT split — flash the card
     var ptIsPos = d.ptSimPnl >= 0;
@@ -9928,6 +10032,34 @@
   window._updateRtSetting = function(key, value) {
     var settings = _getRealTradingSettings();
     settings[key] = value;
+    _saveRealTradingSettings(settings);
+    _renderRealTradingContent();
+  };
+
+  window._toggleRtActive = function(isActive) {
+    var w = _rtWalletCache.data;
+    if (isActive && (!w || !w.configured)) {
+      alert('ウォレットが未接続です。Railwayの環境変数にSOLANA_PRIVATE_KEYを設定してください。');
+      // Revert checkbox
+      var cb = document.querySelector('.rt-settings__row--highlight input[type="checkbox"]');
+      if (cb) cb.checked = false;
+      return;
+    }
+    if (isActive && w && w.balance_sol < 0.01) {
+      alert('ウォレット残高が不足しています（' + w.balance_sol.toFixed(4) + ' SOL）。入金してください。');
+      var cb2 = document.querySelector('.rt-settings__row--highlight input[type="checkbox"]');
+      if (cb2) cb2.checked = false;
+      return;
+    }
+    if (isActive) {
+      if (!confirm('実弾モードをONにしますか？\nSLの覚醒時にリアルSOLで自動売買が実行されます。')) {
+        var cb3 = document.querySelector('.rt-settings__row--highlight input[type="checkbox"]');
+        if (cb3) cb3.checked = false;
+        return;
+      }
+    }
+    var settings = _getRealTradingSettings();
+    settings.isActive = isActive;
     _saveRealTradingSettings(settings);
     _renderRealTradingContent();
   };

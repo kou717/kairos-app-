@@ -17137,6 +17137,142 @@ body.has-ticker-bar {
   accent-color: var(--accent, #d4a853);
 }
 
+/* Wallet Bar */
+.rt-wallet {
+  background: var(--card-bg, #1a1a2e);
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin: 12px 0;
+}
+
+.rt-wallet__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+}
+
+.rt-wallet__row--sub {
+  padding-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  margin-top: 4px;
+}
+
+.rt-wallet__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary, #8b7355);
+}
+
+.rt-wallet__status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.rt-wallet__status--ok {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.rt-wallet__status--ng {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.rt-wallet__balance {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary, #faf8f5);
+}
+
+.rt-wallet__jpy {
+  font-size: 13px;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.rt-wallet__rate {
+  font-size: 11px;
+  color: var(--text-tertiary, #8b7355);
+}
+
+.rt-wallet__real-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent, #d4a853);
+}
+
+/* Settings: Active Toggle Switch */
+.rt-settings__row--highlight {
+  padding: 12px 0;
+  border-top: none;
+}
+
+.rt-settings__row--highlight label:first-child {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary, #faf8f5);
+}
+
+.rt-settings__switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+}
+
+.rt-settings__switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.rt-settings__slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: rgba(255,255,255,0.12);
+  border-radius: 26px;
+  transition: background 0.3s;
+}
+
+.rt-settings__slider::before {
+  content: '';
+  position: absolute;
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.3s;
+}
+
+.rt-settings__switch input:checked + .rt-settings__slider {
+  background: #22c55e;
+}
+
+.rt-settings__switch input:checked + .rt-settings__slider::before {
+  transform: translateX(22px);
+}
+
+.rt-settings__wallet-info {
+  padding: 6px 0 10px;
+}
+
+.rt-settings__wallet-addr {
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--text-tertiary, #8b7355);
+  background: rgba(255,255,255,0.05);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
 /* ============================================
    通貨別ストラテジーUI（長期/短期の2択）
    ============================================ */
