@@ -9624,13 +9624,14 @@
       return;
     }
 
-    // Update hero
-    heroValue.textContent = _formatRtYen(d.portfolioValue);
+    // Update hero with flash
     var pnlSign = d.isPositive ? '+' : '';
+    var newValueText = _formatRtYen(d.portfolioValue);
+    var newPnlText = pnlSign + _formatRtYen(d.totalPnlJpy) + ' (' + pnlSign + d.portfolioPct.toFixed(1) + '%)';
+    _rtUpdateEl('rt-hero-value', newValueText, d.isPositive);
     var heroPnl = document.getElementById('rt-hero-pnl');
     if (heroPnl) {
-      heroPnl.textContent = pnlSign + _formatRtYen(d.totalPnlJpy) + ' (' + pnlSign + d.portfolioPct.toFixed(1) + '%)';
-      heroPnl.className = 'rt-hero__pnl ' + (d.isPositive ? 'positive' : 'negative');
+      _rtUpdateEl('rt-hero-pnl', newPnlText, d.isPositive);
     }
     var heroSub = document.getElementById('rt-hero-sub');
     if (heroSub) {
@@ -9662,11 +9663,23 @@
     }
   }
 
+  var _rtPrevValues = {};
+
   function _rtUpdateEl(id, text, isPositive) {
     var el = document.getElementById(id);
     if (!el) return;
+    var prev = _rtPrevValues[id];
     el.textContent = text;
-    el.className = el.className.replace(/positive|negative/g, '').trim() + ' ' + (isPositive ? 'positive' : 'negative');
+    el.className = el.className.replace(/positive|negative|rt-flash-up|rt-flash-down/g, '').trim() + ' ' + (isPositive ? 'positive' : 'negative');
+    if (prev !== undefined && prev !== text) {
+      // Determine direction: try to parse numbers
+      var prevNum = parseFloat(prev.replace(/[¥,%+\s]/g, ''));
+      var curNum = parseFloat(text.replace(/[¥,%+\s]/g, ''));
+      var flashClass = (curNum >= prevNum) ? 'rt-flash-up' : 'rt-flash-down';
+      el.classList.add(flashClass);
+      setTimeout(function() { el.classList.remove(flashClass); }, 850);
+    }
+    _rtPrevValues[id] = text;
   }
 
   window._toggleRtSettings = function() {
