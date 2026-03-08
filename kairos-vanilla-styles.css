@@ -16651,6 +16651,34 @@ body.has-ticker-bar {
   line-height: 1.1;
   position: relative;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* スロットマシン式カウンター */
+.rt-counter__char {
+  display: inline-block;
+}
+
+.rt-counter__digit {
+  display: inline-block;
+  height: 1.15em;
+  overflow: hidden;
+  position: relative;
+}
+
+.rt-counter__roll {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.rt-counter__roll span {
+  height: 1.15em;
+  line-height: 1.15em;
+  display: block;
 }
 
 .rt-hero__pnl {

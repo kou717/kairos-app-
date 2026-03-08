@@ -9460,7 +9460,7 @@
     var pnlSign = d.isPositive ? '+' : '';
     html += '<div class="rt-hero ' + heroClass + '" id="rt-hero">' +
       '<div class="rt-hero__label">MY PORTFOLIO</div>' +
-      '<div class="rt-hero__value" id="rt-hero-value">' + _formatRtYen(d.portfolioValue) + '</div>' +
+      '<div class="rt-hero__value" id="rt-hero-value">' + _rtBuildCounterHTML(_formatRtYen(d.portfolioValue)) + '</div>' +
       '<div class="rt-hero__pnl ' + (d.isPositive ? 'positive' : 'negative') + '" id="rt-hero-pnl">' +
         pnlSign + _formatRtYen(d.totalPnlJpy) + ' (' + pnlSign + d.portfolioPct.toFixed(1) + '%)' +
       '</div>' +
@@ -9630,7 +9630,7 @@
     var newPnlText = pnlSign + _formatRtYen(d.totalPnlJpy) + ' (' + pnlSign + d.portfolioPct.toFixed(1) + '%)';
 
     var prevHeroVal = _rtPrevValues['rt-hero-value'];
-    heroValue.textContent = newValueText;
+    _rtRollCounter(heroValue, newValueText);
     var heroPnl = document.getElementById('rt-hero-pnl');
     if (heroPnl) {
       heroPnl.textContent = newPnlText;
@@ -9695,6 +9695,63 @@
   }
 
   var _rtPrevValues = {};
+
+  function _rtBuildCounterHTML(text) {
+    var html = '';
+    text.split('').forEach(function(ch, i) {
+      if (ch >= '0' && ch <= '9') {
+        var digit = parseInt(ch);
+        html += '<span class="rt-counter__digit" data-rt-slot="' + i + '">' +
+          '<span class="rt-counter__roll" style="transform:translateY(-' + (digit * 1.15) + 'em)">' +
+          '<span>0</span><span>1</span><span>2</span><span>3</span><span>4</span>' +
+          '<span>5</span><span>6</span><span>7</span><span>8</span><span>9</span>' +
+          '</span></span>';
+      } else {
+        html += '<span class="rt-counter__char" data-rt-slot="' + i + '">' + ch + '</span>';
+      }
+    });
+    return html;
+  }
+
+  function _rtRollCounter(container, newText) {
+    var chars = newText.split('');
+    var existingSlots = container.querySelectorAll('[data-rt-slot]');
+
+    // First render or length changed: build from scratch
+    if (existingSlots.length === 0 || existingSlots.length !== chars.length) {
+      var html = '';
+      chars.forEach(function(ch, i) {
+        if (ch >= '0' && ch <= '9') {
+          var digit = parseInt(ch);
+          html += '<span class="rt-counter__digit" data-rt-slot="' + i + '">' +
+            '<span class="rt-counter__roll" style="transform:translateY(-' + (digit * 1.15) + 'em)">' +
+            '<span>0</span><span>1</span><span>2</span><span>3</span><span>4</span>' +
+            '<span>5</span><span>6</span><span>7</span><span>8</span><span>9</span>' +
+            '</span></span>';
+        } else {
+          html += '<span class="rt-counter__char" data-rt-slot="' + i + '">' + ch + '</span>';
+        }
+      });
+      container.innerHTML = html;
+      return;
+    }
+
+    // Update existing slots
+    chars.forEach(function(ch, i) {
+      var slot = existingSlots[i];
+      if (!slot) return;
+
+      if (ch >= '0' && ch <= '9') {
+        var roll = slot.querySelector('.rt-counter__roll');
+        if (roll) {
+          var digit = parseInt(ch);
+          roll.style.transform = 'translateY(-' + (digit * 1.15) + 'em)';
+        }
+      } else {
+        slot.textContent = ch;
+      }
+    });
+  }
 
   function _rtFlashCard(el, isUp) {
     var cls = isUp ? 'rt-flash-up' : 'rt-flash-down';
