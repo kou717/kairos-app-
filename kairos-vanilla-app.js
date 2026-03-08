@@ -9318,9 +9318,33 @@
   var _rtAutoRefresh = null;
   var _rtCache = { data: null, time: 0 };
   var _rtCounterAnimation = null;
+  var _rtLastHash = '';
+
+  function _rtHashData(data) {
+    if (!data) return '';
+    try {
+      var pt = data.ptStats && data.ptStats.overall_summary || {};
+      var sl = data.slStats || {};
+      var openPt = (data.ptOpenTrades && data.ptOpenTrades.trades || [])
+        .filter(function(t) { return t.status === 'open'; })
+        .map(function(t) { return (t.symbol || t.token_symbol || '') + ':' + (t.unrealized_pnl_pct || 0).toFixed(2); })
+        .join('|');
+      var openSl = '';
+      if (data.slWatchlist) {
+        var items = data.slWatchlist.items || data.slWatchlist;
+        if (Array.isArray(items)) {
+          openSl = items.filter(function(t) {
+            return t.status === 'awakened' || (t.trade_id && t.trade_status === 'open');
+          }).map(function(t) { return (t.symbol || '') + ':' + (t.unrealized_pnl_pct || 0).toFixed(2); }).join('|');
+        }
+      }
+      return [pt.total_closed, pt.winners, pt.total_pnl_pct,
+              sl.total_closed, sl.winners, sl.total_pnl_pct,
+              openPt, openSl].join(',');
+    } catch(e) { return '' + Date.now(); }
+  }
 
   function _loadRealTradingData() {
-    // PT stats (today)
     var today = new Date();
     var jstDate = new Date(today.getTime() + 9 * 3600000);
     var dateStr = jstDate.toISOString().slice(0, 10);
@@ -9331,13 +9355,21 @@
       BackendAPI.getSleepingLionWatchlist(),
       BackendAPI.getCollectorPaperTrades('open', 1)
     ]).then(function(results) {
-      _rtCache.data = {
+      var newData = {
         ptStats: results[0],
         slStats: results[1],
         slWatchlist: results[2],
         ptOpenTrades: results[3]
       };
+      var newHash = _rtHashData(newData);
+
+      // Only update DOM if data actually changed
+      if (newHash === _rtLastHash) return;
+
+      _rtCache.data = newData;
       _rtCache.time = Date.now();
+      _rtLastHash = newHash;
+
       if (appState.currentScreen === 'real-trading') {
         _renderRealTradingContent();
       }
