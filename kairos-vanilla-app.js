@@ -2751,7 +2751,7 @@
     var titles = {
       'detection': 'Early Detection',
       'performance': 'Performance',
-      'real-trading': 'Real Trading',
+      'real-trading': '資産',
       'home': 'Portfolio',
       'currencies': '通貨一覧',
       'market': 'マーケット',
@@ -2909,7 +2909,7 @@
   var _dexItems = [
     { id: 'performance', icon: '📈', label: '成績' },
     { id: 'detection', icon: '🚀', label: '検出' },
-    { id: 'real-trading', icon: '💰', label: '実弾' },
+    { id: 'real-trading', icon: '💰', label: '資産', isCenter: true },
     { id: 'collector', icon: '🗄️', label: 'Monitor' },
     { id: 'sleeping-lion', icon: '🦁', label: '獅子' }
   ];
@@ -2926,7 +2926,8 @@
     items.forEach(function(item) {
       var isActive = appState.currentScreen === item.id;
       var activeClass = isActive ? ' nav-item--active' : '';
-      html += '<button class="nav-item' + activeClass + '" data-screen="' + item.id + '">' +
+      var centerClass = item.isCenter ? ' nav-item--center' : '';
+      html += '<button class="nav-item' + activeClass + centerClass + '" data-screen="' + item.id + '">' +
         '<span class="nav-item__icon">' + item.icon + '</span>' +
         '<span class="nav-item__label">' + item.label + '</span>' +
       '</button>';

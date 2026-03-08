@@ -1872,6 +1872,37 @@ body {
   background: rgba(var(--accent-rgb), 0.15);
 }
 
+/* 中央の主役アイコン */
+.nav-item--center {
+  position: relative;
+  margin-top: -14px;
+}
+
+.nav-item--center .nav-item__icon {
+  font-size: 26px;
+  opacity: 0.85;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.2), rgba(var(--accent-rgb), 0.08));
+  border: 1.5px solid rgba(var(--accent-rgb), 0.35);
+  box-shadow: 0 4px 16px rgba(var(--accent-rgb), 0.15);
+}
+
+.nav-item--center.nav-item--active .nav-item__icon {
+  opacity: 1;
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.35), rgba(var(--accent-rgb), 0.15));
+  border-color: rgba(var(--accent-rgb), 0.5);
+  box-shadow: 0 4px 20px rgba(var(--accent-rgb), 0.25);
+}
+
+.nav-item--center .nav-item__label {
+  margin-top: 2px;
+}
+
 .nav-item__icon {
   font-size: 18px;
   opacity: 0.6;
