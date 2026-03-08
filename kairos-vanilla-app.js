@@ -9975,7 +9975,7 @@
           if (oldDigit !== newDigit) {
             var pos;
             if (_rtLastDirection >= 0) {
-              // Going up: roll upward (higher position = digit moves up from below)
+              // Going up: roll upward (digit comes from below)
               pos = _rtDigitPos(newDigit);
             } else {
               // Going down: use lower strip position so it rolls downward
@@ -9985,9 +9985,9 @@
             roll.style.transition = 'none';
             var startPos;
             if (_rtLastDirection >= 0) {
-              startPos = pos + 3; // start 3 positions below (digits will roll up)
+              startPos = pos - 3; // start above → roll down to show increase
             } else {
-              startPos = pos - 3; // start 3 positions above (digits will roll down)
+              startPos = pos + 3; // start below → roll up to show decrease
             }
             roll.style.transform = 'translateY(-' + (startPos * 1.15) + 'em)';
             void roll.offsetWidth;
