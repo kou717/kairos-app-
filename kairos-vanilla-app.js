@@ -9385,10 +9385,8 @@
     '</div>';
   }
 
-  function _buildRealTradingHTML(settings) {
+  function _rtCalcData(settings) {
     var data = _rtCache.data;
-
-    // PT / SL 本日データ
     var ptWins = 0, ptLosses = 0, ptPnlTotal = 0, ptCount = 0;
     var slWins = 0, slLosses = 0, slPnlTotal = 0, slCount = 0;
     var ptOpenTrades = [];
@@ -9409,13 +9407,9 @@
         slLosses = slCount - slWins;
         slPnlTotal = sl.total_pnl_pct || 0;
       }
-
-      // Open trades from PT
       if (data.ptOpenTrades && data.ptOpenTrades.trades) {
         ptOpenTrades = data.ptOpenTrades.trades.filter(function(t) { return t.status === 'open'; });
       }
-
-      // Open trades from SL watchlist
       if (data.slWatchlist) {
         var items = data.slWatchlist.items || data.slWatchlist;
         if (Array.isArray(items)) {
@@ -9429,48 +9423,51 @@
     var allOpenTrades = [];
     ptOpenTrades.forEach(function(t) { allOpenTrades.push({ type: 'PT', trade: t }); });
     slOpenTrades.forEach(function(t) { allOpenTrades.push({ type: 'SL', trade: t }); });
-
-    // Sort by PnL descending
     allOpenTrades.sort(function(a, b) {
-      var aPnl = a.trade.unrealized_pnl_pct || 0;
-      var bPnl = b.trade.unrealized_pnl_pct || 0;
-      return bPnl - aPnl;
+      return (b.trade.unrealized_pnl_pct || 0) - (a.trade.unrealized_pnl_pct || 0);
     });
 
-    // Calculate simulated portfolio value
     var perTrade = settings.perTradeJpy;
     var ptSimPnl = ptPnlTotal * perTrade / 100;
     var slSimPnl = slPnlTotal * perTrade / 100;
-
-    // Open trade unrealized
     var openUnrealized = 0;
     allOpenTrades.forEach(function(item) {
-      var pnl = item.trade.unrealized_pnl_pct || 0;
-      openUnrealized += pnl * perTrade / 100;
+      openUnrealized += (item.trade.unrealized_pnl_pct || 0) * perTrade / 100;
     });
 
     var totalPnlJpy = ptSimPnl + slSimPnl + openUnrealized;
     var capitalJpy = settings.initialCapitalJpy;
-    var portfolioValue = capitalJpy + totalPnlJpy;
-    var portfolioPct = capitalJpy > 0 ? (totalPnlJpy / capitalJpy * 100) : 0;
-    var isPositive = totalPnlJpy >= 0;
 
-    // ===== HTML =====
+    return {
+      ptWins: ptWins, ptLosses: ptLosses, ptPnlTotal: ptPnlTotal, ptCount: ptCount,
+      slWins: slWins, slLosses: slLosses, slPnlTotal: slPnlTotal, slCount: slCount,
+      allOpenTrades: allOpenTrades, perTrade: perTrade,
+      ptSimPnl: ptSimPnl, slSimPnl: slSimPnl,
+      totalPnlJpy: totalPnlJpy, capitalJpy: capitalJpy,
+      portfolioValue: capitalJpy + totalPnlJpy,
+      portfolioPct: capitalJpy > 0 ? (totalPnlJpy / capitalJpy * 100) : 0,
+      isPositive: totalPnlJpy >= 0
+    };
+  }
+
+  function _buildRealTradingHTML(settings) {
+    var d = _rtCalcData(settings);
+
     var html = '';
 
-    // --- Hero Card (Portfolio) ---
-    var heroClass = isPositive ? 'rt-hero--positive' : 'rt-hero--negative';
-    var pnlSign = isPositive ? '+' : '';
-    html += '<div class="rt-hero ' + heroClass + '">' +
-      '<div class="rt-hero__label">REAL TRADING</div>' +
-      '<div class="rt-hero__value" id="rt-portfolio-value">' + _formatRtYen(portfolioValue) + '</div>' +
-      '<div class="rt-hero__pnl ' + (isPositive ? 'positive' : 'negative') + '">' +
-        pnlSign + _formatRtYen(totalPnlJpy) + ' (' + pnlSign + portfolioPct.toFixed(1) + '%)' +
+    // --- Hero Card ---
+    var heroClass = d.isPositive ? 'rt-hero--positive' : 'rt-hero--negative';
+    var pnlSign = d.isPositive ? '+' : '';
+    html += '<div class="rt-hero ' + heroClass + '" id="rt-hero">' +
+      '<div class="rt-hero__label">MY PORTFOLIO</div>' +
+      '<div class="rt-hero__value" id="rt-hero-value">' + _formatRtYen(d.portfolioValue) + '</div>' +
+      '<div class="rt-hero__pnl ' + (d.isPositive ? 'positive' : 'negative') + '" id="rt-hero-pnl">' +
+        pnlSign + _formatRtYen(d.totalPnlJpy) + ' (' + pnlSign + d.portfolioPct.toFixed(1) + '%)' +
       '</div>' +
-      '<div class="rt-hero__sub">' +
-        '一口 ' + _formatRtYen(perTrade) + ' | ' +
-        'アクティブ ' + allOpenTrades.length + '口 | ' +
-        '本日 ' + (ptCount + slCount) + '決済' +
+      '<div class="rt-hero__sub" id="rt-hero-sub">' +
+        '一口 ' + _formatRtYen(d.perTrade) + ' | ' +
+        'アクティブ ' + d.allOpenTrades.length + '口 | ' +
+        '本日 ' + (d.ptCount + d.slCount) + '決済' +
       '</div>' +
       (!settings.isActive ?
         '<div class="rt-hero__status rt-hero__status--inactive">ペーパーモード</div>' :
@@ -9479,105 +9476,27 @@
     '</div>';
 
     // --- PT / SL Split Cards ---
-    html += '<div class="rt-split">';
-
-    // PT card
-    var ptDayPnl = ptSimPnl;
-    var ptIsPos = ptDayPnl >= 0;
-    html += '<div class="rt-split__card">' +
-      '<div class="rt-split__header">' +
-        '<span class="rt-split__icon">📊</span>' +
-        '<span class="rt-split__title">通常トレード</span>' +
+    var ptIsPos = d.ptSimPnl >= 0;
+    var slIsPos = d.slSimPnl >= 0;
+    html += '<div class="rt-split" id="rt-split">' +
+      '<div class="rt-split__card">' +
+        '<div class="rt-split__header"><span class="rt-split__icon">📊</span><span class="rt-split__title">通常トレード</span></div>' +
+        '<div class="rt-split__amount ' + (ptIsPos ? 'positive' : 'negative') + '" id="rt-pt-amount">' + (ptIsPos ? '+' : '') + _formatRtYen(d.ptSimPnl) + '</div>' +
+        '<div class="rt-split__pnl ' + (ptIsPos ? 'positive' : 'negative') + '" id="rt-pt-pnl">' + (ptIsPos ? '+' : '') + d.ptPnlTotal.toFixed(1) + '%</div>' +
+        '<div class="rt-split__meta" id="rt-pt-meta">' + d.ptWins + '勝' + d.ptLosses + '敗</div>' +
       '</div>' +
-      '<div class="rt-split__amount ' + (ptIsPos ? 'positive' : 'negative') + '">' +
-        (ptIsPos ? '+' : '') + _formatRtYen(ptDayPnl) +
+      '<div class="rt-split__card rt-split__card--sl">' +
+        '<div class="rt-split__header"><span class="rt-split__icon">🦁</span><span class="rt-split__title">眠れる獅子</span></div>' +
+        '<div class="rt-split__amount ' + (slIsPos ? 'positive' : 'negative') + '" id="rt-sl-amount">' + (slIsPos ? '+' : '') + _formatRtYen(d.slSimPnl) + '</div>' +
+        '<div class="rt-split__pnl ' + (slIsPos ? 'positive' : 'negative') + '" id="rt-sl-pnl">' + (slIsPos ? '+' : '') + d.slPnlTotal.toFixed(1) + '%</div>' +
+        '<div class="rt-split__meta" id="rt-sl-meta">' + d.slWins + '勝' + d.slLosses + '敗</div>' +
       '</div>' +
-      '<div class="rt-split__pnl ' + (ptIsPos ? 'positive' : 'negative') + '">' +
-        (ptIsPos ? '+' : '') + ptPnlTotal.toFixed(1) + '%' +
-      '</div>' +
-      '<div class="rt-split__meta">' + ptWins + '勝' + ptLosses + '敗</div>' +
     '</div>';
-
-    // SL card
-    var slDayPnl = slSimPnl;
-    var slIsPos = slDayPnl >= 0;
-    html += '<div class="rt-split__card rt-split__card--sl">' +
-      '<div class="rt-split__header">' +
-        '<span class="rt-split__icon">🦁</span>' +
-        '<span class="rt-split__title">眠れる獅子</span>' +
-      '</div>' +
-      '<div class="rt-split__amount ' + (slIsPos ? 'positive' : 'negative') + '">' +
-        (slIsPos ? '+' : '') + _formatRtYen(slDayPnl) +
-      '</div>' +
-      '<div class="rt-split__pnl ' + (slIsPos ? 'positive' : 'negative') + '">' +
-        (slIsPos ? '+' : '') + slPnlTotal.toFixed(1) + '%' +
-      '</div>' +
-      '<div class="rt-split__meta">' + slWins + '勝' + slLosses + '敗</div>' +
-    '</div>';
-
-    html += '</div>'; // rt-split
 
     // --- Active Trades ---
-    html += '<div class="rt-active">';
-    html += '<div class="rt-active__header">' +
-      '<span class="rt-active__title">アクティブトレード</span>' +
-      '<span class="rt-active__count">' + allOpenTrades.length + '口</span>' +
-    '</div>';
+    html += '<div id="rt-active-container">' + _buildActiveTradesHTML(d) + '</div>';
 
-    if (allOpenTrades.length === 0) {
-      html += '<div class="rt-active__empty">現在アクティブなトレードはありません</div>';
-    } else {
-      allOpenTrades.forEach(function(item) {
-        var t = item.trade;
-        var pnl = t.unrealized_pnl_pct || 0;
-        var pnlJpy = pnl * perTrade / 100;
-        var isPos = pnl >= 0;
-        var sign = isPos ? '+' : '';
-
-        // Tier classes for glow effects
-        var tierClass = '';
-        if (pnl >= 10000) tierClass = ' rt-trade--legendary';
-        else if (pnl >= 1000) tierClass = ' rt-trade--moon';
-        else if (pnl >= 100) tierClass = ' rt-trade--gold';
-        else if (pnl >= 50) tierClass = ' rt-trade--silver';
-
-        var symbol = t.symbol || t.token_symbol || '???';
-        var holdSec = 0;
-        if (t.entry_at) {
-          holdSec = Math.floor(Date.now() / 1000) - t.entry_at;
-        } else if (t.holding_duration) {
-          holdSec = t.holding_duration;
-        }
-        var holdMin = Math.floor(holdSec / 60);
-        var holdStr = holdMin >= 60 ? Math.floor(holdMin / 60) + '時間' + (holdMin % 60) + '分' : holdMin + '分';
-
-        var peakPnl = t.peak_pnl_pct || pnl;
-        var typeBadge = item.type === 'SL' ? '<span class="rt-trade__badge rt-trade__badge--sl">🦁</span>' : '<span class="rt-trade__badge rt-trade__badge--pt">PT</span>';
-
-        html += '<div class="rt-trade' + tierClass + '">' +
-          '<div class="rt-trade__top">' +
-            typeBadge +
-            '<span class="rt-trade__symbol">' + symbol + '</span>' +
-            '<span class="rt-trade__pnl ' + (isPos ? 'positive' : 'negative') + '">' + sign + pnl.toFixed(1) + '%</span>' +
-          '</div>' +
-
-          // PnL progress bar
-          '<div class="rt-trade__bar">' +
-            '<div class="rt-trade__bar-fill' + (isPos ? ' rt-trade__bar-fill--pos' : ' rt-trade__bar-fill--neg') + '" style="width:' + Math.min(Math.abs(pnl), 100) + '%"></div>' +
-          '</div>' +
-
-          '<div class="rt-trade__bottom">' +
-            '<span class="rt-trade__jpy ' + (isPos ? 'positive' : 'negative') + '">' + sign + _formatRtYen(pnlJpy) + '</span>' +
-            '<span class="rt-trade__hold">' + holdStr + '</span>' +
-            '<span class="rt-trade__peak">Peak ' + sign + peakPnl.toFixed(0) + '%</span>' +
-          '</div>' +
-        '</div>';
-      });
-    }
-
-    html += '</div>'; // rt-active
-
-    // --- Settings Section ---
+    // --- Settings ---
     html += '<div class="rt-settings" id="rt-settings-section">' +
       '<div class="rt-settings__header" onclick="window._toggleRtSettings()">' +
         '<span class="rt-settings__title">設定</span>' +
@@ -9621,6 +9540,61 @@
     return html;
   }
 
+  function _buildActiveTradesHTML(d) {
+    var html = '<div class="rt-active">' +
+      '<div class="rt-active__header">' +
+        '<span class="rt-active__title">アクティブトレード</span>' +
+        '<span class="rt-active__count">' + d.allOpenTrades.length + '口</span>' +
+      '</div>';
+
+    if (d.allOpenTrades.length === 0) {
+      html += '<div class="rt-active__empty">現在アクティブなトレードはありません</div>';
+    } else {
+      d.allOpenTrades.forEach(function(item) {
+        var t = item.trade;
+        var pnl = t.unrealized_pnl_pct || 0;
+        var pnlJpy = pnl * d.perTrade / 100;
+        var isPos = pnl >= 0;
+        var sign = isPos ? '+' : '';
+
+        var tierClass = '';
+        if (pnl >= 10000) tierClass = ' rt-trade--legendary';
+        else if (pnl >= 1000) tierClass = ' rt-trade--moon';
+        else if (pnl >= 100) tierClass = ' rt-trade--gold';
+        else if (pnl >= 50) tierClass = ' rt-trade--silver';
+
+        var symbol = t.symbol || t.token_symbol || '???';
+        var holdSec = 0;
+        if (t.entry_at) holdSec = Math.floor(Date.now() / 1000) - t.entry_at;
+        else if (t.holding_duration) holdSec = t.holding_duration;
+        var holdMin = Math.floor(holdSec / 60);
+        var holdStr = holdMin >= 60 ? Math.floor(holdMin / 60) + '時間' + (holdMin % 60) + '分' : holdMin + '分';
+
+        var peakPnl = t.peak_pnl_pct || pnl;
+        var typeBadge = item.type === 'SL' ? '<span class="rt-trade__badge rt-trade__badge--sl">🦁</span>' : '<span class="rt-trade__badge rt-trade__badge--pt">PT</span>';
+
+        html += '<div class="rt-trade' + tierClass + '">' +
+          '<div class="rt-trade__top">' +
+            typeBadge +
+            '<span class="rt-trade__symbol">' + symbol + '</span>' +
+            '<span class="rt-trade__pnl ' + (isPos ? 'positive' : 'negative') + '">' + sign + pnl.toFixed(1) + '%</span>' +
+          '</div>' +
+          '<div class="rt-trade__bar">' +
+            '<div class="rt-trade__bar-fill' + (isPos ? ' rt-trade__bar-fill--pos' : ' rt-trade__bar-fill--neg') + '" style="width:' + Math.min(Math.abs(pnl), 100) + '%"></div>' +
+          '</div>' +
+          '<div class="rt-trade__bottom">' +
+            '<span class="rt-trade__jpy ' + (isPos ? 'positive' : 'negative') + '">' + sign + _formatRtYen(pnlJpy) + '</span>' +
+            '<span class="rt-trade__hold">' + holdStr + '</span>' +
+            '<span class="rt-trade__peak">Peak ' + sign + peakPnl.toFixed(0) + '%</span>' +
+          '</div>' +
+        '</div>';
+      });
+    }
+
+    html += '</div>';
+    return html;
+  }
+
   function _rtBuildOptions(values, selected) {
     var html = '';
     values.forEach(function(v) {
@@ -9640,7 +9614,59 @@
     var container = document.getElementById('rt-content');
     if (!container) return;
     var settings = _getRealTradingSettings();
-    container.innerHTML = _buildRealTradingHTML(settings);
+    var d = _rtCalcData(settings);
+
+    // DOM surgery: update values in-place without replacing entire HTML
+    var heroValue = document.getElementById('rt-hero-value');
+    if (!heroValue) {
+      // First render — full HTML
+      container.innerHTML = _buildRealTradingHTML(settings);
+      return;
+    }
+
+    // Update hero
+    heroValue.textContent = _formatRtYen(d.portfolioValue);
+    var pnlSign = d.isPositive ? '+' : '';
+    var heroPnl = document.getElementById('rt-hero-pnl');
+    if (heroPnl) {
+      heroPnl.textContent = pnlSign + _formatRtYen(d.totalPnlJpy) + ' (' + pnlSign + d.portfolioPct.toFixed(1) + '%)';
+      heroPnl.className = 'rt-hero__pnl ' + (d.isPositive ? 'positive' : 'negative');
+    }
+    var heroSub = document.getElementById('rt-hero-sub');
+    if (heroSub) {
+      heroSub.textContent = '一口 ' + _formatRtYen(d.perTrade) + ' | アクティブ ' + d.allOpenTrades.length + '口 | 本日 ' + (d.ptCount + d.slCount) + '決済';
+    }
+    var hero = document.getElementById('rt-hero');
+    if (hero) {
+      hero.className = 'rt-hero ' + (d.isPositive ? 'rt-hero--positive' : 'rt-hero--negative');
+    }
+
+    // Update PT split
+    var ptIsPos = d.ptSimPnl >= 0;
+    _rtUpdateEl('rt-pt-amount', (ptIsPos ? '+' : '') + _formatRtYen(d.ptSimPnl), ptIsPos);
+    _rtUpdateEl('rt-pt-pnl', (ptIsPos ? '+' : '') + d.ptPnlTotal.toFixed(1) + '%', ptIsPos);
+    var ptMeta = document.getElementById('rt-pt-meta');
+    if (ptMeta) ptMeta.textContent = d.ptWins + '勝' + d.ptLosses + '敗';
+
+    // Update SL split
+    var slIsPos = d.slSimPnl >= 0;
+    _rtUpdateEl('rt-sl-amount', (slIsPos ? '+' : '') + _formatRtYen(d.slSimPnl), slIsPos);
+    _rtUpdateEl('rt-sl-pnl', (slIsPos ? '+' : '') + d.slPnlTotal.toFixed(1) + '%', slIsPos);
+    var slMeta = document.getElementById('rt-sl-meta');
+    if (slMeta) slMeta.textContent = d.slWins + '勝' + d.slLosses + '敗';
+
+    // Only replace active trades section
+    var activeContainer = document.getElementById('rt-active-container');
+    if (activeContainer) {
+      activeContainer.innerHTML = _buildActiveTradesHTML(d);
+    }
+  }
+
+  function _rtUpdateEl(id, text, isPositive) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    el.className = el.className.replace(/positive|negative/g, '').trim() + ' ' + (isPositive ? 'positive' : 'negative');
   }
 
   window._toggleRtSettings = function() {
