@@ -16793,6 +16793,35 @@ body.has-ticker-bar {
   border: 1px dashed var(--border-subtle, rgba(255,255,255,0.08));
 }
 
+/* --- Trade Card Animations --- */
+.rt-trade--enter {
+  animation: rtSlideInRight 0.4s ease-out both;
+}
+
+.rt-trade--exit {
+  animation: rtSlideOutLeft 0.3s ease-in both;
+  pointer-events: none;
+}
+
+.rt-trade--move {
+  animation: rtSlideDown 0.35s ease-out;
+}
+
+@keyframes rtSlideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes rtSlideOutLeft {
+  from { transform: translateX(0); opacity: 1; max-height: 100px; margin-bottom: 8px; }
+  to { transform: translateX(-100%); opacity: 0; max-height: 0; margin-bottom: 0; overflow: hidden; }
+}
+
+@keyframes rtSlideDown {
+  from { transform: translateY(-8px); opacity: 0.7; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 /* --- Trade Card --- */
 .rt-trade {
   background: var(--surface-card, rgba(255,255,255,0.05));
@@ -16892,6 +16921,7 @@ body.has-ticker-bar {
   font-size: 16px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  transition: color 0.3s ease;
 }
 
 .rt-trade__pnl.positive { color: #22c55e; }
