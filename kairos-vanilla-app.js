@@ -1283,6 +1283,34 @@
       });
     },
 
+    getRealTradingSettings: function() {
+      var self = this;
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) { reject(new Error('Backend not available')); return; }
+          fetch(self.baseUrl + '/api/collector/real-trading/settings')
+            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
+            .then(resolve).catch(reject);
+        });
+      });
+    },
+
+    saveRealTradingSettings: function(settings) {
+      var self = this;
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) { reject(new Error('Backend not available')); return; }
+          fetch(self.baseUrl + '/api/collector/real-trading/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+          })
+            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
+            .then(resolve).catch(reject);
+        });
+      });
+    },
+
     getDailyReport: function(date) {
       var self = this;
       var url = self.baseUrl + '/api/collector/daily-report';
@@ -9378,7 +9406,10 @@
     });
   }
 
+  var _rtSettingsCache = null;
+
   function _getRealTradingSettings() {
+    if (_rtSettingsCache) return _rtSettingsCache;
     var stored = localStorage.getItem('kairos-rt-settings');
     if (stored) {
       try { return JSON.parse(stored); } catch(e) {}
@@ -9395,8 +9426,37 @@
   }
 
   function _saveRealTradingSettings(settings) {
+    _rtSettingsCache = settings;
     localStorage.setItem('kairos-rt-settings', JSON.stringify(settings));
+    // Sync to backend
+    BackendAPI.saveRealTradingSettings({
+      per_trade_jpy: settings.perTradeJpy,
+      initial_capital_jpy: settings.initialCapitalJpy,
+      max_concurrent: settings.maxConcurrent,
+      daily_limit_jpy: settings.dailyLimitJpy,
+      enable_sl: settings.enableSL,
+      enable_pt: settings.enablePT,
+      is_active: settings.isActive
+    }).catch(function() {});
   }
+
+  // Load settings from backend on first visit
+  function _loadRealTradingSettingsFromBackend() {
+    BackendAPI.getRealTradingSettings().then(function(s) {
+      var settings = {
+        perTradeJpy: s.per_trade_jpy,
+        initialCapitalJpy: s.initial_capital_jpy,
+        maxConcurrent: s.max_concurrent,
+        dailyLimitJpy: s.daily_limit_jpy,
+        enableSL: s.enable_sl,
+        enablePT: s.enable_pt,
+        isActive: s.is_active
+      };
+      _rtSettingsCache = settings;
+      localStorage.setItem('kairos-rt-settings', JSON.stringify(settings));
+    }).catch(function() {});
+  }
+  _loadRealTradingSettingsFromBackend();
 
   function renderRealTradingScreen() {
     // Auto-refresh
