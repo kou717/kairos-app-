@@ -9767,139 +9767,194 @@
     if (!container) return;
 
     var listEl = container.querySelector('.rt-active');
-    // First render
     if (!listEl) {
       container.innerHTML = _buildActiveTradesHTML(d);
       return;
     }
 
-    // Update header count
     var countEl = listEl.querySelector('.rt-active__count');
     if (countEl) countEl.textContent = d.allOpenTrades.length + '口';
 
     // Empty state
     if (d.allOpenTrades.length === 0) {
-      var existingCards = listEl.querySelectorAll('.rt-trade');
-      if (existingCards.length === 0 && listEl.querySelector('.rt-active__empty')) return;
-      // Slide out all
-      existingCards.forEach(function(card) {
-        card.classList.add('rt-trade--exit');
-      });
+      var cards = listEl.querySelectorAll('.rt-trade');
+      if (cards.length === 0 && listEl.querySelector('.rt-active__empty')) return;
+      cards.forEach(function(c) { c.classList.add('rt-trade--exit'); });
       setTimeout(function() {
-        // Remove cards, add empty message
-        var header = listEl.querySelector('.rt-active__header');
+        var h = listEl.querySelector('.rt-active__header');
         listEl.innerHTML = '';
-        if (header) listEl.appendChild(header);
-        var emptyDiv = document.createElement('div');
-        emptyDiv.className = 'rt-active__empty';
-        emptyDiv.textContent = '現在アクティブなトレードはありません';
-        listEl.appendChild(emptyDiv);
-      }, 300);
+        if (h) listEl.appendChild(h);
+        var e = document.createElement('div');
+        e.className = 'rt-active__empty';
+        e.textContent = '現在アクティブなトレードはありません';
+        listEl.appendChild(e);
+      }, 400);
       return;
     }
 
-    // Remove empty message if present
     var emptyMsg = listEl.querySelector('.rt-active__empty');
     if (emptyMsg) emptyMsg.remove();
 
-    // Build new key order
     var newKeys = d.allOpenTrades.map(_rtTradeKey);
-
-    // Get existing cards
-    var existingCards = listEl.querySelectorAll('.rt-trade');
+    var existingCards = listEl.querySelectorAll('.rt-trade:not(.rt-trade--exit)');
     var existingMap = {};
+    var existingOrder = [];
     existingCards.forEach(function(card) {
-      existingMap[card.getAttribute('data-rt-key')] = card;
+      var k = card.getAttribute('data-rt-key');
+      existingMap[k] = card;
+      existingOrder.push(k);
     });
 
-    // Determine which are new, removed, or moved
-    var existingKeys = [];
-    existingCards.forEach(function(card) {
-      existingKeys.push(card.getAttribute('data-rt-key'));
-    });
-
-    // Remove cards not in new list
-    existingKeys.forEach(function(key) {
+    // --- Phase 0: Remove cards not in new list ---
+    existingOrder.forEach(function(key) {
       if (newKeys.indexOf(key) === -1) {
         var card = existingMap[key];
         card.classList.add('rt-trade--exit');
-        setTimeout(function() { if (card.parentNode) card.remove(); }, 300);
+        setTimeout(function() { if (card.parentNode) card.remove(); }, 400);
         delete existingMap[key];
       }
     });
 
-    // Process new order: insert/move/update
-    var header = listEl.querySelector('.rt-active__header');
-    var refNode = header ? header.nextSibling : listEl.firstChild;
+    // --- Update existing cards in-place (no visual change) ---
+    d.allOpenTrades.forEach(function(item) {
+      var key = _rtTradeKey(item);
+      var card = existingMap[key];
+      if (card) _rtUpdateTradeCard(card, item, d);
+    });
 
+    // --- Determine new insertions ---
+    var newInsertions = [];
     d.allOpenTrades.forEach(function(item, idx) {
       var key = _rtTradeKey(item);
-      var existingCard = existingMap[key];
+      if (!existingMap[key]) {
+        newInsertions.push({ item: item, targetIdx: idx, key: key });
+      }
+    });
 
-      if (existingCard) {
-        // Update values in-place
-        var t = item.trade;
-        var pnl = t.unrealized_pnl_pct || 0;
-        var isPos = pnl >= 0;
-        var sign = isPos ? '+' : '';
+    if (newInsertions.length === 0) {
+      // No new cards — just reorder existing smoothly
+      _rtReorderSmooth(listEl, d, existingMap, newKeys);
+      return;
+    }
 
-        var pnlEl = existingCard.querySelector('.rt-trade__pnl');
-        if (pnlEl) { pnlEl.textContent = sign + pnl.toFixed(1) + '%'; pnlEl.className = 'rt-trade__pnl ' + (isPos ? 'positive' : 'negative'); }
+    // --- Phase 1: Slide existing cards down to make room ---
+    // Insert invisible placeholders at target positions to push things down
+    newInsertions.forEach(function(ins) {
+      var placeholder = document.createElement('div');
+      placeholder.className = 'rt-trade--placeholder';
+      placeholder.setAttribute('data-rt-placeholder', ins.key);
+      // Insert at target position
+      var trades = listEl.querySelectorAll('.rt-trade:not(.rt-trade--exit), .rt-trade--placeholder');
+      var ref = trades[ins.targetIdx] || null;
+      listEl.insertBefore(placeholder, ref);
+      // Trigger expand animation
+      void placeholder.offsetWidth;
+      placeholder.classList.add('rt-trade--placeholder-expand');
+    });
 
-        var barFill = existingCard.querySelector('.rt-trade__bar-fill');
-        if (barFill) {
-          barFill.style.width = Math.min(Math.abs(pnl), 100) + '%';
-          barFill.className = 'rt-trade__bar-fill' + (isPos ? ' rt-trade__bar-fill--pos' : ' rt-trade__bar-fill--neg');
-        }
+    // --- Phase 2: After space opens, slide in new cards ---
+    setTimeout(function() {
+      newInsertions.forEach(function(ins) {
+        var placeholder = listEl.querySelector('[data-rt-placeholder="' + ins.key + '"]');
+        if (!placeholder) return;
 
-        var jpyEl = existingCard.querySelector('.rt-trade__jpy');
-        if (jpyEl) { jpyEl.textContent = sign + _formatRtYen(pnl * d.perTrade / 100); jpyEl.className = 'rt-trade__jpy ' + (isPos ? 'positive' : 'negative'); }
-
-        var holdEl = existingCard.querySelector('.rt-trade__hold');
-        if (holdEl) {
-          var holdSec = 0;
-          if (t.entry_at) holdSec = Math.floor(Date.now() / 1000) - t.entry_at;
-          else if (t.holding_duration) holdSec = t.holding_duration;
-          var holdMin = Math.floor(holdSec / 60);
-          holdEl.textContent = holdMin >= 60 ? Math.floor(holdMin / 60) + '時間' + (holdMin % 60) + '分' : holdMin + '分';
-        }
-
-        var peakEl = existingCard.querySelector('.rt-trade__peak');
-        if (peakEl) { var peakPnl = t.peak_pnl_pct || pnl; peakEl.textContent = 'Peak ' + (peakPnl >= 0 ? '+' : '') + peakPnl.toFixed(0) + '%'; }
-
-        // Update tier class
-        var tierClass = 'rt-trade';
-        if (pnl >= 10000) tierClass += ' rt-trade--legendary';
-        else if (pnl >= 1000) tierClass += ' rt-trade--moon';
-        else if (pnl >= 100) tierClass += ' rt-trade--gold';
-        else if (pnl >= 50) tierClass += ' rt-trade--silver';
-        existingCard.className = tierClass;
-
-        // Move to correct position if needed
-        var expectedRef = _rtGetNthTradeRef(listEl, idx);
-        if (existingCard !== expectedRef) {
-          existingCard.classList.add('rt-trade--move');
-          listEl.insertBefore(existingCard, expectedRef);
-          setTimeout(function() { existingCard.classList.remove('rt-trade--move'); }, 400);
-        }
-      } else {
-        // New card — slide in from right
         var tmp = document.createElement('div');
-        tmp.innerHTML = _rtBuildSingleTradeHTML(item, d);
+        tmp.innerHTML = _rtBuildSingleTradeHTML(ins.item, d);
         var newCard = tmp.firstChild;
         newCard.classList.add('rt-trade--enter');
-        var insertRef = _rtGetNthTradeRef(listEl, idx);
-        listEl.insertBefore(newCard, insertRef);
-        // Trigger reflow then remove enter class
+        listEl.insertBefore(newCard, placeholder);
+        placeholder.remove();
+
         void newCard.offsetWidth;
-        setTimeout(function() { newCard.classList.remove('rt-trade--enter'); }, 20);
-      }
+        requestAnimationFrame(function() {
+          newCard.classList.remove('rt-trade--enter');
+        });
+      });
+
+      // Reorder after insertions settle
+      setTimeout(function() {
+        _rtReorderSmooth(listEl, d, null, newKeys);
+      }, 450);
+    }, 350);
+  }
+
+  function _rtReorderSmooth(listEl, d, existingMap, newKeys) {
+    // FLIP-style reorder
+    var cards = listEl.querySelectorAll('.rt-trade:not(.rt-trade--exit)');
+    if (cards.length <= 1) return;
+
+    // Record current positions
+    var positions = {};
+    cards.forEach(function(card) {
+      var key = card.getAttribute('data-rt-key');
+      positions[key] = card.getBoundingClientRect().top;
+    });
+
+    // Reorder DOM to match newKeys
+    var header = listEl.querySelector('.rt-active__header');
+    newKeys.forEach(function(key) {
+      var card = listEl.querySelector('[data-rt-key="' + key + '"]');
+      if (card) listEl.appendChild(card);
+    });
+
+    // Animate from old position to new
+    cards = listEl.querySelectorAll('.rt-trade:not(.rt-trade--exit)');
+    cards.forEach(function(card) {
+      var key = card.getAttribute('data-rt-key');
+      var oldTop = positions[key];
+      if (oldTop === undefined) return;
+      var newTop = card.getBoundingClientRect().top;
+      var delta = oldTop - newTop;
+      if (Math.abs(delta) < 2) return;
+      card.style.transition = 'none';
+      card.style.transform = 'translateY(' + delta + 'px)';
+      void card.offsetWidth;
+      card.style.transition = 'transform 0.45s cubic-bezier(0.25, 0.1, 0.25, 1)';
+      card.style.transform = 'translateY(0)';
+      setTimeout(function() {
+        card.style.transition = '';
+        card.style.transform = '';
+      }, 500);
     });
   }
 
-  function _rtGetNthTradeRef(listEl, n) {
-    var trades = listEl.querySelectorAll('.rt-trade:not(.rt-trade--exit)');
-    return trades[n] || null;
+  function _rtUpdateTradeCard(card, item, d) {
+    var t = item.trade;
+    var pnl = t.unrealized_pnl_pct || 0;
+    var isPos = pnl >= 0;
+    var sign = isPos ? '+' : '';
+
+    var pnlEl = card.querySelector('.rt-trade__pnl');
+    if (pnlEl) { pnlEl.textContent = sign + pnl.toFixed(1) + '%'; pnlEl.className = 'rt-trade__pnl ' + (isPos ? 'positive' : 'negative'); }
+
+    var barFill = card.querySelector('.rt-trade__bar-fill');
+    if (barFill) {
+      barFill.style.width = Math.min(Math.abs(pnl), 100) + '%';
+      barFill.className = 'rt-trade__bar-fill' + (isPos ? ' rt-trade__bar-fill--pos' : ' rt-trade__bar-fill--neg');
+    }
+
+    var jpyEl = card.querySelector('.rt-trade__jpy');
+    if (jpyEl) { jpyEl.textContent = sign + _formatRtYen(pnl * d.perTrade / 100); jpyEl.className = 'rt-trade__jpy ' + (isPos ? 'positive' : 'negative'); }
+
+    var holdEl = card.querySelector('.rt-trade__hold');
+    if (holdEl) {
+      var holdSec = 0;
+      if (t.entry_at) holdSec = Math.floor(Date.now() / 1000) - t.entry_at;
+      else if (t.holding_duration) holdSec = t.holding_duration;
+      var holdMin = Math.floor(holdSec / 60);
+      holdEl.textContent = holdMin >= 60 ? Math.floor(holdMin / 60) + '時間' + (holdMin % 60) + '分' : holdMin + '分';
+    }
+
+    var peakEl = card.querySelector('.rt-trade__peak');
+    if (peakEl) { var peakPnl = t.peak_pnl_pct || pnl; peakEl.textContent = 'Peak ' + (peakPnl >= 0 ? '+' : '') + peakPnl.toFixed(0) + '%'; }
+
+    var tierClass = 'rt-trade';
+    if (pnl >= 10000) tierClass += ' rt-trade--legendary';
+    else if (pnl >= 1000) tierClass += ' rt-trade--moon';
+    else if (pnl >= 100) tierClass += ' rt-trade--gold';
+    else if (pnl >= 50) tierClass += ' rt-trade--silver';
+    card.className = tierClass;
+    card.setAttribute('data-rt-key', _rtTradeKey(item));
   }
 
   // ============================================================
