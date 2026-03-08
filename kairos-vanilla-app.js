@@ -9491,14 +9491,15 @@
   // Load settings from backend on first visit
   function _loadRealTradingSettingsFromBackend() {
     BackendAPI.getRealTradingSettings().then(function(s) {
+      if (!s) return;
       var settings = {
-        perTradeJpy: s.per_trade_jpy,
-        initialCapitalJpy: s.initial_capital_jpy,
-        maxConcurrent: s.max_concurrent,
-        dailyLimitJpy: s.daily_limit_jpy,
-        enableSL: s.enable_sl,
-        enablePT: s.enable_pt,
-        isActive: s.is_active
+        perTradeJpy: s.per_trade_jpy || 1000,
+        initialCapitalJpy: s.initial_capital_jpy || 5000,
+        maxConcurrent: s.max_concurrent || 20,
+        dailyLimitJpy: s.daily_limit_jpy || 20000,
+        enableSL: s.enable_sl !== undefined ? s.enable_sl : true,
+        enablePT: s.enable_pt !== undefined ? s.enable_pt : false,
+        isActive: s.is_active !== undefined ? s.is_active : false
       };
       _rtSettingsCache = settings;
       localStorage.setItem('kairos-rt-settings', JSON.stringify(settings));
@@ -9574,7 +9575,7 @@
       return (b.trade.unrealized_pnl_pct || 0) - (a.trade.unrealized_pnl_pct || 0);
     });
 
-    var perTrade = settings.perTradeJpy;
+    var perTrade = settings.perTradeJpy || 1000;
     var ptSimPnl = ptPnlTotal * perTrade / 100;
     var slSimPnl = slPnlTotal * perTrade / 100;
     var openUnrealized = 0;
@@ -9583,7 +9584,7 @@
     });
 
     var totalPnlJpy = ptSimPnl + slSimPnl + openUnrealized;
-    var capitalJpy = settings.initialCapitalJpy;
+    var capitalJpy = settings.initialCapitalJpy || 5000;
 
     return {
       ptWins: ptWins, ptLosses: ptLosses, ptPnlTotal: ptPnlTotal, ptCount: ptCount,
@@ -9789,6 +9790,7 @@
   }
 
   function _formatRtYen(val) {
+    val = val || 0;
     if (Math.abs(val) >= 10000) {
       return '¥' + Math.round(val).toLocaleString();
     }
