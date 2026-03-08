@@ -9696,15 +9696,33 @@
 
   var _rtPrevValues = {};
 
+  // Strip: 9 8 7 6 5 4 3 2 1 0 | 9 8 7 6 5 4 3 2 1 0 | 9 8 7 6 5 4 3 2 1 0
+  // Index:  0 1 2 3 4 5 6 7 8 9  10 ...                 20 ...
+  // Digit d → center position = (19 - d) → shows d in middle strip
+  var _rtStripDigits = '9876543210987654321098765432109876543210';
+  var _rtStripLen = 40;
+  var _rtCenterOffset = 19; // digit 0 is at index 19, digit 9 at index 10
+
+  function _rtDigitPos(d) {
+    return _rtCenterOffset - d; // index in strip
+  }
+
+  function _rtBuildStripHTML() {
+    var html = '';
+    for (var i = 0; i < _rtStripLen; i++) {
+      html += '<span>' + _rtStripDigits[i] + '</span>';
+    }
+    return html;
+  }
+
   function _rtBuildCounterHTML(text) {
     var html = '';
     text.split('').forEach(function(ch, i) {
       if (ch >= '0' && ch <= '9') {
-        var digit = parseInt(ch);
-        html += '<span class="rt-counter__digit" data-rt-slot="' + i + '">' +
-          '<span class="rt-counter__roll" style="transform:translateY(-' + (digit * 1.15) + 'em)">' +
-          '<span>0</span><span>1</span><span>2</span><span>3</span><span>4</span>' +
-          '<span>5</span><span>6</span><span>7</span><span>8</span><span>9</span>' +
+        var pos = _rtDigitPos(parseInt(ch));
+        html += '<span class="rt-counter__digit" data-rt-slot="' + i + '" data-rt-digit="' + ch + '">' +
+          '<span class="rt-counter__roll" style="transform:translateY(-' + (pos * 1.15) + 'em)">' +
+          _rtBuildStripHTML() +
           '</span></span>';
       } else {
         html += '<span class="rt-counter__char" data-rt-slot="' + i + '">' + ch + '</span>';
@@ -9713,30 +9731,33 @@
     return html;
   }
 
+  var _rtLastDirection = 0; // 1=up, -1=down
+
   function _rtRollCounter(container, newText) {
     var chars = newText.split('');
     var existingSlots = container.querySelectorAll('[data-rt-slot]');
 
-    // First render or length changed: build from scratch
+    // Determine direction from total value
+    var prevVal = _rtPrevValues['rt-hero-value'];
+    if (prevVal) {
+      var prevNum = parseFloat(prevVal.replace(/[¥,\s]/g, ''));
+      var curNum = parseFloat(newText.replace(/[¥,\s]/g, ''));
+      if (curNum > prevNum) _rtLastDirection = 1;
+      else if (curNum < prevNum) _rtLastDirection = -1;
+      else _rtLastDirection = 0;
+    }
+
+    // First render or length changed
     if (existingSlots.length === 0 || existingSlots.length !== chars.length) {
-      var html = '';
-      chars.forEach(function(ch, i) {
-        if (ch >= '0' && ch <= '9') {
-          var digit = parseInt(ch);
-          html += '<span class="rt-counter__digit" data-rt-slot="' + i + '">' +
-            '<span class="rt-counter__roll" style="transform:translateY(-' + (digit * 1.15) + 'em)">' +
-            '<span>0</span><span>1</span><span>2</span><span>3</span><span>4</span>' +
-            '<span>5</span><span>6</span><span>7</span><span>8</span><span>9</span>' +
-            '</span></span>';
-        } else {
-          html += '<span class="rt-counter__char" data-rt-slot="' + i + '">' + ch + '</span>';
-        }
-      });
-      container.innerHTML = html;
+      // Rebuild but preserve arrow
+      var arrow = container.querySelector('.rt-hero__arrow');
+      container.innerHTML = _rtBuildCounterHTML(newText);
+      // Re-add or create arrow
+      _rtUpdateArrow(container, _rtLastDirection);
       return;
     }
 
-    // Update existing slots
+    // Update existing slots — roll direction depends on value change
     chars.forEach(function(ch, i) {
       var slot = existingSlots[i];
       if (!slot) return;
@@ -9744,13 +9765,50 @@
       if (ch >= '0' && ch <= '9') {
         var roll = slot.querySelector('.rt-counter__roll');
         if (roll) {
-          var digit = parseInt(ch);
-          roll.style.transform = 'translateY(-' + (digit * 1.15) + 'em)';
+          var oldDigit = parseInt(slot.getAttribute('data-rt-digit') || '0');
+          var newDigit = parseInt(ch);
+          if (oldDigit !== newDigit) {
+            var pos;
+            if (_rtLastDirection >= 0) {
+              // Going up: roll upward (higher position = digit moves up from below)
+              pos = _rtDigitPos(newDigit);
+            } else {
+              // Going down: use lower strip position so it rolls downward
+              pos = _rtDigitPos(newDigit) + 10;
+            }
+            // Temporarily disable transition, jump to offset start, then animate
+            roll.style.transition = 'none';
+            var startPos;
+            if (_rtLastDirection >= 0) {
+              startPos = pos + 3; // start 3 positions below (digits will roll up)
+            } else {
+              startPos = pos - 3; // start 3 positions above (digits will roll down)
+            }
+            roll.style.transform = 'translateY(-' + (startPos * 1.15) + 'em)';
+            void roll.offsetWidth;
+            roll.style.transition = '';
+            roll.style.transform = 'translateY(-' + (pos * 1.15) + 'em)';
+          }
+          slot.setAttribute('data-rt-digit', ch);
         }
       } else {
         slot.textContent = ch;
       }
     });
+
+    _rtUpdateArrow(container, _rtLastDirection);
+  }
+
+  function _rtUpdateArrow(container, direction) {
+    var existing = container.querySelector('.rt-hero__arrow');
+    if (existing) existing.remove();
+
+    if (direction === 0) return;
+
+    var arrow = document.createElement('span');
+    arrow.className = 'rt-hero__arrow ' + (direction > 0 ? 'rt-hero__arrow--up' : 'rt-hero__arrow--down');
+    arrow.textContent = direction > 0 ? '↑' : '↓';
+    container.appendChild(arrow);
   }
 
   function _rtFlashCard(el, isUp) {
