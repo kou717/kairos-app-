@@ -1787,7 +1787,7 @@ body {
   left: 0;
   right: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 6px;
   background: linear-gradient(180deg, rgba(20,20,25,0.95), rgba(10,10,15,1));
@@ -1798,6 +1798,7 @@ body {
   padding: 8px 8px;
   padding-bottom: max(12px, env(safe-area-inset-bottom));
   z-index: 100;
+  overflow: visible;
 }
 
 /* 左：メニューボタン（nav-mode-btnと同じ縦長サイズ） */
@@ -1838,12 +1839,13 @@ body {
 /* 中央：ナビゲーション */
 .bottom-nav {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 2px;
   flex: 1;
   background: rgba(var(--accent-rgb), 0.06);
   border-radius: 16px;
   padding: 4px;
+  overflow: visible;
 }
 
 .nav-item {
@@ -1872,10 +1874,11 @@ body {
   background: rgba(var(--accent-rgb), 0.15);
 }
 
-/* 中央の主役アイコン */
+/* 中央の主役アイコン — フッターからはみ出す */
 .nav-item--center {
   position: relative;
-  margin-top: -14px;
+  margin-top: -22px;
+  z-index: 2;
 }
 
 .nav-item--center .nav-item__icon {
