@@ -9634,24 +9634,6 @@
       '</div>' +
     '</div>';
 
-    // --- Wallet Bar ---
-    html += '<div class="rt-wallet" id="rt-wallet">' +
-      '<div class="rt-wallet__row">' +
-        '<span class="rt-wallet__label">Wallet</span>' +
-        '<span class="rt-wallet__status ' + (walletConfigured ? 'rt-wallet__status--ok' : 'rt-wallet__status--ng') + '">' +
-          (walletConfigured ? '接続済み' : '未接続') +
-        '</span>' +
-      '</div>' +
-      '<div class="rt-wallet__row">' +
-        '<span class="rt-wallet__balance">' + d.balanceSol.toFixed(4) + ' SOL</span>' +
-        '<span class="rt-wallet__jpy">≈ ' + _formatRtYen(d.balanceJpy) + '</span>' +
-      '</div>' +
-      '<div class="rt-wallet__row rt-wallet__row--sub">' +
-        '<span class="rt-wallet__rate">1 SOL = ¥' + Math.round(solJpy).toLocaleString() + '</span>' +
-        '<span class="rt-wallet__real-count">' + d.wins + '勝' + d.losses + '敗</span>' +
-      '</div>' +
-    '</div>';
-
     // --- PT / SL Split Cards (real trades) ---
     var ptIsPos = d.ptPnlJpy >= 0;
     var slIsPos = d.slPnlJpy >= 0;
@@ -9667,6 +9649,24 @@
         '<div class="rt-split__amount ' + (slIsPos ? 'positive' : 'negative') + '" id="rt-sl-amount">' + (slIsPos ? '+' : '') + _formatRtYen(d.slPnlJpy) + '</div>' +
         '<div class="rt-split__pnl" id="rt-sl-pnl">' + (d.slPnlSol >= 0 ? '+' : '') + d.slPnlSol.toFixed(4) + ' SOL</div>' +
         '<div class="rt-split__meta" id="rt-sl-meta">' + d.slWins + '勝' + d.slLosses + '敗</div>' +
+      '</div>' +
+    '</div>';
+
+    // --- Wallet Bar ---
+    html += '<div class="rt-wallet" id="rt-wallet">' +
+      '<div class="rt-wallet__row">' +
+        '<span class="rt-wallet__label">Wallet</span>' +
+        '<span class="rt-wallet__status ' + (walletConfigured ? 'rt-wallet__status--ok' : 'rt-wallet__status--ng') + '">' +
+          (walletConfigured ? '接続済み' : '未接続') +
+        '</span>' +
+      '</div>' +
+      '<div class="rt-wallet__row">' +
+        '<span class="rt-wallet__balance">' + d.balanceSol.toFixed(4) + ' SOL</span>' +
+        '<span class="rt-wallet__jpy">≈ ' + _formatRtYen(d.balanceJpy) + '</span>' +
+      '</div>' +
+      '<div class="rt-wallet__row rt-wallet__row--sub">' +
+        '<span class="rt-wallet__rate">1 SOL = ¥' + Math.round(solJpy).toLocaleString() + '</span>' +
+        '<span class="rt-wallet__real-count">' + d.wins + '勝' + d.losses + '敗</span>' +
       '</div>' +
     '</div>';
 
