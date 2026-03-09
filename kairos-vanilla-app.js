@@ -9724,7 +9724,7 @@
         '<div class="rt-settings__row">' +
           '<label>同時最大口数</label>' +
           '<select id="rt-max" onchange="window._updateRtSetting(\'maxConcurrent\', parseInt(this.value))">' +
-            _rtBuildOptions([5, 10, 15, 20, 30, 50], settings.maxConcurrent) +
+            _rtBuildOptionsPlain([1, 2, 3, 5, 7, 10, 15, 20, 30, 50], settings.maxConcurrent) +
           '</select>' +
         '</div>' +
         '<div class="rt-settings__row">' +
@@ -9854,6 +9854,14 @@
     var html = '';
     values.forEach(function(v) {
       html += '<option value="' + v + '"' + (v === selected ? ' selected' : '') + '>¥' + v.toLocaleString() + '</option>';
+    });
+    return html;
+  }
+
+  function _rtBuildOptionsPlain(values, selected) {
+    var html = '';
+    values.forEach(function(v) {
+      html += '<option value="' + v + '"' + (v === selected ? ' selected' : '') + '>' + v + '</option>';
     });
     return html;
   }
