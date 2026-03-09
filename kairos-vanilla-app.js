@@ -9555,14 +9555,23 @@
       return (b.trade.realized_pnl_pct || 0) - (a.trade.realized_pnl_pct || 0);
     });
 
-    // Closed trade stats — total + per source
-    var closedCount = closedTrades.length;
+    // Filter closed trades to today (JST)
+    var todayJst = new Date(Date.now() + 9 * 3600000);
+    var todayStr = todayJst.toISOString().slice(0, 10);
+    var todayClosed = closedTrades.filter(function(t) {
+      if (!t.created_at) return false;
+      var d2 = new Date((t.created_at + 9 * 3600) * 1000);
+      return d2.toISOString().slice(0, 10) === todayStr;
+    });
+
+    // Today's closed trade stats — per source
+    var closedCount = todayClosed.length;
     var wins = 0;
     var closedPnlJpy = 0;
     var closedPnlSol = 0;
     var ptWins = 0, ptLosses = 0, ptPnlJpy = 0, ptPnlSol = 0, ptCount = 0;
     var slWins = 0, slLosses = 0, slPnlJpy = 0, slPnlSol = 0, slCount = 0;
-    closedTrades.forEach(function(t) {
+    todayClosed.forEach(function(t) {
       var pjpy = t.realized_pnl_jpy || 0;
       var psol = t.realized_pnl_sol || 0;
       if (pjpy > 0) wins++;
@@ -9639,18 +9648,18 @@
       '</div>' +
     '</div>';
 
-    // --- PT / SL Split Cards (real trades) ---
+    // --- PT / SL Split Cards (today's real trades) ---
     var ptIsPos = d.ptPnlJpy >= 0;
     var slIsPos = d.slPnlJpy >= 0;
     html += '<div class="rt-split" id="rt-split">' +
-      '<div class="rt-split__card" id="rt-pt-card">' +
-        '<div class="rt-split__header"><span class="rt-split__icon">📊</span><span class="rt-split__title">通常トレード</span></div>' +
+      '<div class="rt-split__card" id="rt-pt-card" onclick="window._openRtHistory(\'pt\')">' +
+        '<div class="rt-split__header"><span class="rt-split__icon">📊</span><span class="rt-split__title">通常トレード</span><span class="rt-split__day">本日</span></div>' +
         '<div class="rt-split__amount ' + (ptIsPos ? 'positive' : 'negative') + '" id="rt-pt-amount">' + (ptIsPos ? '+' : '') + _formatRtYen(d.ptPnlJpy) + '</div>' +
         '<div class="rt-split__pnl" id="rt-pt-pnl">' + (d.ptPnlSol >= 0 ? '+' : '') + d.ptPnlSol.toFixed(4) + ' SOL</div>' +
         '<div class="rt-split__meta" id="rt-pt-meta">' + d.ptWins + '勝' + d.ptLosses + '敗</div>' +
       '</div>' +
-      '<div class="rt-split__card rt-split__card--sl" id="rt-sl-card">' +
-        '<div class="rt-split__header"><span class="rt-split__icon">🦁</span><span class="rt-split__title">眠れる獅子</span></div>' +
+      '<div class="rt-split__card rt-split__card--sl" id="rt-sl-card" onclick="window._openRtHistory(\'sl\')">' +
+        '<div class="rt-split__header"><span class="rt-split__icon">🦁</span><span class="rt-split__title">眠れる獅子</span><span class="rt-split__day">本日</span></div>' +
         '<div class="rt-split__amount ' + (slIsPos ? 'positive' : 'negative') + '" id="rt-sl-amount">' + (slIsPos ? '+' : '') + _formatRtYen(d.slPnlJpy) + '</div>' +
         '<div class="rt-split__pnl" id="rt-sl-pnl">' + (d.slPnlSol >= 0 ? '+' : '') + d.slPnlSol.toFixed(4) + ' SOL</div>' +
         '<div class="rt-split__meta" id="rt-sl-meta">' + d.slWins + '勝' + d.slLosses + '敗</div>' +
@@ -9740,17 +9749,25 @@
   function _buildClosedTradesHTML(d) {
     var data = _rtCache.data;
     var closedTrades = (data && data.realClosedTrades) ? data.realClosedTrades : [];
-    if (closedTrades.length === 0) return '';
+    // Filter to today (JST)
+    var todayJst = new Date(Date.now() + 9 * 3600000);
+    var todayStr = todayJst.toISOString().slice(0, 10);
+    var todayClosed = closedTrades.filter(function(t) {
+      if (!t.created_at) return false;
+      var d2 = new Date((t.created_at + 9 * 3600) * 1000);
+      return d2.toISOString().slice(0, 10) === todayStr;
+    });
+    if (todayClosed.length === 0) return '';
 
     var html = '<div class="rt-active" id="rt-closed-container">' +
       '<div class="rt-active__header">' +
-        '<span class="rt-active__title">決済済み</span>' +
-        '<span class="rt-active__count">' + closedTrades.length + '件 | ' +
+        '<span class="rt-active__title">本日の決済</span>' +
+        '<span class="rt-active__count">' + todayClosed.length + '件 | ' +
           (d.closedPnlJpy >= 0 ? '+' : '') + _formatRtYen(d.closedPnlJpy) +
         '</span>' +
       '</div>';
 
-    closedTrades.slice(0, 20).forEach(function(t) {
+    todayClosed.slice(0, 20).forEach(function(t) {
       var pnl = t.realized_pnl_pct || 0;
       var pnlJpy = t.realized_pnl_jpy || 0;
       var isPos = pnl >= 0;
@@ -10139,6 +10156,97 @@
     el.classList.add(cls);
     setTimeout(function() { el.classList.remove(cls); }, 1300);
   }
+
+  // --- Trade History Popup ---
+  window._openRtHistory = function(source) {
+    var data = _rtCache.data;
+    var allClosed = (data && data.realClosedTrades) ? data.realClosedTrades : [];
+    var filtered = allClosed.filter(function(t) {
+      return source === 'sl' ? t.source === 'sl' : t.source !== 'sl';
+    });
+    var sr = _rtSolRateCache.data;
+    var solJpy = sr ? sr.sol_jpy : 0;
+
+    var title = source === 'sl' ? '🦁 眠れる獅子 履歴' : '📊 通常トレード 履歴';
+    var totalPnlJpy = 0;
+    var totalPnlSol = 0;
+    var totalWins = 0;
+    filtered.forEach(function(t) {
+      totalPnlJpy += t.realized_pnl_jpy || 0;
+      totalPnlSol += t.realized_pnl_sol || 0;
+      if ((t.realized_pnl_jpy || 0) > 0) totalWins++;
+    });
+    var totalLosses = filtered.length - totalWins;
+    var summaryIsPos = totalPnlJpy >= 0;
+    var summarySign = summaryIsPos ? '+' : '';
+
+    var html = '<div class="rt-history-overlay" onclick="if(event.target===this)this.remove()">' +
+      '<div class="rt-history-popup">' +
+        '<div class="rt-history__header">' +
+          '<span class="rt-history__title">' + title + '</span>' +
+          '<span class="rt-history__close" onclick="this.closest(\'.rt-history-overlay\').remove()">×</span>' +
+        '</div>' +
+        '<div class="rt-history__summary">' +
+          '<span class="rt-history__total ' + (summaryIsPos ? 'positive' : 'negative') + '">' +
+            summarySign + _formatRtYen(totalPnlJpy) + ' (' + summarySign + totalPnlSol.toFixed(4) + ' SOL)' +
+          '</span>' +
+          '<span class="rt-history__record">' + totalWins + '勝' + totalLosses + '敗 / 全' + filtered.length + '件</span>' +
+        '</div>' +
+        '<div class="rt-history__list">';
+
+    if (filtered.length === 0) {
+      html += '<div class="rt-history__empty">まだトレード履歴がありません</div>';
+    } else {
+      // Group by date (JST)
+      var byDate = {};
+      filtered.forEach(function(t) {
+        var ts = t.created_at || t.entry_at || 0;
+        var d2 = new Date((ts + 9 * 3600) * 1000);
+        var dateKey = d2.toISOString().slice(0, 10);
+        if (!byDate[dateKey]) byDate[dateKey] = [];
+        byDate[dateKey].push(t);
+      });
+      var dateKeys = Object.keys(byDate).sort().reverse();
+      dateKeys.forEach(function(dateKey) {
+        var trades = byDate[dateKey];
+        var dayPnl = 0;
+        trades.forEach(function(t) { dayPnl += t.realized_pnl_jpy || 0; });
+        var dayIsPos = dayPnl >= 0;
+        html += '<div class="rt-history__date-header">' +
+          '<span>' + dateKey + '</span>' +
+          '<span class="' + (dayIsPos ? 'positive' : 'negative') + '">' + (dayIsPos ? '+' : '') + _formatRtYen(dayPnl) + '</span>' +
+        '</div>';
+        trades.forEach(function(t) {
+          var pnl = t.realized_pnl_pct || 0;
+          var pnlJpy = t.realized_pnl_jpy || 0;
+          var pnlSol = t.realized_pnl_sol || 0;
+          var isPos = pnlJpy >= 0;
+          var sign = isPos ? '+' : '';
+          var symbol = t.symbol || '???';
+          var exitReason = t.exit_reason || '-';
+          var ts2 = t.created_at || t.entry_at || 0;
+          var time = new Date((ts2 + 9 * 3600) * 1000);
+          var timeStr = ('0' + time.getHours()).slice(-2) + ':' + ('0' + time.getMinutes()).slice(-2);
+
+          html += '<div class="rt-history__item">' +
+            '<div class="rt-history__item-top">' +
+              '<span class="rt-history__item-symbol">' + symbol + '</span>' +
+              '<span class="rt-history__item-pnl ' + (isPos ? 'positive' : 'negative') + '">' + sign + _formatRtYen(pnlJpy) + '</span>' +
+            '</div>' +
+            '<div class="rt-history__item-bottom">' +
+              '<span class="rt-history__item-time">' + timeStr + '</span>' +
+              '<span class="rt-history__item-sol ' + (isPos ? 'positive' : 'negative') + '">' + sign + pnlSol.toFixed(4) + ' SOL</span>' +
+              '<span class="rt-history__item-pct ' + (isPos ? 'positive' : 'negative') + '">' + sign + pnl.toFixed(1) + '%</span>' +
+              '<span class="rt-history__item-reason">' + exitReason + '</span>' +
+            '</div>' +
+          '</div>';
+        });
+      });
+    }
+
+    html += '</div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+  };
 
   window._toggleRtSettings = function() {
     var body = document.getElementById('rt-settings-body');

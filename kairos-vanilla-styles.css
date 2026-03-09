@@ -16823,6 +16823,59 @@ body.has-ticker-bar {
   margin-top: 4px;
 }
 
+.rt-split__day {
+  font-size: 10px;
+  color: var(--text-tertiary, #8b7355);
+  margin-left: auto;
+  opacity: 0.7;
+}
+.rt-split__card { cursor: pointer; }
+.rt-split__card:active { opacity: 0.8; transform: scale(0.98); }
+
+/* --- Trade History Popup --- */
+.rt-history-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,0.6); display: flex; align-items: flex-end; justify-content: center;
+}
+.rt-history-popup {
+  background: var(--card-bg, #1e1e2e); border-radius: 16px 16px 0 0;
+  width: 100%; max-width: 500px; max-height: 80vh; display: flex; flex-direction: column;
+  animation: slideUp 0.3s ease-out;
+}
+.rt-history__header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px 8px; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.08));
+}
+.rt-history__title { font-size: 16px; font-weight: 700; color: var(--text-primary, #f5e6d3); }
+.rt-history__close { font-size: 24px; color: var(--text-tertiary); cursor: pointer; padding: 0 4px; }
+.rt-history__summary {
+  display: flex; flex-direction: column; gap: 4px; padding: 12px 20px;
+  border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.08));
+}
+.rt-history__total { font-size: 18px; font-weight: 700; }
+.rt-history__record { font-size: 12px; color: var(--text-tertiary); }
+.rt-history__list { overflow-y: auto; padding: 8px 16px 24px; flex: 1; }
+.rt-history__empty { text-align: center; padding: 32px; color: var(--text-tertiary); }
+.rt-history__date-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 4px 6px; font-size: 12px; font-weight: 600;
+  color: var(--text-secondary, #c4b69c); border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.05));
+}
+.rt-history__item {
+  padding: 10px 4px; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.04));
+}
+.rt-history__item-top {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.rt-history__item-symbol { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.rt-history__item-pnl { font-size: 14px; font-weight: 700; }
+.rt-history__item-bottom {
+  display: flex; gap: 12px; margin-top: 4px; font-size: 11px; color: var(--text-tertiary);
+}
+.rt-history__item-sol { font-weight: 500; }
+.rt-history__item-pct { font-weight: 500; }
+.rt-history__item-reason { margin-left: auto; }
+
 /* --- Active Trades --- */
 .rt-active {
   animation: slideUp 0.4s ease-out 0.2s both;
