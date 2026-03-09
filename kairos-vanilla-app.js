@@ -9391,55 +9391,31 @@
   function _rtHashData(data) {
     if (!data) return '';
     try {
-      var pt = data.ptStats && data.ptStats.overall_summary || {};
-      var sl = data.slStats || {};
-      var openPt = (data.ptOpenTrades && data.ptOpenTrades.trades || [])
-        .filter(function(t) { return t.status === 'open'; })
-        .map(function(t) { return (t.symbol || t.token_symbol || '') + ':' + (t.unrealized_pnl_pct || 0).toFixed(2); })
+      var openHash = (data.realOpenTrades || [])
+        .map(function(t) { return (t.symbol || '') + ':' + (t.realized_pnl_pct || 0).toFixed(2) + ':' + t.status; })
         .join('|');
-      var openSl = '';
-      if (data.slWatchlist) {
-        var items = data.slWatchlist.items || data.slWatchlist;
-        if (Array.isArray(items)) {
-          openSl = items.filter(function(t) {
-            return t.status === 'awakened' || (t.trade_id && t.trade_status === 'open');
-          }).map(function(t) { return (t.symbol || '') + ':' + (t.unrealized_pnl_pct || 0).toFixed(2); }).join('|');
-        }
-      }
-      return [pt.total_closed, pt.winners, pt.total_pnl_pct,
-              sl.total_closed, sl.winners, sl.total_pnl_pct,
-              openPt, openSl].join(',');
+      var closedCount = (data.realClosedTrades || []).length;
+      var closedPnl = (data.realClosedTrades || []).reduce(function(sum, t) { return sum + (t.realized_pnl_jpy || 0); }, 0);
+      return [openHash, closedCount, closedPnl.toFixed(2)].join(',');
     } catch(e) { return '' + Date.now(); }
   }
 
   function _loadRealTradingData() {
-    var today = new Date();
-    var jstDate = new Date(today.getTime() + 9 * 3600000);
-    var dateStr = jstDate.toISOString().slice(0, 10);
-
     Promise.all([
-      BackendAPI.getCollectorStats(dateStr),
-      BackendAPI.getSleepingLionStats(dateStr),
-      BackendAPI.getSleepingLionWatchlist(),
-      BackendAPI.getCollectorPaperTrades('open', 1),
       BackendAPI.getWalletInfo().catch(function() { return null; }),
       BackendAPI.getSolRate().catch(function() { return null; }),
-      BackendAPI.getRealTrades('open').catch(function() { return { trades: [] }; })
+      BackendAPI.getRealTrades('open').catch(function() { return { trades: [] }; }),
+      BackendAPI.getRealTrades('closed').catch(function() { return { trades: [] }; })
     ]).then(function(results) {
+      if (results[0]) _rtWalletCache = { data: results[0], time: Date.now() };
+      if (results[1]) _rtSolRateCache = { data: results[1], time: Date.now() };
+
       var newData = {
-        ptStats: results[0],
-        slStats: results[1],
-        slWatchlist: results[2],
-        ptOpenTrades: results[3]
+        realOpenTrades: results[2] ? results[2].trades || [] : [],
+        realClosedTrades: results[3] ? results[3].trades || [] : []
       };
 
-      if (results[4]) _rtWalletCache = { data: results[4], time: Date.now() };
-      if (results[5]) _rtSolRateCache = { data: results[5], time: Date.now() };
-      newData.realTrades = results[6] ? results[6].trades || [] : [];
-
       var newHash = _rtHashData(newData);
-
-      // Only update DOM if data actually changed
       if (newHash === _rtLastHash) return;
 
       _rtCache.data = newData;
@@ -9476,16 +9452,24 @@
   function _saveRealTradingSettings(settings) {
     _rtSettingsCache = settings;
     localStorage.setItem('kairos-rt-settings', JSON.stringify(settings));
-    // Sync to backend
-    BackendAPI.saveRealTradingSettings({
+    // Sync to backend — retry once on failure
+    var payload = {
       per_trade_jpy: settings.perTradeJpy,
       initial_capital_jpy: settings.initialCapitalJpy,
       max_concurrent: settings.maxConcurrent,
       daily_limit_jpy: settings.dailyLimitJpy,
-      enable_sl: settings.enableSL,
-      enable_pt: settings.enablePT,
-      is_active: settings.isActive
-    }).catch(function() {});
+      enable_sl: settings.enableSL ? 1 : 0,
+      enable_pt: settings.enablePT ? 1 : 0,
+      is_active: settings.isActive ? 1 : 0
+    };
+    BackendAPI.saveRealTradingSettings(payload).catch(function(err) {
+      console.warn('[RT] settings save failed, retrying...', err);
+      setTimeout(function() {
+        BackendAPI.saveRealTradingSettings(payload).catch(function(err2) {
+          console.error('[RT] settings save retry failed:', err2);
+        });
+      }, 2000);
+    });
   }
 
   // Load settings from backend on first visit
@@ -9497,13 +9481,26 @@
         initialCapitalJpy: s.initial_capital_jpy || 5000,
         maxConcurrent: s.max_concurrent || 20,
         dailyLimitJpy: s.daily_limit_jpy || 20000,
-        enableSL: s.enable_sl !== undefined ? s.enable_sl : true,
-        enablePT: s.enable_pt !== undefined ? s.enable_pt : false,
-        isActive: s.is_active !== undefined ? s.is_active : false
+        enableSL: !!(s.enable_sl),
+        enablePT: !!(s.enable_pt),
+        isActive: !!(s.is_active)
       };
+      var prev = _rtSettingsCache;
+      var changed = !prev || prev.isActive !== settings.isActive ||
+        prev.perTradeJpy !== settings.perTradeJpy ||
+        prev.initialCapitalJpy !== settings.initialCapitalJpy;
       _rtSettingsCache = settings;
       localStorage.setItem('kairos-rt-settings', JSON.stringify(settings));
-    }).catch(function() {});
+      // Only re-render if settings actually changed
+      if (changed && appState.currentScreen === 'real-trading') {
+        var container = document.getElementById('rt-content');
+        if (container) {
+          try { container.innerHTML = _buildRealTradingHTML(settings); } catch(e) {}
+        }
+      }
+    }).catch(function(err) {
+      console.warn('[RT] Failed to load settings from backend:', err);
+    });
   }
   _loadRealTradingSettingsFromBackend();
 
@@ -9535,64 +9532,59 @@
 
   function _rtCalcData(settings) {
     var data = _rtCache.data;
-    var ptWins = 0, ptLosses = 0, ptPnlTotal = 0, ptCount = 0;
-    var slWins = 0, slLosses = 0, slPnlTotal = 0, slCount = 0;
-    var ptOpenTrades = [];
-    var slOpenTrades = [];
+    var w = _rtWalletCache.data;
+    var sr = _rtSolRateCache.data;
+    var solJpy = sr ? sr.sol_jpy : 0;
 
-    if (data) {
-      var pt = data.ptStats;
-      if (pt && pt.overall_summary) {
-        ptCount = pt.overall_summary.total_closed || 0;
-        ptWins = pt.overall_summary.winners || 0;
-        ptLosses = ptCount - ptWins;
-        ptPnlTotal = pt.overall_summary.total_pnl_pct || 0;
-      }
-      var sl = data.slStats;
-      if (sl) {
-        slCount = sl.total_closed || 0;
-        slWins = sl.winners || 0;
-        slLosses = slCount - slWins;
-        slPnlTotal = sl.total_pnl_pct || 0;
-      }
-      if (data.ptOpenTrades && data.ptOpenTrades.trades) {
-        ptOpenTrades = data.ptOpenTrades.trades.filter(function(t) { return t.status === 'open'; });
-      }
-      if (data.slWatchlist) {
-        var items = data.slWatchlist.items || data.slWatchlist;
-        if (Array.isArray(items)) {
-          slOpenTrades = items.filter(function(t) {
-            return t.status === 'awakened' || (t.trade_id && t.trade_status === 'open');
-          });
-        }
-      }
-    }
+    // Real trades only
+    var openTrades = (data && data.realOpenTrades) ? data.realOpenTrades : [];
+    var closedTrades = (data && data.realClosedTrades) ? data.realClosedTrades : [];
 
+    // Open trades as display items
     var allOpenTrades = [];
-    ptOpenTrades.forEach(function(t) { allOpenTrades.push({ type: 'PT', trade: t }); });
-    slOpenTrades.forEach(function(t) { allOpenTrades.push({ type: 'SL', trade: t }); });
+    openTrades.forEach(function(t) {
+      var src = t.source === 'sl' ? 'SL' : 'PT';
+      allOpenTrades.push({ type: src, trade: t });
+    });
     allOpenTrades.sort(function(a, b) {
-      return (b.trade.unrealized_pnl_pct || 0) - (a.trade.unrealized_pnl_pct || 0);
+      return (b.trade.realized_pnl_pct || 0) - (a.trade.realized_pnl_pct || 0);
     });
 
-    var perTrade = settings.perTradeJpy || 1000;
-    var ptSimPnl = ptPnlTotal * perTrade / 100;
-    var slSimPnl = slPnlTotal * perTrade / 100;
-    var openUnrealized = 0;
-    allOpenTrades.forEach(function(item) {
-      openUnrealized += (item.trade.unrealized_pnl_pct || 0) * perTrade / 100;
+    // Closed trade stats
+    var closedCount = closedTrades.length;
+    var wins = 0;
+    var closedPnlJpy = 0;
+    var closedPnlSol = 0;
+    closedTrades.forEach(function(t) {
+      if ((t.realized_pnl_jpy || 0) > 0) wins++;
+      closedPnlJpy += t.realized_pnl_jpy || 0;
+      closedPnlSol += t.realized_pnl_sol || 0;
     });
+    var losses = closedCount - wins;
 
-    var totalPnlJpy = ptSimPnl + slSimPnl + openUnrealized;
+    // Open trade unrealized (estimate from amount_sol)
+    var openInvestedSol = 0;
+    openTrades.forEach(function(t) {
+      openInvestedSol += t.amount_sol || 0;
+    });
+    var openInvestedJpy = openInvestedSol * solJpy;
+
+    // Wallet balance = total portfolio value
+    var balanceSol = w ? w.balance_sol : 0;
+    var balanceJpy = balanceSol * solJpy;
+    // Total portfolio = wallet balance + open positions value (SOL in open trades)
+    var portfolioValue = (balanceSol + openInvestedSol) * solJpy;
     var capitalJpy = settings.initialCapitalJpy || 5000;
+    var totalPnlJpy = closedPnlJpy;
 
     return {
-      ptWins: ptWins, ptLosses: ptLosses, ptPnlTotal: ptPnlTotal, ptCount: ptCount,
-      slWins: slWins, slLosses: slLosses, slPnlTotal: slPnlTotal, slCount: slCount,
-      allOpenTrades: allOpenTrades, perTrade: perTrade,
-      ptSimPnl: ptSimPnl, slSimPnl: slSimPnl,
-      totalPnlJpy: totalPnlJpy, capitalJpy: capitalJpy,
-      portfolioValue: capitalJpy + totalPnlJpy,
+      closedCount: closedCount, wins: wins, losses: losses,
+      closedPnlJpy: closedPnlJpy, closedPnlSol: closedPnlSol,
+      allOpenTrades: allOpenTrades,
+      openInvestedSol: openInvestedSol, openInvestedJpy: openInvestedJpy,
+      balanceSol: balanceSol, balanceJpy: balanceJpy,
+      portfolioValue: portfolioValue, capitalJpy: capitalJpy,
+      totalPnlJpy: totalPnlJpy,
       portfolioPct: capitalJpy > 0 ? (totalPnlJpy / capitalJpy * 100) : 0,
       isPositive: totalPnlJpy >= 0
     };
@@ -9600,37 +9592,32 @@
 
   function _buildRealTradingHTML(settings) {
     var d = _rtCalcData(settings);
+    var w = _rtWalletCache.data;
+    var sr = _rtSolRateCache.data;
+    var walletConfigured = w && w.configured;
+    var solJpy = sr ? sr.sol_jpy : 0;
 
     var html = '';
 
-    // --- Hero Card ---
+    // --- Hero Card (wallet-based) ---
     var heroClass = d.isPositive ? 'rt-hero--positive' : 'rt-hero--negative';
     var pnlSign = d.isPositive ? '+' : '';
+    var heroSubText = d.balanceSol.toFixed(4) + ' SOL | ' +
+        'アクティブ ' + d.allOpenTrades.length + '口 | ' +
+        d.closedCount + '決済';
     html += '<div class="rt-hero ' + heroClass + '" id="rt-hero">' +
-      '<div class="rt-hero__label">MY PORTFOLIO</div>' +
+      '<div class="rt-hero__label" id="rt-hero-label">MY PORTFOLIO</div>' +
       '<div class="rt-hero__value" id="rt-hero-value">' + _rtBuildCounterHTML(_formatRtYen(d.portfolioValue)) + '</div>' +
       '<div class="rt-hero__pnl ' + (d.isPositive ? 'positive' : 'negative') + '" id="rt-hero-pnl">' +
         pnlSign + _formatRtYen(d.totalPnlJpy) + ' (' + pnlSign + d.portfolioPct.toFixed(1) + '%)' +
       '</div>' +
-      '<div class="rt-hero__sub" id="rt-hero-sub">' +
-        '一口 ' + _formatRtYen(d.perTrade) + ' | ' +
-        'アクティブ ' + d.allOpenTrades.length + '口 | ' +
-        '本日 ' + (d.ptCount + d.slCount) + '決済' +
-      '</div>' +
+      '<div class="rt-hero__sub" id="rt-hero-sub">' + heroSubText + '</div>' +
       '<div class="rt-hero__status ' + (!settings.isActive ? 'rt-hero__status--inactive' : 'rt-hero__status--active') + '" id="rt-hero-status">' +
-        (!settings.isActive ? 'ペーパーモード' : '稼働中') +
+        (!settings.isActive ? '待機中' : '実弾稼働中') +
       '</div>' +
     '</div>';
 
     // --- Wallet Bar ---
-    var w = _rtWalletCache.data;
-    var sr = _rtSolRateCache.data;
-    var walletConfigured = w && w.configured;
-    var balanceSol = w ? w.balance_sol : 0;
-    var solJpy = sr ? sr.sol_jpy : 0;
-    var balanceJpy = balanceSol * solJpy;
-    var realOpenTrades = (_rtCache.data && _rtCache.data.realTrades) ? _rtCache.data.realTrades.length : 0;
-
     html += '<div class="rt-wallet" id="rt-wallet">' +
       '<div class="rt-wallet__row">' +
         '<span class="rt-wallet__label">Wallet</span>' +
@@ -9639,35 +9626,20 @@
         '</span>' +
       '</div>' +
       '<div class="rt-wallet__row">' +
-        '<span class="rt-wallet__balance">' + balanceSol.toFixed(4) + ' SOL</span>' +
-        '<span class="rt-wallet__jpy">≈ ¥' + Math.round(balanceJpy).toLocaleString() + '</span>' +
+        '<span class="rt-wallet__balance">' + d.balanceSol.toFixed(4) + ' SOL</span>' +
+        '<span class="rt-wallet__jpy">≈ ' + _formatRtYen(d.balanceJpy) + '</span>' +
       '</div>' +
       '<div class="rt-wallet__row rt-wallet__row--sub">' +
         '<span class="rt-wallet__rate">1 SOL = ¥' + Math.round(solJpy).toLocaleString() + '</span>' +
-        '<span class="rt-wallet__real-count">実弾 ' + realOpenTrades + '口</span>' +
-      '</div>' +
-    '</div>';
-
-    // --- PT / SL Split Cards ---
-    var ptIsPos = d.ptSimPnl >= 0;
-    var slIsPos = d.slSimPnl >= 0;
-    html += '<div class="rt-split" id="rt-split">' +
-      '<div class="rt-split__card" id="rt-pt-card">' +
-        '<div class="rt-split__header"><span class="rt-split__icon">📊</span><span class="rt-split__title">通常トレード</span></div>' +
-        '<div class="rt-split__amount ' + (ptIsPos ? 'positive' : 'negative') + '" id="rt-pt-amount">' + (ptIsPos ? '+' : '') + _formatRtYen(d.ptSimPnl) + '</div>' +
-        '<div class="rt-split__pnl ' + (ptIsPos ? 'positive' : 'negative') + '" id="rt-pt-pnl">' + (ptIsPos ? '+' : '') + d.ptPnlTotal.toFixed(1) + '%</div>' +
-        '<div class="rt-split__meta" id="rt-pt-meta">' + d.ptWins + '勝' + d.ptLosses + '敗</div>' +
-      '</div>' +
-      '<div class="rt-split__card rt-split__card--sl" id="rt-sl-card">' +
-        '<div class="rt-split__header"><span class="rt-split__icon">🦁</span><span class="rt-split__title">眠れる獅子</span></div>' +
-        '<div class="rt-split__amount ' + (slIsPos ? 'positive' : 'negative') + '" id="rt-sl-amount">' + (slIsPos ? '+' : '') + _formatRtYen(d.slSimPnl) + '</div>' +
-        '<div class="rt-split__pnl ' + (slIsPos ? 'positive' : 'negative') + '" id="rt-sl-pnl">' + (slIsPos ? '+' : '') + d.slPnlTotal.toFixed(1) + '%</div>' +
-        '<div class="rt-split__meta" id="rt-sl-meta">' + d.slWins + '勝' + d.slLosses + '敗</div>' +
+        '<span class="rt-wallet__real-count">' + d.wins + '勝' + d.losses + '敗</span>' +
       '</div>' +
     '</div>';
 
     // --- Active Trades ---
     html += '<div id="rt-active-container">' + _buildActiveTradesHTML(d) + '</div>';
+
+    // --- Closed Trades (recent) ---
+    html += _buildClosedTradesHTML(d);
 
     // --- Settings ---
     html += '<div class="rt-settings" id="rt-settings-section">' +
@@ -9725,7 +9697,48 @@
     return html;
   }
 
+  function _buildClosedTradesHTML(d) {
+    var data = _rtCache.data;
+    var closedTrades = (data && data.realClosedTrades) ? data.realClosedTrades : [];
+    if (closedTrades.length === 0) return '';
+
+    var html = '<div class="rt-active" id="rt-closed-container">' +
+      '<div class="rt-active__header">' +
+        '<span class="rt-active__title">決済済み</span>' +
+        '<span class="rt-active__count">' + closedTrades.length + '件 | ' +
+          (d.closedPnlJpy >= 0 ? '+' : '') + _formatRtYen(d.closedPnlJpy) +
+        '</span>' +
+      '</div>';
+
+    closedTrades.slice(0, 20).forEach(function(t) {
+      var pnl = t.realized_pnl_pct || 0;
+      var pnlJpy = t.realized_pnl_jpy || 0;
+      var isPos = pnl >= 0;
+      var sign = isPos ? '+' : '';
+      var symbol = t.symbol || '???';
+      var src = t.source === 'sl' ? '🦁' : 'PT';
+      var exitReason = t.exit_reason || '-';
+
+      html += '<div class="rt-trade rt-trade--closed">' +
+        '<div class="rt-trade__top">' +
+          '<span class="rt-trade__badge rt-trade__badge--' + (t.source === 'sl' ? 'sl' : 'pt') + '">' + src + '</span>' +
+          '<span class="rt-trade__symbol">' + symbol + '</span>' +
+          '<span class="rt-trade__pnl ' + (isPos ? 'positive' : 'negative') + '">' + sign + pnl.toFixed(1) + '%</span>' +
+        '</div>' +
+        '<div class="rt-trade__bottom">' +
+          '<span class="rt-trade__jpy ' + (isPos ? 'positive' : 'negative') + '">' + sign + _formatRtYen(pnlJpy) + '</span>' +
+          '<span class="rt-trade__hold">' + exitReason + '</span>' +
+        '</div>' +
+      '</div>';
+    });
+
+    html += '</div>';
+    return html;
+  }
+
   function _buildActiveTradesHTML(d) {
+    var sr = _rtSolRateCache.data;
+    var solJpy = sr ? sr.sol_jpy : 0;
     var html = '<div class="rt-active">' +
       '<div class="rt-active__header">' +
         '<span class="rt-active__title">アクティブトレード</span>' +
@@ -9737,8 +9750,9 @@
     } else {
       d.allOpenTrades.forEach(function(item) {
         var t = item.trade;
-        var pnl = t.unrealized_pnl_pct || 0;
-        var pnlJpy = pnl * d.perTrade / 100;
+        var pnl = t.realized_pnl_pct || 0;
+        var pnlJpy = (t.realized_pnl_sol || 0) * solJpy;
+        if (!pnlJpy && t.realized_pnl_jpy) pnlJpy = t.realized_pnl_jpy;
         var isPos = pnl >= 0;
         var sign = isPos ? '+' : '';
 
@@ -9748,14 +9762,13 @@
         else if (pnl >= 100) tierClass = ' rt-trade--gold';
         else if (pnl >= 50) tierClass = ' rt-trade--silver';
 
-        var symbol = t.symbol || t.token_symbol || '???';
+        var symbol = t.symbol || '???';
         var holdSec = 0;
         if (t.entry_at) holdSec = Math.floor(Date.now() / 1000) - t.entry_at;
-        else if (t.holding_duration) holdSec = t.holding_duration;
         var holdMin = Math.floor(holdSec / 60);
         var holdStr = holdMin >= 60 ? Math.floor(holdMin / 60) + '時間' + (holdMin % 60) + '分' : holdMin + '分';
 
-        var peakPnl = t.peak_pnl_pct || pnl;
+        var amountSol = t.amount_sol || 0;
         var typeBadge = item.type === 'SL' ? '<span class="rt-trade__badge rt-trade__badge--sl">🦁</span>' : '<span class="rt-trade__badge rt-trade__badge--pt">PT</span>';
 
         html += '<div class="rt-trade' + tierClass + '">' +
@@ -9770,7 +9783,7 @@
           '<div class="rt-trade__bottom">' +
             '<span class="rt-trade__jpy ' + (isPos ? 'positive' : 'negative') + '">' + sign + _formatRtYen(pnlJpy) + '</span>' +
             '<span class="rt-trade__hold">' + holdStr + '</span>' +
-            '<span class="rt-trade__peak">Peak ' + sign + peakPnl.toFixed(0) + '%</span>' +
+            '<span class="rt-trade__peak">' + amountSol.toFixed(4) + ' SOL</span>' +
           '</div>' +
         '</div>';
       });
@@ -9827,6 +9840,13 @@
     var newValueText = _formatRtYen(d.portfolioValue);
     var newPnlText = pnlSign + _formatRtYen(d.totalPnlJpy) + ' (' + pnlSign + d.portfolioPct.toFixed(1) + '%)';
 
+    // Update hero status
+    var heroStatus = document.getElementById('rt-hero-status');
+    if (heroStatus) {
+      heroStatus.textContent = settings.isActive ? '実弾稼働中' : '待機中';
+      heroStatus.className = 'rt-hero__status ' + (settings.isActive ? 'rt-hero__status--active' : 'rt-hero__status--inactive');
+    }
+
     var prevHeroVal = _rtPrevValues['rt-hero-value'];
     _rtRollCounter(heroValue, newValueText);
     var heroPnl = document.getElementById('rt-hero-pnl');
@@ -9836,14 +9856,12 @@
     }
     var heroSub = document.getElementById('rt-hero-sub');
     if (heroSub) {
-      heroSub.textContent = '一口 ' + _formatRtYen(d.perTrade) + ' | アクティブ ' + d.allOpenTrades.length + '口 | 本日 ' + (d.ptCount + d.slCount) + '決済';
+      heroSub.textContent = d.balanceSol.toFixed(4) + ' SOL | アクティブ ' + d.allOpenTrades.length + '口 | ' + d.closedCount + '決済';
     }
     var hero = document.getElementById('rt-hero');
     if (hero) {
-      // Toggle positive/negative without resetting other classes/animations
       hero.classList.remove('rt-hero--positive', 'rt-hero--negative');
       hero.classList.add(d.isPositive ? 'rt-hero--positive' : 'rt-hero--negative');
-      // Flash the entire hero card
       if (prevHeroVal !== undefined && prevHeroVal !== newValueText) {
         var prevNum = parseFloat(prevHeroVal.replace(/[¥,\s]/g, ''));
         var curNum = parseFloat(newValueText.replace(/[¥,\s]/g, ''));
@@ -9855,63 +9873,33 @@
     // Update wallet bar
     var walletEl = document.getElementById('rt-wallet');
     if (walletEl) {
-      var w2 = _rtWalletCache.data;
       var sr2 = _rtSolRateCache.data;
-      var bal2 = w2 ? w2.balance_sol : 0;
       var sj2 = sr2 ? sr2.sol_jpy : 0;
-      var realCount2 = (_rtCache.data && _rtCache.data.realTrades) ? _rtCache.data.realTrades.length : 0;
       var balEls = walletEl.querySelectorAll('.rt-wallet__balance');
-      if (balEls[0]) balEls[0].textContent = bal2.toFixed(4) + ' SOL';
+      if (balEls[0]) balEls[0].textContent = d.balanceSol.toFixed(4) + ' SOL';
       var jpyEls = walletEl.querySelectorAll('.rt-wallet__jpy');
-      if (jpyEls[0]) jpyEls[0].textContent = '≈ ¥' + Math.round(bal2 * sj2).toLocaleString();
+      if (jpyEls[0]) jpyEls[0].textContent = '≈ ' + _formatRtYen(d.balanceJpy);
       var rateEls = walletEl.querySelectorAll('.rt-wallet__rate');
       if (rateEls[0]) rateEls[0].textContent = '1 SOL = ¥' + Math.round(sj2).toLocaleString();
       var rcountEls = walletEl.querySelectorAll('.rt-wallet__real-count');
-      if (rcountEls[0]) rcountEls[0].textContent = '実弾 ' + realCount2 + '口';
+      if (rcountEls[0]) rcountEls[0].textContent = d.wins + '勝' + d.losses + '敗';
     }
-
-    // Update PT split — flash the card
-    var ptIsPos = d.ptSimPnl >= 0;
-    var ptAmountText = (ptIsPos ? '+' : '') + _formatRtYen(d.ptSimPnl);
-    var ptPnlText = (ptIsPos ? '+' : '') + d.ptPnlTotal.toFixed(1) + '%';
-    var ptCard = document.getElementById('rt-pt-card');
-    var prevPtAmount = _rtPrevValues['rt-pt-amount'];
-
-    var ptAmountEl = document.getElementById('rt-pt-amount');
-    if (ptAmountEl) { ptAmountEl.textContent = ptAmountText; ptAmountEl.className = 'rt-split__amount ' + (ptIsPos ? 'positive' : 'negative'); }
-    var ptPnlEl = document.getElementById('rt-pt-pnl');
-    if (ptPnlEl) { ptPnlEl.textContent = ptPnlText; ptPnlEl.className = 'rt-split__pnl ' + (ptIsPos ? 'positive' : 'negative'); }
-    var ptMeta = document.getElementById('rt-pt-meta');
-    if (ptMeta) ptMeta.textContent = d.ptWins + '勝' + d.ptLosses + '敗';
-    if (ptCard && prevPtAmount !== undefined && prevPtAmount !== ptAmountText) {
-      _rtFlashCard(ptCard, ptIsPos);
-    }
-    _rtPrevValues['rt-pt-amount'] = ptAmountText;
-
-    // Update SL split — flash the card
-    var slIsPos = d.slSimPnl >= 0;
-    var slAmountText = (slIsPos ? '+' : '') + _formatRtYen(d.slSimPnl);
-    var slPnlText = (slIsPos ? '+' : '') + d.slPnlTotal.toFixed(1) + '%';
-    var slCard = document.getElementById('rt-sl-card');
-    var prevSlAmount = _rtPrevValues['rt-sl-amount'];
-
-    var slAmountEl = document.getElementById('rt-sl-amount');
-    if (slAmountEl) { slAmountEl.textContent = slAmountText; slAmountEl.className = 'rt-split__amount ' + (slIsPos ? 'positive' : 'negative'); }
-    var slPnlEl = document.getElementById('rt-sl-pnl');
-    if (slPnlEl) { slPnlEl.textContent = slPnlText; slPnlEl.className = 'rt-split__pnl ' + (slIsPos ? 'positive' : 'negative'); }
-    var slMeta = document.getElementById('rt-sl-meta');
-    if (slMeta) slMeta.textContent = d.slWins + '勝' + d.slLosses + '敗';
-    if (slCard && prevSlAmount !== undefined && prevSlAmount !== slAmountText) {
-      _rtFlashCard(slCard, slIsPos);
-    }
-    _rtPrevValues['rt-sl-amount'] = slAmountText;
 
     // Active trades: smooth DOM diff (no blackout)
     _rtUpdateActiveTrades(d);
 
+    // Closed trades: full replace (less frequent changes)
+    var closedContainer = document.getElementById('rt-closed-container');
+    var newClosedHTML = _buildClosedTradesHTML(d);
+    if (closedContainer) {
+      closedContainer.outerHTML = newClosedHTML;
+    } else if (newClosedHTML) {
+      var activeContainer = document.getElementById('rt-active-container');
+      if (activeContainer) activeContainer.insertAdjacentHTML('afterend', newClosedHTML);
+    }
+
     } catch(e) {
       console.error('[RT] DOM surgery error:', e);
-      // Don't fall back to full re-render — just skip this cycle
     }
   }
 
@@ -9968,17 +9956,52 @@
       else _rtLastDirection = 0;
     }
 
-    // First render or length changed
-    if (existingSlots.length === 0 || existingSlots.length !== chars.length) {
-      // Rebuild but preserve arrow
+    // First render only — no slots exist yet
+    if (existingSlots.length === 0) {
       var arrow = container.querySelector('.rt-hero__arrow');
       container.innerHTML = _rtBuildCounterHTML(newText);
-      // Re-add or create arrow
       _rtUpdateArrow(container, _rtLastDirection);
       return;
     }
 
+    // Length changed — incrementally add/remove slots instead of innerHTML
+    if (existingSlots.length !== chars.length) {
+      var arrow2 = container.querySelector('.rt-hero__arrow');
+      if (arrow2) arrow2.remove();
+      // Remove extra slots
+      while (existingSlots.length > chars.length) {
+        var last = existingSlots[existingSlots.length - 1];
+        last.parentNode.removeChild(last);
+        existingSlots = container.querySelectorAll('[data-rt-slot]');
+      }
+      // Add missing slots
+      while (existingSlots.length < chars.length) {
+        var idx = existingSlots.length;
+        var ch2 = chars[idx];
+        var newSlot = document.createElement('span');
+        newSlot.setAttribute('data-rt-slot', idx);
+        if (ch2 >= '0' && ch2 <= '9') {
+          newSlot.className = 'rt-counter__digit';
+          newSlot.setAttribute('data-rt-digit', ch2);
+          var pos2 = _rtDigitPos(parseInt(ch2));
+          newSlot.innerHTML = '<span class="rt-counter__roll" style="transform:translateY(-' + (pos2 * 1.15) + 'em)">' + _rtBuildStripHTML() + '</span>';
+        } else {
+          newSlot.className = 'rt-counter__char';
+          newSlot.textContent = ch2;
+        }
+        container.appendChild(newSlot);
+        existingSlots = container.querySelectorAll('[data-rt-slot]');
+      }
+      // Re-index all slots
+      existingSlots = container.querySelectorAll('[data-rt-slot]');
+      for (var ri = 0; ri < existingSlots.length; ri++) {
+        existingSlots[ri].setAttribute('data-rt-slot', ri);
+      }
+      _rtUpdateArrow(container, _rtLastDirection);
+    }
+
     // Update existing slots — roll direction depends on value change
+    existingSlots = container.querySelectorAll('[data-rt-slot]');
     chars.forEach(function(ch, i) {
       var slot = existingSlots[i];
       if (!slot) return;
@@ -9991,19 +10014,16 @@
           if (oldDigit !== newDigit) {
             var pos;
             if (_rtLastDirection >= 0) {
-              // Going up: roll upward (digit comes from below)
               pos = _rtDigitPos(newDigit);
             } else {
-              // Going down: use lower strip position so it rolls downward
               pos = _rtDigitPos(newDigit) + 10;
             }
-            // Temporarily disable transition, jump to offset start, then animate
             roll.style.transition = 'none';
             var startPos;
             if (_rtLastDirection >= 0) {
-              startPos = pos - 3; // start above → roll down to show increase
+              startPos = pos - 3;
             } else {
-              startPos = pos + 3; // start below → roll up to show decrease
+              startPos = pos + 3;
             }
             roll.style.transform = 'translateY(-' + (startPos * 1.15) + 'em)';
             void roll.offsetWidth;
@@ -10011,9 +10031,24 @@
             roll.style.transform = 'translateY(-' + (pos * 1.15) + 'em)';
           }
           slot.setAttribute('data-rt-digit', ch);
+        } else {
+          // Was a char slot, now needs to be digit — rebuild this slot
+          slot.className = 'rt-counter__digit';
+          slot.setAttribute('data-rt-digit', ch);
+          var pos3 = _rtDigitPos(parseInt(ch));
+          slot.innerHTML = '<span class="rt-counter__roll" style="transform:translateY(-' + (pos3 * 1.15) + 'em)">' + _rtBuildStripHTML() + '</span>';
         }
       } else {
-        slot.textContent = ch;
+        // Non-digit character (¥, comma, etc)
+        if (slot.querySelector('.rt-counter__roll')) {
+          // Was digit, now char — rebuild
+          slot.className = 'rt-counter__char';
+          slot.innerHTML = '';
+          slot.textContent = ch;
+          slot.removeAttribute('data-rt-digit');
+        } else {
+          slot.textContent = ch;
+        }
       }
     });
 
@@ -10086,18 +10121,25 @@
     var settings = _getRealTradingSettings();
     settings.isActive = isActive;
     _saveRealTradingSettings(settings);
-    _renderRealTradingContent();
+    // Full re-render to update hero label, status, and settings checkbox
+    var container = document.getElementById('rt-content');
+    if (container) {
+      try { container.innerHTML = _buildRealTradingHTML(settings); } catch(e) { console.error('[RT] rebuild error:', e); }
+    }
   };
 
   // --- Active trades smooth DOM diff ---
   function _rtTradeKey(item) {
-    return (item.type || '') + '_' + (item.trade.symbol || item.trade.token_symbol || item.trade.token_address || '');
+    return (item.type || '') + '_' + (item.trade.symbol || item.trade.token_address || '');
   }
 
   function _rtBuildSingleTradeHTML(item, d) {
     var t = item.trade;
-    var pnl = t.unrealized_pnl_pct || 0;
-    var pnlJpy = pnl * d.perTrade / 100;
+    var sr = _rtSolRateCache.data;
+    var solJpy = sr ? sr.sol_jpy : 0;
+    var pnl = t.realized_pnl_pct || 0;
+    var pnlJpy = (t.realized_pnl_sol || 0) * solJpy;
+    if (!pnlJpy && t.realized_pnl_jpy) pnlJpy = t.realized_pnl_jpy;
     var isPos = pnl >= 0;
     var sign = isPos ? '+' : '';
     var tierClass = '';
@@ -10105,13 +10147,12 @@
     else if (pnl >= 1000) tierClass = ' rt-trade--moon';
     else if (pnl >= 100) tierClass = ' rt-trade--gold';
     else if (pnl >= 50) tierClass = ' rt-trade--silver';
-    var symbol = t.symbol || t.token_symbol || '???';
+    var symbol = t.symbol || '???';
     var holdSec = 0;
     if (t.entry_at) holdSec = Math.floor(Date.now() / 1000) - t.entry_at;
-    else if (t.holding_duration) holdSec = t.holding_duration;
     var holdMin = Math.floor(holdSec / 60);
     var holdStr = holdMin >= 60 ? Math.floor(holdMin / 60) + '時間' + (holdMin % 60) + '分' : holdMin + '分';
-    var peakPnl = t.peak_pnl_pct || pnl;
+    var amountSol = t.amount_sol || 0;
     var typeBadge = item.type === 'SL' ? '<span class="rt-trade__badge rt-trade__badge--sl">🦁</span>' : '<span class="rt-trade__badge rt-trade__badge--pt">PT</span>';
 
     return '<div class="rt-trade' + tierClass + '" data-rt-key="' + _rtTradeKey(item) + '">' +
@@ -10123,7 +10164,7 @@
       '<div class="rt-trade__bottom">' +
         '<span class="rt-trade__jpy ' + (isPos ? 'positive' : 'negative') + '">' + sign + _formatRtYen(pnlJpy) + '</span>' +
         '<span class="rt-trade__hold">' + holdStr + '</span>' +
-        '<span class="rt-trade__peak">Peak ' + (peakPnl >= 0 ? '+' : '') + peakPnl.toFixed(0) + '%</span>' +
+        '<span class="rt-trade__peak">' + amountSol.toFixed(4) + ' SOL</span>' +
       '</div>' +
     '</div>';
   }
