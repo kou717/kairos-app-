@@ -9407,8 +9407,13 @@
       BackendAPI.getRealTrades('open').catch(function() { return { trades: [] }; }),
       BackendAPI.getRealTrades('closed').catch(function() { return { trades: [] }; })
     ]).then(function(results) {
-      if (results[0]) _rtWalletCache = { data: results[0], time: Date.now() };
-      if (results[1]) _rtSolRateCache = { data: results[1], time: Date.now() };
+      // Only update cache if API returned valid data; keep previous on failure
+      if (results[0] && results[0].pubkey !== undefined) {
+        _rtWalletCache = { data: results[0], time: Date.now() };
+      }
+      if (results[1] && results[1].sol_jpy) {
+        _rtSolRateCache = { data: results[1], time: Date.now() };
+      }
 
       var newData = {
         realOpenTrades: results[2] ? results[2].trades || [] : [],
