@@ -9550,15 +9550,30 @@
       return (b.trade.realized_pnl_pct || 0) - (a.trade.realized_pnl_pct || 0);
     });
 
-    // Closed trade stats
+    // Closed trade stats — total + per source
     var closedCount = closedTrades.length;
     var wins = 0;
     var closedPnlJpy = 0;
     var closedPnlSol = 0;
+    var ptWins = 0, ptLosses = 0, ptPnlJpy = 0, ptPnlSol = 0, ptCount = 0;
+    var slWins = 0, slLosses = 0, slPnlJpy = 0, slPnlSol = 0, slCount = 0;
     closedTrades.forEach(function(t) {
-      if ((t.realized_pnl_jpy || 0) > 0) wins++;
-      closedPnlJpy += t.realized_pnl_jpy || 0;
-      closedPnlSol += t.realized_pnl_sol || 0;
+      var pjpy = t.realized_pnl_jpy || 0;
+      var psol = t.realized_pnl_sol || 0;
+      if (pjpy > 0) wins++;
+      closedPnlJpy += pjpy;
+      closedPnlSol += psol;
+      if (t.source === 'sl') {
+        slCount++;
+        slPnlJpy += pjpy;
+        slPnlSol += psol;
+        if (pjpy > 0) slWins++; else slLosses++;
+      } else {
+        ptCount++;
+        ptPnlJpy += pjpy;
+        ptPnlSol += psol;
+        if (pjpy > 0) ptWins++; else ptLosses++;
+      }
     });
     var losses = closedCount - wins;
 
@@ -9580,6 +9595,8 @@
     return {
       closedCount: closedCount, wins: wins, losses: losses,
       closedPnlJpy: closedPnlJpy, closedPnlSol: closedPnlSol,
+      ptWins: ptWins, ptLosses: ptLosses, ptPnlJpy: ptPnlJpy, ptPnlSol: ptPnlSol, ptCount: ptCount,
+      slWins: slWins, slLosses: slLosses, slPnlJpy: slPnlJpy, slPnlSol: slPnlSol, slCount: slCount,
       allOpenTrades: allOpenTrades,
       openInvestedSol: openInvestedSol, openInvestedJpy: openInvestedJpy,
       balanceSol: balanceSol, balanceJpy: balanceJpy,
@@ -9632,6 +9649,24 @@
       '<div class="rt-wallet__row rt-wallet__row--sub">' +
         '<span class="rt-wallet__rate">1 SOL = ¥' + Math.round(solJpy).toLocaleString() + '</span>' +
         '<span class="rt-wallet__real-count">' + d.wins + '勝' + d.losses + '敗</span>' +
+      '</div>' +
+    '</div>';
+
+    // --- PT / SL Split Cards (real trades) ---
+    var ptIsPos = d.ptPnlJpy >= 0;
+    var slIsPos = d.slPnlJpy >= 0;
+    html += '<div class="rt-split" id="rt-split">' +
+      '<div class="rt-split__card" id="rt-pt-card">' +
+        '<div class="rt-split__header"><span class="rt-split__icon">📊</span><span class="rt-split__title">通常トレード</span></div>' +
+        '<div class="rt-split__amount ' + (ptIsPos ? 'positive' : 'negative') + '" id="rt-pt-amount">' + (ptIsPos ? '+' : '') + _formatRtYen(d.ptPnlJpy) + '</div>' +
+        '<div class="rt-split__pnl" id="rt-pt-pnl">' + (d.ptPnlSol >= 0 ? '+' : '') + d.ptPnlSol.toFixed(4) + ' SOL</div>' +
+        '<div class="rt-split__meta" id="rt-pt-meta">' + d.ptWins + '勝' + d.ptLosses + '敗</div>' +
+      '</div>' +
+      '<div class="rt-split__card rt-split__card--sl" id="rt-sl-card">' +
+        '<div class="rt-split__header"><span class="rt-split__icon">🦁</span><span class="rt-split__title">眠れる獅子</span></div>' +
+        '<div class="rt-split__amount ' + (slIsPos ? 'positive' : 'negative') + '" id="rt-sl-amount">' + (slIsPos ? '+' : '') + _formatRtYen(d.slPnlJpy) + '</div>' +
+        '<div class="rt-split__pnl" id="rt-sl-pnl">' + (d.slPnlSol >= 0 ? '+' : '') + d.slPnlSol.toFixed(4) + ' SOL</div>' +
+        '<div class="rt-split__meta" id="rt-sl-meta">' + d.slWins + '勝' + d.slLosses + '敗</div>' +
       '</div>' +
     '</div>';
 
@@ -9884,6 +9919,30 @@
       var rcountEls = walletEl.querySelectorAll('.rt-wallet__real-count');
       if (rcountEls[0]) rcountEls[0].textContent = d.wins + '勝' + d.losses + '敗';
     }
+
+    // Update PT split card
+    var ptAmountEl = document.getElementById('rt-pt-amount');
+    if (ptAmountEl) {
+      var ptIsPos2 = d.ptPnlJpy >= 0;
+      ptAmountEl.textContent = (ptIsPos2 ? '+' : '') + _formatRtYen(d.ptPnlJpy);
+      ptAmountEl.className = 'rt-split__amount ' + (ptIsPos2 ? 'positive' : 'negative');
+    }
+    var ptPnlEl = document.getElementById('rt-pt-pnl');
+    if (ptPnlEl) ptPnlEl.textContent = (d.ptPnlSol >= 0 ? '+' : '') + d.ptPnlSol.toFixed(4) + ' SOL';
+    var ptMeta = document.getElementById('rt-pt-meta');
+    if (ptMeta) ptMeta.textContent = d.ptWins + '勝' + d.ptLosses + '敗';
+
+    // Update SL split card
+    var slAmountEl = document.getElementById('rt-sl-amount');
+    if (slAmountEl) {
+      var slIsPos2 = d.slPnlJpy >= 0;
+      slAmountEl.textContent = (slIsPos2 ? '+' : '') + _formatRtYen(d.slPnlJpy);
+      slAmountEl.className = 'rt-split__amount ' + (slIsPos2 ? 'positive' : 'negative');
+    }
+    var slPnlEl = document.getElementById('rt-sl-pnl');
+    if (slPnlEl) slPnlEl.textContent = (d.slPnlSol >= 0 ? '+' : '') + d.slPnlSol.toFixed(4) + ' SOL';
+    var slMeta = document.getElementById('rt-sl-meta');
+    if (slMeta) slMeta.textContent = d.slWins + '勝' + d.slLosses + '敗';
 
     // Active trades: smooth DOM diff (no blackout)
     _rtUpdateActiveTrades(d);
