@@ -9712,7 +9712,7 @@
         '<div class="rt-settings__row">' +
           '<label>一口投資額</label>' +
           '<select id="rt-per-trade" onchange="window._updateRtSetting(\'perTradeJpy\', parseInt(this.value))">' +
-            _rtBuildOptions([500, 1000, 2000, 3000, 5000, 10000, 20000, 30000], settings.perTradeJpy) +
+            _rtBuildOptions([100, 300, 500, 1000, 2000, 3000, 5000, 10000, 20000, 30000], settings.perTradeJpy) +
           '</select>' +
         '</div>' +
         '<div class="rt-settings__row">' +
@@ -9853,7 +9853,10 @@
   function _rtBuildOptions(values, selected) {
     var html = '';
     values.forEach(function(v) {
-      html += '<option value="' + v + '"' + (v === selected ? ' selected' : '') + '>¥' + v.toLocaleString() + '</option>';
+      var label = '¥' + v.toLocaleString();
+      if (v < 200) label += ' (TEST)';
+      else if (v < 500) label += ' (SUB-TEST)';
+      html += '<option value="' + v + '"' + (v === selected ? ' selected' : '') + '>' + label + '</option>';
     });
     return html;
   }
