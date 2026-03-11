@@ -17480,6 +17480,52 @@ body.has-ticker-bar {
   margin-left: auto;
 }
 
+/* Trade History Export */
+.rt-history__export {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.rt-history__export-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #b8a080);
+  margin-bottom: 10px;
+}
+
+.rt-history__export-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rt-history__export-btn {
+  flex: 1;
+  min-width: 90px;
+  padding: 10px 12px;
+  border: 1px solid rgba(212, 168, 83, 0.3);
+  border-radius: 10px;
+  background: rgba(212, 168, 83, 0.08);
+  color: var(--accent, #d4a853);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.rt-history__export-btn:active {
+  transform: scale(0.96);
+  background: rgba(212, 168, 83, 0.18);
+}
+
+.rt-history__export-btn--sub {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.1);
+  color: var(--text-tertiary, #8b7355);
+}
+
 .rt-settings__wallet-info {
   padding: 6px 0 10px;
 }

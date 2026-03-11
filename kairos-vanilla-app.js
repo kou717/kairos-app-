@@ -9821,9 +9821,25 @@
       '</div>';
     });
 
+    // Export buttons
+    html += '<div class="rt-history__export">' +
+      '<div class="rt-history__export-title">CSVエクスポート（税金申告用）</div>' +
+      '<div class="rt-history__export-btns">' +
+        '<button class="rt-history__export-btn" onclick="window._rtExportCSV(\'nta\')">国税庁形式</button>' +
+        '<button class="rt-history__export-btn" onclick="window._rtExportCSV(\'cryptact\')">Cryptact形式</button>' +
+        '<button class="rt-history__export-btn rt-history__export-btn--sub" onclick="window._rtExportCSV(\'full\')">全項目</button>' +
+      '</div>' +
+    '</div>';
+
     html += '</div></div>';
     return html;
   }
+
+  window._rtExportCSV = function(format) {
+    var year = new Date(Date.now() + 9 * 3600000).getFullYear();
+    var url = BackendAPI.baseUrl + '/api/collector/real-trading/export-csv?format=' + format + '&year=' + year;
+    window.open(url, '_blank');
+  };
 
   window._toggleRtHistory = function() {
     var body = document.getElementById('rt-history-body');
