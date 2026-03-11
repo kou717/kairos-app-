@@ -9697,13 +9697,6 @@
         '<span class="rt-settings__arrow" id="rt-settings-arrow">›</span>' +
       '</div>' +
       '<div class="rt-settings__body" id="rt-settings-body" style="display:none">' +
-        '<div class="rt-settings__row rt-settings__row--highlight">' +
-          '<label>実弾モード</label>' +
-          '<label class="rt-settings__switch">' +
-            '<input type="checkbox" ' + (settings.isActive ? 'checked' : '') + ' onchange="window._toggleRtActive(this.checked)">' +
-            '<span class="rt-settings__slider"></span>' +
-          '</label>' +
-        '</div>' +
         (walletConfigured ?
           '<div class="rt-settings__wallet-info">' +
             '<span class="rt-settings__wallet-addr">' + (w.pubkey || '').substring(0, 8) + '...' + (w.pubkey || '').slice(-4) + '</span>' +
@@ -9739,6 +9732,11 @@
               '<span>📊 通常PT</span>' +
             '</label>' +
           '</div>' +
+        '</div>' +
+        '<div class="rt-settings__start-section">' +
+          '<button class="rt-start-btn' + (settings.isActive ? ' rt-start-btn--active' : '') + '" id="rt-start-btn" onclick="window._toggleRtActive(!_getRealTradingSettings().isActive)">' +
+            (settings.isActive ? '運用中 — タップで停止' : 'トレードスタート') +
+          '</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -10281,41 +10279,38 @@
 
   window._toggleRtActive = function(isActive) {
     console.log('[RT] toggleRtActive called:', isActive);
-    var _revertCb = function() {
-      var cb = document.querySelector('.rt-settings__row--highlight input[type="checkbox"]');
-      if (cb) cb.checked = !isActive;
+    var _updateStartBtn = function(active) {
+      var btn = document.getElementById('rt-start-btn');
+      if (btn) {
+        btn.textContent = active ? '運用中 — タップで停止' : 'トレードスタート';
+        btn.className = 'rt-start-btn' + (active ? ' rt-start-btn--active' : '');
+      }
     };
 
     if (isActive) {
       // Wallet check: if data not loaded yet, fetch first then retry
       var w = _rtWalletCache.data;
       if (!w) {
-        // Data not loaded — fetch wallet info first
         if (window.KAIROS && window.KAIROS.Features) {
           window.KAIROS.Features.showToast('ウォレット情報を取得中...', 'info', 2000);
         }
         BackendAPI.getWalletInfo().then(function(walletData) {
           if (walletData) _rtWalletCache = { data: walletData, time: Date.now() };
-          // Re-call with fresh data
           window._toggleRtActive(true);
         }).catch(function() {
           alert('ウォレット情報の取得に失敗しました。バックエンドが起動しているか確認してください。');
-          _revertCb();
         });
         return;
       }
       if (!w.configured) {
         alert('ウォレットが未接続です。Railwayの環境変数にSOLANA_PRIVATE_KEYを設定してください。');
-        _revertCb();
         return;
       }
       if (w.balance_sol < 0.01) {
         alert('ウォレット残高が不足しています（' + w.balance_sol.toFixed(4) + ' SOL）。入金してください。');
-        _revertCb();
         return;
       }
-      if (!confirm('実弾モードをONにしますか？\nSLの覚醒時にリアルSOLで自動売買が実行されます。')) {
-        _revertCb();
+      if (!confirm('実弾トレードを開始しますか？\nSL/PTの検出時にリアルSOLで自動売買が実行されます。')) {
         return;
       }
     }
@@ -10325,7 +10320,15 @@
     _rtSettingsCache = settings;
     localStorage.setItem('kairos-rt-settings', JSON.stringify(settings));
 
-    // Save to backend with confirmation
+    // Update UI immediately (optimistic)
+    _updateStartBtn(isActive);
+    var heroStatus = document.getElementById('rt-hero-status');
+    if (heroStatus) {
+      heroStatus.textContent = isActive ? '実弾稼働中' : '待機中';
+      heroStatus.className = 'rt-hero__status ' + (isActive ? 'rt-hero__status--active' : 'rt-hero__status--inactive');
+    }
+
+    // Save to backend
     var payload = {
       per_trade_jpy: settings.perTradeJpy,
       initial_capital_jpy: settings.initialCapitalJpy,
@@ -10339,7 +10342,7 @@
       console.log('[RT] Settings saved to backend:', isActive ? 'ACTIVE' : 'INACTIVE');
       if (window.KAIROS && window.KAIROS.Features) {
         window.KAIROS.Features.showToast(
-          isActive ? '実弾モード ON — 保存完了' : '実弾モード OFF — 保存完了',
+          isActive ? '運用開始しました' : '運用を停止しました',
           isActive ? 'success' : 'info', 3000
         );
       }
@@ -10349,16 +10352,13 @@
       settings.isActive = !isActive;
       _rtSettingsCache = settings;
       localStorage.setItem('kairos-rt-settings', JSON.stringify(settings));
-      _revertCb();
+      _updateStartBtn(!isActive);
+      if (heroStatus) {
+        heroStatus.textContent = !isActive ? '実弾稼働中' : '待機中';
+        heroStatus.className = 'rt-hero__status ' + (!isActive ? 'rt-hero__status--active' : 'rt-hero__status--inactive');
+      }
       alert('設定の保存に失敗しました。バックエンド接続を確認してください。\n' + (err.message || ''));
     });
-
-    // Update UI immediately (optimistic)
-    var heroStatus = document.getElementById('rt-hero-status');
-    if (heroStatus) {
-      heroStatus.textContent = isActive ? '実弾稼働中' : '待機中';
-      heroStatus.className = 'rt-hero__status ' + (isActive ? 'rt-hero__status--active' : 'rt-hero__status--inactive');
-    }
   };
 
   // --- Active trades smooth DOM diff ---

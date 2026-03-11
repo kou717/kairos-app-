@@ -17313,6 +17313,43 @@ body.has-ticker-bar {
   transform: translateX(22px);
 }
 
+/* Start/Stop Button */
+.rt-settings__start-section {
+  padding: 16px 0 4px;
+  margin-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.rt-start-btn {
+  width: 100%;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #fff;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.25);
+}
+
+.rt-start-btn:active {
+  transform: scale(0.97);
+}
+
+.rt-start-btn--active {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25);
+  animation: rt-pulse 2s ease-in-out infinite;
+}
+
+@keyframes rt-pulse {
+  0%, 100% { box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25); }
+  50% { box-shadow: 0 4px 24px rgba(239, 68, 68, 0.45); }
+}
+
 .rt-settings__wallet-info {
   padding: 6px 0 10px;
 }
