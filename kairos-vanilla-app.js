@@ -9741,8 +9741,99 @@
       '</div>' +
     '</div>';
 
+    // --- Trade History (all) ---
+    html += _buildTradeHistoryHTML();
+
     return html;
   }
+
+  function _buildTradeHistoryHTML() {
+    var data = _rtCache.data;
+    var openTrades = (data && data.realOpenTrades) ? data.realOpenTrades : [];
+    var closedTrades = (data && data.realClosedTrades) ? data.realClosedTrades : [];
+    var allTrades = openTrades.concat(closedTrades);
+
+    if (allTrades.length === 0) return '';
+
+    // Sort by created_at desc (newest first)
+    allTrades.sort(function(a, b) {
+      return (b.entry_at || b.created_at || 0) - (a.entry_at || a.created_at || 0);
+    });
+
+    var sr = _rtSolRateCache.data;
+    var solJpy = sr ? sr.sol_jpy : 0;
+
+    var html = '<div class="rt-history" id="rt-history-section">' +
+      '<div class="rt-history__header" onclick="window._toggleRtHistory()">' +
+        '<span class="rt-history__title">取引履歴</span>' +
+        '<span class="rt-history__count">' + allTrades.length + '件</span>' +
+        '<span class="rt-history__arrow" id="rt-history-arrow">›</span>' +
+      '</div>' +
+      '<div class="rt-history__body" id="rt-history-body" style="display:none">';
+
+    allTrades.forEach(function(t) {
+      var isOpen = t.status === 'open';
+      var pnl = t.realized_pnl_pct || 0;
+      var pnlSol = t.realized_pnl_sol || 0;
+      var pnlJpy = t.realized_pnl_jpy || (pnlSol * solJpy);
+      var isPos = pnl >= 0;
+      var sign = isPos ? '+' : '';
+      var symbol = t.symbol || '???';
+      var src = t.source === 'sl' ? '🦁' : 'PT';
+      var amountSol = t.amount_sol || 0;
+
+      // Date formatting (JST)
+      var dateStr = '';
+      var ts = t.entry_at || t.created_at || 0;
+      if (ts) {
+        var d2 = new Date((ts + 9 * 3600) * 1000);
+        dateStr = (d2.getMonth() + 1) + '/' + d2.getDate() + ' ' +
+          ('0' + d2.getHours()).slice(-2) + ':' + ('0' + d2.getMinutes()).slice(-2);
+      }
+
+      var exitInfo = '';
+      if (isOpen) {
+        exitInfo = '<span class="rt-history__status rt-history__status--open">保有中</span>';
+      } else {
+        var reason = t.exit_reason || '-';
+        exitInfo = '<span class="rt-history__status rt-history__status--closed">' + reason + '</span>';
+      }
+
+      var txSig = t.tx_signature || '';
+      var txLink = txSig ? 'https://solscan.io/tx/' + txSig : '';
+
+      html += '<div class="rt-history__item' + (isOpen ? ' rt-history__item--open' : '') + '">' +
+        '<div class="rt-history__item-top">' +
+          '<span class="rt-trade__badge rt-trade__badge--' + (t.source === 'sl' ? 'sl' : 'pt') + '">' + src + '</span>' +
+          '<span class="rt-history__symbol">' + symbol + '</span>' +
+          '<span class="rt-history__date">' + dateStr + '</span>' +
+          (isOpen ?
+            '<span class="rt-history__pnl rt-history__pnl--open">保有中</span>' :
+            '<span class="rt-history__pnl ' + (isPos ? 'positive' : 'negative') + '">' + sign + pnl.toFixed(1) + '%</span>'
+          ) +
+        '</div>' +
+        '<div class="rt-history__item-bottom">' +
+          '<span class="rt-history__amount">' + amountSol.toFixed(4) + ' SOL</span>' +
+          (!isOpen ? '<span class="rt-history__jpy ' + (isPos ? 'positive' : 'negative') + '">' + sign + _formatRtYen(pnlJpy) + '</span>' : '') +
+          exitInfo +
+          (txLink ? '<a class="rt-history__tx" href="' + txLink + '" target="_blank" rel="noopener">TX</a>' : '') +
+        '</div>' +
+      '</div>';
+    });
+
+    html += '</div></div>';
+    return html;
+  }
+
+  window._toggleRtHistory = function() {
+    var body = document.getElementById('rt-history-body');
+    var arrow = document.getElementById('rt-history-arrow');
+    if (body) {
+      var open = body.style.display !== 'none';
+      body.style.display = open ? 'none' : 'block';
+      if (arrow) arrow.style.transform = open ? '' : 'rotate(90deg)';
+    }
+  };
 
   function _buildClosedTradesHTML(d) {
     var data = _rtCache.data;
