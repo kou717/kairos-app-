@@ -10280,34 +10280,84 @@
   };
 
   window._toggleRtActive = function(isActive) {
-    var w = _rtWalletCache.data;
-    if (isActive && (!w || !w.configured)) {
-      alert('ウォレットが未接続です。Railwayの環境変数にSOLANA_PRIVATE_KEYを設定してください。');
-      // Revert checkbox
+    console.log('[RT] toggleRtActive called:', isActive);
+    var _revertCb = function() {
       var cb = document.querySelector('.rt-settings__row--highlight input[type="checkbox"]');
-      if (cb) cb.checked = false;
-      return;
-    }
-    if (isActive && w && w.balance_sol < 0.01) {
-      alert('ウォレット残高が不足しています（' + w.balance_sol.toFixed(4) + ' SOL）。入金してください。');
-      var cb2 = document.querySelector('.rt-settings__row--highlight input[type="checkbox"]');
-      if (cb2) cb2.checked = false;
-      return;
-    }
+      if (cb) cb.checked = !isActive;
+    };
+
     if (isActive) {
+      // Wallet check: if data not loaded yet, fetch first then retry
+      var w = _rtWalletCache.data;
+      if (!w) {
+        // Data not loaded — fetch wallet info first
+        if (window.KAIROS && window.KAIROS.Features) {
+          window.KAIROS.Features.showToast('ウォレット情報を取得中...', 'info', 2000);
+        }
+        BackendAPI.getWalletInfo().then(function(walletData) {
+          if (walletData) _rtWalletCache = { data: walletData, time: Date.now() };
+          // Re-call with fresh data
+          window._toggleRtActive(true);
+        }).catch(function() {
+          alert('ウォレット情報の取得に失敗しました。バックエンドが起動しているか確認してください。');
+          _revertCb();
+        });
+        return;
+      }
+      if (!w.configured) {
+        alert('ウォレットが未接続です。Railwayの環境変数にSOLANA_PRIVATE_KEYを設定してください。');
+        _revertCb();
+        return;
+      }
+      if (w.balance_sol < 0.01) {
+        alert('ウォレット残高が不足しています（' + w.balance_sol.toFixed(4) + ' SOL）。入金してください。');
+        _revertCb();
+        return;
+      }
       if (!confirm('実弾モードをONにしますか？\nSLの覚醒時にリアルSOLで自動売買が実行されます。')) {
-        var cb3 = document.querySelector('.rt-settings__row--highlight input[type="checkbox"]');
-        if (cb3) cb3.checked = false;
+        _revertCb();
         return;
       }
     }
+
     var settings = _getRealTradingSettings();
     settings.isActive = isActive;
-    _saveRealTradingSettings(settings);
-    // Full re-render to update hero label, status, and settings checkbox
-    var container = document.getElementById('rt-content');
-    if (container) {
-      try { container.innerHTML = _buildRealTradingHTML(settings); } catch(e) { console.error('[RT] rebuild error:', e); }
+    _rtSettingsCache = settings;
+    localStorage.setItem('kairos-rt-settings', JSON.stringify(settings));
+
+    // Save to backend with confirmation
+    var payload = {
+      per_trade_jpy: settings.perTradeJpy,
+      initial_capital_jpy: settings.initialCapitalJpy,
+      max_concurrent: settings.maxConcurrent,
+      daily_limit_jpy: settings.dailyLimitJpy,
+      enable_sl: settings.enableSL ? 1 : 0,
+      enable_pt: settings.enablePT ? 1 : 0,
+      is_active: settings.isActive ? 1 : 0
+    };
+    BackendAPI.saveRealTradingSettings(payload).then(function() {
+      console.log('[RT] Settings saved to backend:', isActive ? 'ACTIVE' : 'INACTIVE');
+      if (window.KAIROS && window.KAIROS.Features) {
+        window.KAIROS.Features.showToast(
+          isActive ? '実弾モード ON — 保存完了' : '実弾モード OFF — 保存完了',
+          isActive ? 'success' : 'info', 3000
+        );
+      }
+    }).catch(function(err) {
+      console.error('[RT] Settings save FAILED:', err);
+      // Revert on failure
+      settings.isActive = !isActive;
+      _rtSettingsCache = settings;
+      localStorage.setItem('kairos-rt-settings', JSON.stringify(settings));
+      _revertCb();
+      alert('設定の保存に失敗しました。バックエンド接続を確認してください。\n' + (err.message || ''));
+    });
+
+    // Update UI immediately (optimistic)
+    var heroStatus = document.getElementById('rt-hero-status');
+    if (heroStatus) {
+      heroStatus.textContent = isActive ? '実弾稼働中' : '待機中';
+      heroStatus.className = 'rt-hero__status ' + (isActive ? 'rt-hero__status--active' : 'rt-hero__status--inactive');
     }
   };
 
