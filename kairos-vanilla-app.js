@@ -11599,10 +11599,18 @@
     }
   }
 
+  var _lastCollectorData = null; // Cache last dashboard data for instant display
+
   function _refreshCollectorData() {
     var container = document.getElementById('collector-monitor-content');
     if (!container) return;
-    container.innerHTML = '<div class="collector-monitor__loading">読み込み中...</div>';
+
+    // Show cached data instantly (no loading flash), then refresh in background
+    if (_lastCollectorData) {
+      container.innerHTML = _renderCollectorContent(_lastCollectorData.health, _lastCollectorData.stats);
+    } else {
+      container.innerHTML = '<div class="collector-monitor__loading">読み込み中...</div>';
+    }
 
     // 統合エンドポイントで health + stats を1リクエストで取得（今日のJST日付でフィルタ）
     fetch(BACKEND_URL + '/api/collector/dashboard?date=' + _getTodayJST())
@@ -11611,14 +11619,20 @@
         return r.json();
       })
       .then(function(data) {
-        container.innerHTML = _renderCollectorContent(data.health, data.stats);
+        _lastCollectorData = data;
+        container = document.getElementById('collector-monitor-content');
+        if (container) {
+          container.innerHTML = _renderCollectorContent(data.health, data.stats);
+        }
       })
       .catch(function(err) {
-        container.innerHTML = '<div class="collector-monitor__error">' +
-          '<div style="font-size:24px;margin-bottom:8px">!</div>' +
-          '<div>バックエンドに接続できません</div>' +
-          '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">' + (err.message || err) + '</div>' +
-        '</div>';
+        if (!_lastCollectorData) {
+          container.innerHTML = '<div class="collector-monitor__error">' +
+            '<div style="font-size:24px;margin-bottom:8px">!</div>' +
+            '<div>バックエンドに接続できません</div>' +
+            '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">' + (err.message || err) + '</div>' +
+          '</div>';
+        }
       });
   }
 
