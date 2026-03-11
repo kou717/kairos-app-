@@ -9734,7 +9734,7 @@
           '</div>' +
         '</div>' +
         '<div class="rt-settings__start-section">' +
-          '<button class="rt-start-btn' + (settings.isActive ? ' rt-start-btn--active' : '') + '" id="rt-start-btn" onclick="window._toggleRtActive(!_getRealTradingSettings().isActive)">' +
+          '<button class="rt-start-btn' + (settings.isActive ? ' rt-start-btn--active' : '') + '" id="rt-start-btn" onclick="window._toggleRtActive(' + (settings.isActive ? 'false' : 'true') + ')">' +
             (settings.isActive ? '運用中 — タップで停止' : 'トレードスタート') +
           '</button>' +
         '</div>' +
@@ -10391,6 +10391,7 @@
       if (btn) {
         btn.textContent = active ? '運用中 — タップで停止' : 'トレードスタート';
         btn.className = 'rt-start-btn' + (active ? ' rt-start-btn--active' : '');
+        btn.setAttribute('onclick', 'window._toggleRtActive(' + (active ? 'false' : 'true') + ')');
       }
     };
 
