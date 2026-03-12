@@ -9404,7 +9404,7 @@
     Promise.all([
       BackendAPI.getWalletInfo().catch(function() { return null; }),
       BackendAPI.getSolRate().catch(function() { return null; }),
-      BackendAPI.getRealTrades('open').catch(function() { return { trades: [] }; }),
+      BackendAPI.getRealTrades('open,sell_failed,pending').catch(function() { return { trades: [] }; }),
       BackendAPI.getRealTrades('closed').catch(function() { return { trades: [] }; })
     ]).then(function(results) {
       // Only update cache if API returned valid data; keep previous on failure
@@ -9933,10 +9933,15 @@
         var amountSol = t.amount_sol || 0;
         var typeBadge = item.type === 'SL' ? '<span class="rt-trade__badge rt-trade__badge--sl">🦁</span>' : '<span class="rt-trade__badge rt-trade__badge--pt">PT</span>';
 
+        var statusBadge = '';
+        if (t.status === 'sell_failed') statusBadge = '<span class="rt-trade__status rt-trade__status--failed">売却失敗</span>';
+        else if (t.status === 'pending') statusBadge = '<span class="rt-trade__status rt-trade__status--pending">処理中</span>';
+
         html += '<div class="rt-trade' + tierClass + '">' +
           '<div class="rt-trade__top">' +
             typeBadge +
             '<span class="rt-trade__symbol">' + symbol + '</span>' +
+            statusBadge +
             '<span class="rt-trade__pnl ' + (isPos ? 'positive' : 'negative') + '">' + sign + pnl.toFixed(1) + '%</span>' +
           '</div>' +
           '<div class="rt-trade__bar">' +
@@ -11599,10 +11604,18 @@
     }
   }
 
+  var _lastCollectorData = null; // Cache last dashboard data for instant display
+
   function _refreshCollectorData() {
     var container = document.getElementById('collector-monitor-content');
     if (!container) return;
-    container.innerHTML = '<div class="collector-monitor__loading">読み込み中...</div>';
+
+    // Show cached data instantly (no loading flash), then refresh in background
+    if (_lastCollectorData) {
+      container.innerHTML = _renderCollectorContent(_lastCollectorData.health, _lastCollectorData.stats);
+    } else {
+      container.innerHTML = '<div class="collector-monitor__loading">読み込み中...</div>';
+    }
 
     // 統合エンドポイントで health + stats を1リクエストで取得（今日のJST日付でフィルタ）
     fetch(BACKEND_URL + '/api/collector/dashboard?date=' + _getTodayJST())
@@ -11611,14 +11624,20 @@
         return r.json();
       })
       .then(function(data) {
-        container.innerHTML = _renderCollectorContent(data.health, data.stats);
+        _lastCollectorData = data;
+        container = document.getElementById('collector-monitor-content');
+        if (container) {
+          container.innerHTML = _renderCollectorContent(data.health, data.stats);
+        }
       })
       .catch(function(err) {
-        container.innerHTML = '<div class="collector-monitor__error">' +
-          '<div style="font-size:24px;margin-bottom:8px">!</div>' +
-          '<div>バックエンドに接続できません</div>' +
-          '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">' + (err.message || err) + '</div>' +
-        '</div>';
+        if (!_lastCollectorData) {
+          container.innerHTML = '<div class="collector-monitor__error">' +
+            '<div style="font-size:24px;margin-bottom:8px">!</div>' +
+            '<div>バックエンドに接続できません</div>' +
+            '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">' + (err.message || err) + '</div>' +
+          '</div>';
+        }
       });
   }
 

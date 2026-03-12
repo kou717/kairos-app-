@@ -17031,6 +17031,30 @@ body.has-ticker-bar {
   color: #a855f7;
 }
 
+.rt-trade__status {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.rt-trade__status--failed {
+  background: rgba(239,68,68,0.2);
+  color: #ef4444;
+  animation: rt-status-pulse 2s ease-in-out infinite;
+}
+
+.rt-trade__status--pending {
+  background: rgba(250,204,21,0.2);
+  color: #facc15;
+}
+
+@keyframes rt-status-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 .rt-trade__symbol {
   font-size: 14px;
   font-weight: 700;
