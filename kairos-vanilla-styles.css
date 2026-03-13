@@ -861,7 +861,6 @@
   color: #0f766e !important;
 }
 
-
 /* ===== 共通CSS変数 ===== */
 :root {
   --font-number: 'Inter', 'Noto Sans JP', -apple-system, sans-serif;
@@ -1041,7 +1040,6 @@ body {
   flex-direction: column;
   gap: 16px;
 }
-
 
 /* ===== グローバルヘッダー（常時表示） ===== */
 .global-header {
@@ -1981,7 +1979,6 @@ body {
   font-size: 10px;
   font-weight: 600;
 }
-
 
 /* ===== 通貨画面 ===== */
 .currencies {
@@ -3418,7 +3415,6 @@ body {
   margin-left: 4px;
 }
 
-
 /* ===== RANK/PRICEポップアップ ===== */
 .metric-popup-overlay {
   position: fixed;
@@ -3860,7 +3856,6 @@ body {
 .emergency-alert__btn--close:hover {
   background: rgba(0,0,0,0.4);
 }
-
 
 /* ===== 詳細画面 ===== */
 .detail {
@@ -6271,7 +6266,6 @@ body {
   }
 }
 
-
 /* ===== サイドメニュー ===== */
 .kairos-side-menu-overlay {
   position: fixed;
@@ -8489,7 +8483,6 @@ body {
     margin: 0 8px;
   }
 }
-
 
 /* ============================================
    通貨追加モーダル
@@ -16530,143 +16523,6 @@ body.has-ticker-bar {
   background: rgba(99, 102, 241, 0.15);
   color: #818cf8;
 }
-
-/* ============================================
-   通貨別ストラテジーUI（長期/短期の2択）
-   ============================================ */
-
-/* ストラテジーバッジ（通貨名横の小さいピル） */
-.strategy-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 1px 6px;
-  border-radius: 8px;
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1.4;
-  white-space: nowrap;
-  vertical-align: middle;
-}
-
-.strategy-badge--longterm {
-  color: #3b82f6;
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-}
-
-.strategy-badge--swing {
-  color: #f59e0b;
-  background: rgba(245, 158, 11, 0.15);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-}
-
-/* ============================================
-   ストラテジートグル（ヘッダー用・高級メタル風）
-   ============================================ */
-.strategy-toggle {
-  position: relative;
-  display: flex;
-  border-radius: 6px;
-  cursor: pointer;
-  overflow: hidden;
-  border: 2px solid rgba(255,255,255,0.15);
-  background: rgba(0,0,0,0.4);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.08) inset,
-    0 2px 6px rgba(0,0,0,0.4);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.strategy-toggle__slider {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 50%;
-  height: 100%;
-  border-radius: 4px;
-  transition: left 0.45s cubic-bezier(0.25, 0.8, 0.25, 1),
-              background 0.5s ease,
-              border-color 0.5s ease,
-              box-shadow 0.5s ease;
-  z-index: 0;
-}
-
-/* スライダー位置: 長期=左、短期=右 */
-.strategy-toggle--swing .strategy-toggle__slider {
-  left: 50%;
-}
-
-/* 長期スライダー（コアカラー） */
-.strategy-toggle--longterm .strategy-toggle__slider {
-  background:
-    linear-gradient(180deg,
-      rgba(255,255,255,0.35) 0%,
-      rgba(255,255,255,0.05) 45%,
-      rgba(0,0,0,0.05) 55%,
-      rgba(0,0,0,0.15) 100%),
-    linear-gradient(180deg,
-      color-mix(in srgb, var(--mode-core-primary) 100%, white 0%) 0%,
-      var(--mode-core-primary) 50%,
-      color-mix(in srgb, var(--mode-core-primary) 70%, black) 100%);
-  border: 1px solid color-mix(in srgb, var(--mode-core-primary) 70%, white);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.5) inset,
-    0 -1px 0 rgba(0,0,0,0.2) inset,
-    0 2px 8px var(--mode-core-glow);
-}
-
-/* 短期スライダー（サテライトカラー） */
-.strategy-toggle--swing .strategy-toggle__slider {
-  background:
-    linear-gradient(180deg,
-      rgba(255,255,255,0.35) 0%,
-      rgba(255,255,255,0.05) 45%,
-      rgba(0,0,0,0.05) 55%,
-      rgba(0,0,0,0.15) 100%),
-    linear-gradient(180deg,
-      color-mix(in srgb, var(--mode-satellite-primary) 100%, white 0%) 0%,
-      var(--mode-satellite-primary) 50%,
-      color-mix(in srgb, var(--mode-satellite-primary) 70%, black) 100%);
-  border: 1px solid color-mix(in srgb, var(--mode-satellite-primary) 70%, white);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.5) inset,
-    0 -1px 0 rgba(0,0,0,0.2) inset,
-    0 2px 8px var(--mode-satellite-glow);
-}
-
-.strategy-toggle__option {
-  position: relative;
-  z-index: 1;
-  padding: 5px 12px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  color: rgba(255,255,255,0.35);
-  transition: color 0.4s ease 0.05s;
-  text-align: center;
-  white-space: nowrap;
-  user-select: none;
-}
-
-/* アクティブ側のテキスト */
-.strategy-toggle--longterm .strategy-toggle__option--longterm,
-.strategy-toggle--swing .strategy-toggle__option--swing {
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0,0,0,0.4);
-}
-
-/* ホバー効果 */
-.strategy-toggle:active {
-  transform: scale(0.97);
-}
-
-.strategy-toggle:active .strategy-toggle__slider {
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.2) inset,
-    0 -1px 0 rgba(0,0,0,0.1) inset,
-    0 1px 3px rgba(0,0,0,0.3);
-}
 .rt-screen {
   padding: 60px 16px 100px;
 }
@@ -17385,3 +17241,407 @@ body.has-ticker-bar {
   border-radius: 6px;
 }
 
+.rt-settings__row--highlight {
+  background: rgba(255,255,255,0.04);
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* --- RT History Overlay (PT/SL card click popup) --- */
+.rt-history-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 9999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.rt-history-popup {
+  background: var(--bg-secondary, #111827);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 500px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 16px;
+  animation: rt-slide-up 0.3s ease-out;
+}
+
+@keyframes rt-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.rt-history__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 12px;
+}
+
+.rt-history__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #faf8f5);
+}
+
+.rt-history__close {
+  font-size: 22px;
+  color: var(--text-secondary, #a09080);
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.rt-history__summary {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 0 16px;
+}
+
+.rt-history__total {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.rt-history__record {
+  font-size: 12px;
+  color: var(--text-secondary, #a09080);
+}
+
+.rt-history__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rt-history__empty {
+  text-align: center;
+  padding: 40px 0;
+  color: var(--text-tertiary, #8b7355);
+  font-size: 14px;
+}
+
+.rt-history__date-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #a09080);
+  border-top: 1px solid rgba(255,255,255,0.05);
+  margin-top: 4px;
+}
+
+/* --- RT History Section (bottom of 資産 screen) --- */
+.rt-history {
+  margin-top: 12px;
+  background: var(--bg-secondary, #111827);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.rt-history .rt-history__header {
+  padding: 14px 16px;
+  margin-bottom: 0;
+  border-bottom: none;
+  cursor: pointer;
+}
+
+.rt-history__count {
+  font-size: 12px;
+  color: var(--text-secondary, #a09080);
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.rt-history__arrow {
+  font-size: 16px;
+  color: var(--text-secondary, #a09080);
+  transition: transform 0.2s;
+  display: inline-block;
+}
+
+.rt-history__body {
+  padding: 0 12px 12px;
+}
+
+.rt-history__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 10px;
+  margin-bottom: 4px;
+}
+
+.rt-history__item--open {
+  border-left: 3px solid var(--accent, #d4a853);
+}
+
+.rt-history__item-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rt-history__symbol {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary, #faf8f5);
+  flex: 1;
+}
+
+.rt-history__date {
+  font-size: 11px;
+  color: var(--text-tertiary, #8b7355);
+}
+
+.rt-history__pnl {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.rt-history__pnl--open {
+  color: var(--accent, #d4a853);
+  font-weight: 500;
+  font-size: 11px;
+}
+
+.rt-history__item-bottom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.rt-history__amount {
+  color: var(--text-secondary, #a09080);
+}
+
+.rt-history__jpy {
+  font-weight: 600;
+}
+
+.rt-history__status {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.rt-history__status--open {
+  background: rgba(212,168,83,0.15);
+  color: var(--accent, #d4a853);
+}
+
+.rt-history__status--closed {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-secondary, #a09080);
+}
+
+.rt-history__tx {
+  font-size: 10px;
+  color: var(--accent, #d4a853);
+  text-decoration: none;
+  margin-left: auto;
+  padding: 1px 6px;
+  border: 1px solid rgba(212,168,83,0.3);
+  border-radius: 4px;
+}
+
+/* --- RT History Export --- */
+.rt-history__export {
+  padding: 16px 0 4px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  margin-top: 8px;
+}
+
+.rt-history__export-title {
+  font-size: 12px;
+  color: var(--text-secondary, #a09080);
+  margin-bottom: 8px;
+}
+
+.rt-history__export-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.rt-history__export-btn {
+  flex: 1;
+  min-width: 90px;
+  padding: 8px 12px;
+  border: 1px solid rgba(212,168,83,0.3);
+  background: rgba(212,168,83,0.08);
+  color: var(--accent, #d4a853);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.rt-history__export-btn--sub {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.1);
+  color: var(--text-secondary, #a09080);
+}
+
+/* --- RT History Popup Trade Items --- */
+.rt-history-popup .rt-trade {
+  margin-bottom: 4px;
+}
+
+.rt-history-popup .rt-trade--closed {
+  background: rgba(255,255,255,0.03);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+/* ============================================
+   通貨別ストラテジーUI（長期/短期の2択）
+   ============================================ */
+
+/* ストラテジーバッジ（通貨名横の小さいピル） */
+.strategy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.strategy-badge--longterm {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.strategy-badge--swing {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* ============================================
+   ストラテジートグル（ヘッダー用・高級メタル風）
+   ============================================ */
+.strategy-toggle {
+  position: relative;
+  display: flex;
+  border-radius: 6px;
+  cursor: pointer;
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.4);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.08) inset,
+    0 2px 6px rgba(0,0,0,0.4);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.strategy-toggle__slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  border-radius: 4px;
+  transition: left 0.45s cubic-bezier(0.25, 0.8, 0.25, 1),
+              background 0.5s ease,
+              border-color 0.5s ease,
+              box-shadow 0.5s ease;
+  z-index: 0;
+}
+
+/* スライダー位置: 長期=左、短期=右 */
+.strategy-toggle--swing .strategy-toggle__slider {
+  left: 50%;
+}
+
+/* 長期スライダー（コアカラー） */
+.strategy-toggle--longterm .strategy-toggle__slider {
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,0.35) 0%,
+      rgba(255,255,255,0.05) 45%,
+      rgba(0,0,0,0.05) 55%,
+      rgba(0,0,0,0.15) 100%),
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--mode-core-primary) 100%, white 0%) 0%,
+      var(--mode-core-primary) 50%,
+      color-mix(in srgb, var(--mode-core-primary) 70%, black) 100%);
+  border: 1px solid color-mix(in srgb, var(--mode-core-primary) 70%, white);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.5) inset,
+    0 -1px 0 rgba(0,0,0,0.2) inset,
+    0 2px 8px var(--mode-core-glow);
+}
+
+/* 短期スライダー（サテライトカラー） */
+.strategy-toggle--swing .strategy-toggle__slider {
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,0.35) 0%,
+      rgba(255,255,255,0.05) 45%,
+      rgba(0,0,0,0.05) 55%,
+      rgba(0,0,0,0.15) 100%),
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--mode-satellite-primary) 100%, white 0%) 0%,
+      var(--mode-satellite-primary) 50%,
+      color-mix(in srgb, var(--mode-satellite-primary) 70%, black) 100%);
+  border: 1px solid color-mix(in srgb, var(--mode-satellite-primary) 70%, white);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.5) inset,
+    0 -1px 0 rgba(0,0,0,0.2) inset,
+    0 2px 8px var(--mode-satellite-glow);
+}
+
+.strategy-toggle__option {
+  position: relative;
+  z-index: 1;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,0.35);
+  transition: color 0.4s ease 0.05s;
+  text-align: center;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* アクティブ側のテキスト */
+.strategy-toggle--longterm .strategy-toggle__option--longterm,
+.strategy-toggle--swing .strategy-toggle__option--swing {
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.4);
+}
+
+/* ホバー効果 */
+.strategy-toggle:active {
+  transform: scale(0.97);
+}
+
+.strategy-toggle:active .strategy-toggle__slider {
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.2) inset,
+    0 -1px 0 rgba(0,0,0,0.1) inset,
+    0 1px 3px rgba(0,0,0,0.3);
+}
