@@ -1,7 +1,7 @@
 // KAIROS Service Worker v19.16 - Urgent Moonshot Alert + Worker Integration
-const CACHE_NAME = 'kairos-v19-72';
-const STATIC_CACHE = 'kairos-static-v19-72';
-const DYNAMIC_CACHE = 'kairos-dynamic-v19-72';
+const CACHE_NAME = 'kairos-v19-73';
+const STATIC_CACHE = 'kairos-static-v19-73';
+const DYNAMIC_CACHE = 'kairos-dynamic-v19-73';
 
 // 静的アセット（必ずキャッシュ）
 const STATIC_ASSETS = [
@@ -52,7 +52,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter(name => !name.includes('v19-72'))
+          .filter(name => !name.includes('v19-73'))
           .map(name => {
             console.log('[SW] Deleting old cache:', name);
             return caches.delete(name);

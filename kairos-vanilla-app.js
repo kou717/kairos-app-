@@ -10055,8 +10055,15 @@
     // Update wallet bar
     var walletEl = document.getElementById('rt-wallet');
     if (walletEl) {
+      var w2 = _rtWalletCache.data;
+      var walletConfigured2 = w2 && w2.configured;
       var sr2 = _rtSolRateCache.data;
       var sj2 = sr2 ? sr2.sol_jpy : 0;
+      var statusEls = walletEl.querySelectorAll('.rt-wallet__status');
+      if (statusEls[0]) {
+        statusEls[0].textContent = walletConfigured2 ? '接続済み' : '未接続';
+        statusEls[0].className = 'rt-wallet__status ' + (walletConfigured2 ? 'rt-wallet__status--ok' : 'rt-wallet__status--ng');
+      }
       var balEls = walletEl.querySelectorAll('.rt-wallet__balance');
       if (balEls[0]) balEls[0].textContent = d.balanceSol.toFixed(4) + ' SOL';
       var jpyEls = walletEl.querySelectorAll('.rt-wallet__jpy');
