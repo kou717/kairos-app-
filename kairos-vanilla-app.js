@@ -11357,14 +11357,20 @@
     }
   };
 
-  function _thpFormatTime(isoStr) {
-    if (!isoStr) return '-';
-    try { return formatTimeJST(new Date(isoStr)); } catch(e) { return '-'; }
+  function _thpFormatTime(ts) {
+    if (!ts) return '-';
+    try {
+      var d = typeof ts === 'number' ? new Date(ts * 1000) : new Date(ts);
+      return formatTimeJST(d);
+    } catch(e) { return '-'; }
   }
 
-  function _thpFormatDateTime(isoStr) {
-    if (!isoStr) return '-';
-    try { return formatDateTimeJST(new Date(isoStr)); } catch(e) { return '-'; }
+  function _thpFormatDateTime(ts) {
+    if (!ts) return '-';
+    try {
+      var d = typeof ts === 'number' ? new Date(ts * 1000) : new Date(ts);
+      return formatDateTimeJST(d);
+    } catch(e) { return '-'; }
   }
 
   function _thpTrustBadge(trust) {
