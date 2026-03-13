@@ -8,7 +8,6 @@
 (function() {
   'use strict';
 
-
   // ===== 定数 =====
   var STORAGE_KEY = 'kairos_investment_records';
   var VERSION = '7.0.0';
@@ -331,7 +330,6 @@
   // ===== データ =====
   var kairosData = window.kairosData || {};
   var KAIROS_ICON = window.KAIROS_ICON || '';
-
 
   // ============================================
   // 1. PRICE API - バックエンド経由
@@ -1422,7 +1420,6 @@
     }
   };
 
-
   // ============================================
   // グローバル公開
   // ============================================
@@ -2069,7 +2066,6 @@
     return text.substring(0, maxLen) + '...';
   }
 
-
   // ===== ユーティリティ =====
   var JPY_RATE = 150;
 
@@ -2470,7 +2466,6 @@
     '</div>';
   }
 
-
   // ===== スプラッシュ画面 =====
   function renderSplashScreen() {
     return '<div class="splash">' +
@@ -2807,7 +2802,6 @@
       }
     }
   }, false);
-
 
   // ===== グローバルヘッダー =====
   var globalHeaderState = {
@@ -5813,8 +5807,8 @@
 
     var html = '';
 
-    // ヒーローカード
-    html += '<div class="performance-hero">' +
+    // ヒーローカード — タップでPT履歴
+    html += '<div class="performance-hero" onclick="window._openPTClosedTrades()" style="cursor:pointer">' +
       '<div class="performance-hero__shine"></div>' +
       '<div class="performance-hero__stats">' +
         '<div class="performance-hero__stat">' +
@@ -5830,6 +5824,7 @@
           '<div class="performance-hero__stat-label">平均PnL</div>' +
         '</div>' +
       '</div>' +
+      '<div style="text-align:center;font-size:11px;color:rgba(255,255,255,0.35);margin-top:4px">タップで詳細 ▼</div>' +
     '</div>';
 
     // 📈 勝率トレンド（Phase 3-2）
@@ -11249,6 +11244,11 @@
       url = BACKEND_URL + '/api/collector/paper-trades/by-exit-reason?reason=' +
         encodeURIComponent(_tradePopupState.param) + dateParam +
         '&limit=' + _tradePopupState.perPage + '&offset=' + offset;
+    } else if (_tradePopupState.type === 'pt-closed') {
+      var ptPage = Math.floor(offset / _tradePopupState.perPage) + 1;
+      url = BACKEND_URL + '/api/collector/paper-trades?status=closed' +
+        '&per_page=' + _tradePopupState.perPage + '&page=' + ptPage +
+        (dateParam ? dateParam : '');
     } else {
       url = BACKEND_URL + '/api/collector/sleeping-lion/closed-trades?' +
         'limit=' + _tradePopupState.perPage + '&offset=' + offset +
@@ -11267,7 +11267,7 @@
           if (pag) pag.style.display = 'none';
           return;
         }
-        var listHtml = _tradePopupState.type === 'exit-reason'
+        var listHtml = (_tradePopupState.type === 'exit-reason' || _tradePopupState.type === 'pt-closed')
           ? _renderExitReasonPopupList(trades)
           : _renderSLPopupList(trades);
         body.innerHTML = listHtml;
@@ -11541,6 +11541,10 @@
 
   window._toggleSLClosedTrades = function() {
     _openTradeHistoryPopup('🦁 眠れる獅子 トレード履歴', 'sl-closed', '');
+  };
+
+  window._openPTClosedTrades = function() {
+    _openTradeHistoryPopup('📊 通常トレード履歴', 'pt-closed', '');
   };
 
   function _slFunnelStep(label, count, total) {
@@ -12346,7 +12350,6 @@
   window._setCollectorCoinsPage = _setCollectorCoinsPage;
   window._openCollectorCoinDetail = _openCollectorCoinDetail;
   window._closeCollectorCoinDetail = _closeCollectorCoinDetail;
-
 
   // ============================================
   // スワイプジェスチャー（v19で廃止 - 通貨別ストラテジー制に移行）
@@ -15043,7 +15046,6 @@
       }
     });
   }
-
 
   // ===== 売却矛盾警告 =====
   function checkSellStrategyWarning(ticker, callback) {
@@ -18519,7 +18521,6 @@
     createSideMenu();
   }
 
-
   // ===== リアルタイムデータ管理 =====
   var liveData = {
     fearGreed: null,
@@ -21713,7 +21714,6 @@
   }
 
 })();
-
 
   // ============================================
   // 通貨別ストラテジー管理（長期/短期の2択）
