@@ -923,11 +923,14 @@
   var BackendAPI = {
     baseUrl: BACKEND_URL,
     _available: null,
+    _availableAt: 0,
 
     healthCheck: function() {
       var self = this;
       return new Promise(function(resolve) {
-        if (self._available !== null) {
+        // Cache for 60s on success, 10s on failure (allow retry)
+        var now = Date.now();
+        if (self._available !== null && now - self._availableAt < (self._available ? 60000 : 10000)) {
           resolve(self._available);
           return;
         }
@@ -940,11 +943,13 @@
           .then(function(response) {
             clearTimeout(timeoutId);
             self._available = response.ok;
+            self._availableAt = Date.now();
             resolve(self._available);
           })
           .catch(function() {
             clearTimeout(timeoutId);
             self._available = false;
+            self._availableAt = Date.now();
             resolve(false);
           });
       });
