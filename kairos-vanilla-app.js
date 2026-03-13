@@ -2979,7 +2979,7 @@
       var isActive = appState.currentScreen === item.id;
       var activeClass = isActive ? ' nav-item--active' : '';
       var centerClass = item.isCenter ? ' nav-item--center' : '';
-      html += '<button class="nav-item' + activeClass + centerClass + '" data-screen="' + item.id + '">' +
+      html += '<button class="nav-item' + activeClass + centerClass + '" data-screen="' + item.id + '" onclick="navigateTo(\'' + item.id + '\')">' +
         '<span class="nav-item__icon">' + item.icon + '</span>' +
         '<span class="nav-item__label">' + item.label + '</span>' +
       '</button>';
