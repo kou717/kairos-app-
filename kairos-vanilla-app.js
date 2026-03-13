@@ -10319,15 +10319,6 @@
     settings[key] = value;
     _saveRealTradingSettings(settings);
     _renderRealTradingContent();
-
-    // Auto-prompt: if enabling SL/PT but is_active is off, ask to start
-    if ((key === 'enableSL' || key === 'enablePT') && value === true && !settings.isActive) {
-      setTimeout(function() {
-        if (confirm('対象を有効にしました。実弾トレードも開始しますか？')) {
-          window._toggleRtActive(true);
-        }
-      }, 200);
-    }
   };
 
   window._toggleRtActive = function(isActive) {
