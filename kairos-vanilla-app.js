@@ -9732,12 +9732,10 @@
             '</label>' +
           '</div>' +
         '</div>' +
-        '<div class="rt-settings__row rt-settings__row--highlight">' +
-          '<label>実弾モード</label>' +
-          '<label class="rt-settings__switch">' +
-            '<input type="checkbox" ' + (settings.isActive ? 'checked' : '') + ' onchange="window._toggleRtActive(this.checked)">' +
-            '<span class="rt-settings__slider"></span>' +
-          '</label>' +
+        '<div class="rt-settings__start-section">' +
+          '<button class="rt-start-btn' + (settings.isActive ? ' rt-start-btn--active' : '') + '" id="rt-start-btn" onclick="window._toggleRtActive(' + (settings.isActive ? 'false' : 'true') + ')">' +
+            (settings.isActive ? '運用中 — タップで停止' : 'トレードスタート') +
+          '</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -10392,6 +10390,14 @@
 
   window._toggleRtActive = function(isActive) {
     console.log('[RT] toggleRtActive called:', isActive);
+    var _updateStartBtn = function(active) {
+      var btn = document.getElementById('rt-start-btn');
+      if (btn) {
+        btn.textContent = active ? '運用中 — タップで停止' : 'トレードスタート';
+        btn.className = 'rt-start-btn' + (active ? ' rt-start-btn--active' : '');
+        btn.setAttribute('onclick', 'window._toggleRtActive(' + (active ? 'false' : 'true') + ')');
+      }
+    };
 
     if (isActive) {
       // Wallet check: if data not loaded yet, fetch first then retry
@@ -10427,6 +10433,7 @@
     localStorage.setItem('kairos-rt-settings', JSON.stringify(settings));
 
     // Update UI immediately (optimistic)
+    _updateStartBtn(isActive);
     var heroStatus = document.getElementById('rt-hero-status');
     if (heroStatus) {
       heroStatus.textContent = isActive ? '実弾稼働中' : '待機中';

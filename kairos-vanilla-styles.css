@@ -17241,14 +17241,40 @@ body.has-ticker-bar {
   border-radius: 6px;
 }
 
-.rt-settings__row--highlight {
-  background: rgba(255,255,255,0.04);
-  padding: 12px;
-  border-radius: 10px;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+/* --- RT Start Button --- */
+.rt-settings__start-section {
+  padding: 16px 0 4px;
+}
+
+.rt-start-btn {
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: linear-gradient(135deg, var(--accent, #d4a853), #e8c36a);
+  color: #0a0a0a;
+  box-shadow: 0 4px 20px rgba(212, 168, 83, 0.3);
+  letter-spacing: 0.5px;
+}
+
+.rt-start-btn:active {
+  transform: scale(0.97);
+}
+
+.rt-start-btn--active {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(34, 197, 94, 0.3);
+  animation: rt-btn-pulse 2s infinite;
+}
+
+@keyframes rt-btn-pulse {
+  0%, 100% { box-shadow: 0 4px 20px rgba(34, 197, 94, 0.3); }
+  50% { box-shadow: 0 4px 30px rgba(34, 197, 94, 0.5); }
 }
 
 /* --- RT History Overlay (PT/SL card click popup) --- */
