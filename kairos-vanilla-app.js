@@ -8,6 +8,7 @@
 (function() {
   'use strict';
 
+
   // ===== 定数 =====
   var STORAGE_KEY = 'kairos_investment_records';
   var VERSION = '7.0.0';
@@ -330,6 +331,7 @@
   // ===== データ =====
   var kairosData = window.kairosData || {};
   var KAIROS_ICON = window.KAIROS_ICON || '';
+
 
   // ============================================
   // 1. PRICE API - バックエンド経由
@@ -1283,72 +1285,6 @@
       });
     },
 
-    getRealTradingSettings: function() {
-      var self = this;
-      return new Promise(function(resolve, reject) {
-        self.healthCheck().then(function(available) {
-          if (!available) { reject(new Error('Backend not available')); return; }
-          fetch(self.baseUrl + '/api/collector/real-trading/settings')
-            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
-            .then(resolve).catch(reject);
-        });
-      });
-    },
-
-    saveRealTradingSettings: function(settings) {
-      var self = this;
-      return new Promise(function(resolve, reject) {
-        self.healthCheck().then(function(available) {
-          if (!available) { reject(new Error('Backend not available')); return; }
-          fetch(self.baseUrl + '/api/collector/real-trading/settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(settings)
-          })
-            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
-            .then(resolve).catch(reject);
-        });
-      });
-    },
-
-    getSolRate: function() {
-      var self = this;
-      return new Promise(function(resolve, reject) {
-        self.healthCheck().then(function(available) {
-          if (!available) { reject(new Error('Backend not available')); return; }
-          fetch(self.baseUrl + '/api/collector/real-trading/sol-rate')
-            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
-            .then(resolve).catch(reject);
-        });
-      });
-    },
-
-    getWalletInfo: function() {
-      var self = this;
-      return new Promise(function(resolve, reject) {
-        self.healthCheck().then(function(available) {
-          if (!available) { reject(new Error('Backend not available')); return; }
-          fetch(self.baseUrl + '/api/collector/real-trading/wallet')
-            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
-            .then(resolve).catch(reject);
-        });
-      });
-    },
-
-    getRealTrades: function(status) {
-      var self = this;
-      var url = self.baseUrl + '/api/collector/real-trading/trades';
-      if (status) url += '?status=' + encodeURIComponent(status);
-      return new Promise(function(resolve, reject) {
-        self.healthCheck().then(function(available) {
-          if (!available) { reject(new Error('Backend not available')); return; }
-          fetch(url)
-            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
-            .then(resolve).catch(reject);
-        });
-      });
-    },
-
     getDailyReport: function(date) {
       var self = this;
       var url = self.baseUrl + '/api/collector/daily-report';
@@ -1415,6 +1351,7 @@
       });
     }
   };
+
 
   // ============================================
   // グローバル公開
@@ -2062,6 +1999,7 @@
     return text.substring(0, maxLen) + '...';
   }
 
+
   // ===== ユーティリティ =====
   var JPY_RATE = 150;
 
@@ -2462,6 +2400,7 @@
     '</div>';
   }
 
+
   // ===== スプラッシュ画面 =====
   function renderSplashScreen() {
     return '<div class="splash">' +
@@ -2511,13 +2450,6 @@
       if (typeof _collectorAutoRefresh !== 'undefined' && _collectorAutoRefresh) {
         clearInterval(_collectorAutoRefresh);
         _collectorAutoRefresh = null;
-      }
-    }
-    // Real Trading自動更新を停止
-    if (appState.currentScreen === 'real-trading' && screenId !== 'real-trading') {
-      if (typeof _rtAutoRefresh !== 'undefined' && _rtAutoRefresh) {
-        clearInterval(_rtAutoRefresh);
-        _rtAutoRefresh = null;
       }
     }
     // Sleeping Lion自動更新を停止
@@ -2604,7 +2536,6 @@
     'moonshot': 'detection',
     'home': 'detection',
     'performance': 'detection',
-    'real-trading': 'detection',
     'collector': 'detection',
     'sleeping-lion': 'detection',
     'pattern-engine': 'performance',
@@ -2806,6 +2737,7 @@
       }
     }
   }, false);
+
 
   // ===== グローバルヘッダー =====
   var globalHeaderState = {
@@ -10387,6 +10319,15 @@
     settings[key] = value;
     _saveRealTradingSettings(settings);
     _renderRealTradingContent();
+
+    // Auto-prompt: if enabling SL/PT but is_active is off, ask to start
+    if ((key === 'enableSL' || key === 'enablePT') && value === true && !settings.isActive) {
+      setTimeout(function() {
+        if (confirm('対象を有効にしました。実弾トレードも開始しますか？')) {
+          window._toggleRtActive(true);
+        }
+      }, 200);
+    }
   };
 
   window._toggleRtActive = function(isActive) {
@@ -12335,6 +12276,7 @@
   window._setCollectorCoinsPage = _setCollectorCoinsPage;
   window._openCollectorCoinDetail = _openCollectorCoinDetail;
   window._closeCollectorCoinDetail = _closeCollectorCoinDetail;
+
 
   // ============================================
   // スワイプジェスチャー（v19で廃止 - 通貨別ストラテジー制に移行）
@@ -15031,6 +14973,7 @@
       }
     });
   }
+
 
   // ===== 売却矛盾警告 =====
   function checkSellStrategyWarning(ticker, callback) {
@@ -18506,6 +18449,7 @@
     createSideMenu();
   }
 
+
   // ===== リアルタイムデータ管理 =====
   var liveData = {
     fearGreed: null,
@@ -21699,6 +21643,7 @@
   }
 
 })();
+
 
   // ============================================
   // 通貨別ストラテジー管理（長期/短期の2択）
