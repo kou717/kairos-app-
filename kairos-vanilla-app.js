@@ -1403,6 +1403,17 @@
             .then(resolve).catch(reject);
         });
       });
+    },
+    getSolRate: function() {
+      var self = this;
+      return new Promise(function(resolve, reject) {
+        self.healthCheck().then(function(available) {
+          if (!available) { reject(new Error('Backend not available')); return; }
+          fetch(self.baseUrl + '/api/collector/real-trading/sol-rate')
+            .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
+            .then(resolve).catch(reject);
+        });
+      });
     }
   };
 
