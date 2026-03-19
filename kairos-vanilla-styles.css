@@ -14380,6 +14380,10 @@ body.has-ticker-bar {
   color: #f59e0b;
 }
 
+.perf-checkbox--eligible {
+  color: #10b981;
+}
+
 .performance-date-filter__select {
   flex: 1;
   min-width: 0;

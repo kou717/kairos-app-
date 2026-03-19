@@ -1188,10 +1188,13 @@
       });
     },
 
-    getCollectorStats: function(date) {
+    getCollectorStats: function(date, eligibleOnly) {
       var self = this;
       var url = self.baseUrl + '/api/collector/stats';
-      if (date) url += '?date=' + encodeURIComponent(date);
+      var params = [];
+      if (date) params.push('date=' + encodeURIComponent(date));
+      if (eligibleOnly) params.push('eligible_only=true');
+      if (params.length) url += '?' + params.join('&');
       return new Promise(function(resolve, reject) {
         self.healthCheck().then(function(available) {
           if (!available) { reject(new Error('Backend not available')); return; }
@@ -5398,6 +5401,7 @@
   // Performance state
   var _perfAllDates = false;   // 「すべて」チェック
   var _perfIncludeSL = false;  // 「レオ」チェック
+  var _perfEligibleOnly = false; // 「リアル候補のみ」チェック
 
   function renderPerformanceScreen() {
     return '<div class="performance-screen">' +
@@ -5408,6 +5412,7 @@
           '<option value="">読込中...</option>' +
         '</select>' +
         '<label class="perf-checkbox perf-checkbox--leo"><input type="checkbox" id="perf-include-sl" onchange="window._onPerfIncludeSLChange()"' + (_perfIncludeSL ? ' checked' : '') + '><span>🦁レオ</span></label>' +
+        '<label class="perf-checkbox perf-checkbox--eligible"><input type="checkbox" id="perf-eligible-only" onchange="window._onPerfEligibleChange()"' + (_perfEligibleOnly ? ' checked' : '') + '><span>🎯リアル候補</span></label>' +
       '</div>' +
       '<div id="performance-content">' +
         '<div class="moonshot-loading">' +
@@ -5439,7 +5444,7 @@
       dataPromise = window._perfPrefetch;
       window._perfPrefetch = null; // 1回だけ使用
     } else {
-      var statsP = BackendAPI.getCollectorStats(effectiveDate);
+      var statsP = BackendAPI.getCollectorStats(effectiveDate, _perfEligibleOnly);
       var statsDatesP = _perfDatesList
         ? Promise.resolve({ dates: _perfDatesList })
         : BackendAPI.getCollectorStatsDates().catch(function() { return { dates: [] }; });
@@ -5600,6 +5605,12 @@
   window._onPerfIncludeSLChange = function() {
     var cb = document.getElementById('perf-include-sl');
     _perfIncludeSL = cb ? cb.checked : false;
+    _loadPerformanceData();
+  };
+
+  window._onPerfEligibleChange = function() {
+    var cb = document.getElementById('perf-eligible-only');
+    _perfEligibleOnly = cb ? cb.checked : false;
     _loadPerformanceData();
   };
 
@@ -11357,20 +11368,14 @@
     }
   };
 
-  function _thpFormatTime(ts) {
-    if (!ts) return '-';
-    try {
-      var d = typeof ts === 'number' ? new Date(ts * 1000) : new Date(ts);
-      return formatTimeJST(d);
-    } catch(e) { return '-'; }
+  function _thpFormatTime(isoStr) {
+    if (!isoStr) return '-';
+    try { return formatTimeJST(new Date(isoStr)); } catch(e) { return '-'; }
   }
 
-  function _thpFormatDateTime(ts) {
-    if (!ts) return '-';
-    try {
-      var d = typeof ts === 'number' ? new Date(ts * 1000) : new Date(ts);
-      return formatDateTimeJST(d);
-    } catch(e) { return '-'; }
+  function _thpFormatDateTime(isoStr) {
+    if (!isoStr) return '-';
+    try { return formatDateTimeJST(new Date(isoStr)); } catch(e) { return '-'; }
   }
 
   function _thpTrustBadge(trust) {
