@@ -5824,6 +5824,20 @@
 
     var html = '';
 
+    // eligible_onlyでデータなしの場合
+    if (_perfEligibleOnly && totalTrades === 0) {
+      html += '<div class="performance-hero">' +
+        '<div class="performance-hero__stats">' +
+          '<div style="text-align:center;padding:16px;color:rgba(255,255,255,0.5)">' +
+            '<div style="font-size:24px;margin-bottom:8px">📊</div>' +
+            '<div>リアル候補データ不足</div>' +
+            '<div style="font-size:11px;margin-top:4px;color:rgba(255,255,255,0.3)">3分スナップショットは3/20以降のデータで集計されます</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+      return html;
+    }
+
     // ヒーローカード — タップでPT履歴
     html += '<div class="performance-hero" onclick="window._openPTClosedTrades()" style="cursor:pointer">' +
       '<div class="performance-hero__shine"></div>' +
