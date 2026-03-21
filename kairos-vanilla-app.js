@@ -933,9 +933,9 @@
           return;
         }
 
-        // 2秒でタイムアウト（バックエンドがなければ即座にスキップ）
+        // 5秒でタイムアウト（モバイル回線でも余裕を持たせる）
         var controller = new AbortController();
-        var timeoutId = setTimeout(function() { controller.abort(); }, 2000);
+        var timeoutId = setTimeout(function() { controller.abort(); }, 5000);
 
         fetch(self.baseUrl + '/', { signal: controller.signal })
           .then(function(response) {
