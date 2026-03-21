@@ -11414,7 +11414,8 @@
       var pnlColor = pnl > 0 ? '#10b981' : '#ef4444';
       var pnlSign = pnl >= 0 ? '+' : '';
       var peakPnl = t.peak_pnl_pct || 0;
-      var timing = t.entry_timing || '-';
+      var timing = _perfEligibleOnly ? '3min' : (t.entry_timing || '-');
+      var entryPrice = (_perfEligibleOnly && t.eligible_price_at_check) ? t.eligible_price_at_check : (t.entry_price || 0);
 
       html += '<div class="thp-item" onclick="window._thpToggleDetail(' + i + ')">' +
         '<div class="thp-item__row">' +
@@ -11430,7 +11431,7 @@
         '</div>' +
         '<div id="thp-detail-' + i + '" class="thp-item__detail">' +
           '<div class="thp-detail-grid">' +
-            '<div class="thp-detail-cell"><span class="thp-detail-label">エントリー価格</span><span class="thp-detail-value">' + _slFormatPrice(t.entry_price || 0) + '</span></div>' +
+            '<div class="thp-detail-cell"><span class="thp-detail-label">エントリー価格' + (_perfEligibleOnly ? '(3分)' : '') + '</span><span class="thp-detail-value">' + _slFormatPrice(entryPrice) + '</span></div>' +
             '<div class="thp-detail-cell"><span class="thp-detail-label">決済価格</span><span class="thp-detail-value">' + _slFormatPrice(t.exit_price || 0) + '</span></div>' +
             '<div class="thp-detail-cell"><span class="thp-detail-label">ピーク損益</span><span class="thp-detail-value" style="color:' + (peakPnl >= 0 ? '#10b981' : '#ef4444') + '">' + (peakPnl >= 0 ? '+' : '') + peakPnl.toFixed(2) + '%</span></div>' +
             '<div class="thp-detail-cell"><span class="thp-detail-label">保有時間</span><span class="thp-detail-value">' + _slDurationStr(t.holding_duration || 0) + '</span></div>' +
