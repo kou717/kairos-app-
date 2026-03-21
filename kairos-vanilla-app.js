@@ -926,9 +926,9 @@
     healthCheck: function() {
       var self = this;
       return new Promise(function(resolve) {
-        // Cache for 60s on success, 10s on failure (allow retry)
+        // Cache for 5min on success, 10s on failure (allow retry)
         var now = Date.now();
-        if (self._available !== null && now - self._availableAt < (self._available ? 60000 : 10000)) {
+        if (self._available !== null && now - self._availableAt < (self._available ? 300000 : 10000)) {
           resolve(self._available);
           return;
         }
@@ -5444,7 +5444,10 @@
       dataPromise = window._perfPrefetch;
       window._perfPrefetch = null; // 1回だけ使用
     } else {
-      var statsP = BackendAPI.getCollectorStats(effectiveDate, _perfEligibleOnly);
+      var statsP = BackendAPI.getCollectorStats(effectiveDate, _perfEligibleOnly).catch(function(e) {
+        console.warn('[PERF] stats fetch failed, retrying...', e.message);
+        return BackendAPI.getCollectorStats(effectiveDate, _perfEligibleOnly);
+      });
       var statsDatesP = _perfDatesList
         ? Promise.resolve({ dates: _perfDatesList })
         : BackendAPI.getCollectorStatsDates().catch(function() { return { dates: [] }; });
