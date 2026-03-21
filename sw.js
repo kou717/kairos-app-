@@ -1,12 +1,13 @@
-// KAIROS Service Worker v19.16 - Urgent Moonshot Alert + Worker Integration
-const CACHE_NAME = 'kairos-v19-75';
-const STATIC_CACHE = 'kairos-static-v19-75';
-const DYNAMIC_CACHE = 'kairos-dynamic-v19-75';
+// KAIROS Service Worker v19.39 - Updated cache version
+const CACHE_VERSION = 'v19-39';
+const CACHE_NAME = 'kairos-' + CACHE_VERSION;
+const STATIC_CACHE = 'kairos-static-' + CACHE_VERSION;
+const DYNAMIC_CACHE = 'kairos-dynamic-' + CACHE_VERSION;
 
 // 静的アセット（必ずキャッシュ）
 const STATIC_ASSETS = [
   './',
-  './kairos.html',
+  './index.html',
   './kairos-vanilla-app.js',
   './kairos-vanilla-styles.css',
   './manifest.json'
@@ -20,15 +21,13 @@ const EXTERNAL_ASSETS = [
 
 // インストール
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing KAIROS v19.18...');
+  console.log('[SW] Installing KAIROS ' + CACHE_VERSION + '...');
   event.waitUntil(
     Promise.all([
-      // 静的アセットをキャッシュ
       caches.open(STATIC_CACHE).then((cache) => {
         console.log('[SW] Caching static assets');
         return cache.addAll(STATIC_ASSETS);
       }),
-      // 外部リソースを試行（失敗しても続行）
       caches.open(STATIC_CACHE).then((cache) => {
         return Promise.allSettled(
           EXTERNAL_ASSETS.map(url =>
@@ -45,14 +44,14 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// アクティベーション
+// アクティベーション — 古いキャッシュを全て削除
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating KAIROS v19.18...');
+  console.log('[SW] Activating KAIROS ' + CACHE_VERSION + '...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter(name => !name.includes('v19-75'))
+          .filter(name => !name.includes(CACHE_VERSION))
           .map(name => {
             console.log('[SW] Deleting old cache:', name);
             return caches.delete(name);
@@ -68,7 +67,7 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // APIリクエスト: ネットワーク優先（Network First）
+  // APIリクエスト: ネットワーク優先
   if (url.pathname.includes('/api/') ||
       url.hostname.includes('api.') ||
       url.hostname.includes('binance') ||
@@ -78,18 +77,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // HTML/JS/CSS: ネットワーク優先（Network First）
-  // 常に最新のファイルを取得し、オフライン時のみキャッシュを使用
+  // HTML/JS/CSS: ネットワーク優先（常に最新を取得）
   if (request.url.includes('.html') ||
       request.url.includes('.js') ||
-      request.url.includes('.css')) {
+      request.url.includes('.css') ||
+      request.url.endsWith('/')) {
     event.respondWith(networkFirst(request));
-    return;
-  }
-
-  // その他の静的アセット（manifest等）: キャッシュ優先
-  if (STATIC_ASSETS.some(asset => request.url.includes(asset.replace('./', '')))) {
-    event.respondWith(cacheFirst(request));
     return;
   }
 
@@ -101,11 +94,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // その他: Stale While Revalidate
-  event.respondWith(staleWhileRevalidate(request));
+  // その他: ネットワーク優先
+  event.respondWith(networkFirst(request));
 });
 
-// ネットワーク優先戦略
 async function networkFirst(request) {
   try {
     const response = await fetch(request);
@@ -119,7 +111,6 @@ async function networkFirst(request) {
     if (cached) {
       return cached;
     }
-    // オフラインフォールバック
     return new Response(
       JSON.stringify({ error: 'offline', message: 'オフラインです' }),
       { headers: { 'Content-Type': 'application/json' } }
@@ -127,7 +118,6 @@ async function networkFirst(request) {
   }
 }
 
-// キャッシュ優先戦略
 async function cacheFirst(request) {
   const cached = await caches.match(request);
   if (cached) {
@@ -145,76 +135,6 @@ async function cacheFirst(request) {
   }
 }
 
-// Stale While Revalidate戦略
-async function staleWhileRevalidate(request) {
-  const cached = await caches.match(request);
-
-  const fetchPromise = fetch(request).then(response => {
-    if (response.ok) {
-      const cache = caches.open(DYNAMIC_CACHE);
-      cache.then(c => c.put(request, response.clone()));
-    }
-    return response;
-  }).catch(() => null);
-
-  return cached || fetchPromise;
-}
-
-// バックグラウンド同期
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-investment') {
-    console.log('[SW] Syncing investment data...');
-    event.waitUntil(syncInvestmentData());
-  }
-});
-
-async function syncInvestmentData() {
-  // ローカルストレージの投資データをサーバーと同期（将来の実装用）
-  console.log('[SW] Investment data sync completed');
-}
-
-// プッシュ通知
-self.addEventListener('push', (event) => {
-  const data = event.data?.json() || {
-    title: 'KAIROS',
-    body: '新しい通知があります',
-    icon: 'notification'
-  };
-
-  const options = {
-    body: data.body,
-    icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23080a0f' width='100' height='100' rx='20'/%3E%3Ctext x='50' y='70' font-size='36' text-anchor='middle' fill='%23d4a853'%3E%E2%9C%A8%3C/text%3E%3C/svg%3E",
-    badge: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle fill='%23d4a853' cx='50' cy='50' r='50'/%3E%3C/svg%3E",
-    vibrate: [100, 50, 100],
-    data: data.data || {},
-    actions: data.actions || []
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-  );
-});
-
-// 通知クリック
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-
-  event.waitUntil(
-    clients.matchAll({ type: 'window' }).then(clientList => {
-      // 既存のウィンドウがあればフォーカス
-      for (const client of clientList) {
-        if (client.url.includes('kairos') && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      // なければ新しいウィンドウを開く
-      if (clients.openWindow) {
-        return clients.openWindow('./kairos.html');
-      }
-    })
-  );
-});
-
 // メッセージハンドラ
 self.addEventListener('message', (event) => {
   if (event.data === 'skipWaiting') {
@@ -227,4 +147,4 @@ self.addEventListener('message', (event) => {
   }
 });
 
-console.log('[SW] KAIROS Service Worker v19.16 loaded');
+console.log('[SW] KAIROS Service Worker ' + CACHE_VERSION + ' loaded');
