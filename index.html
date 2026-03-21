@@ -5047,12 +5047,28 @@ Error generating stack: `+t.message+`
 <!-- TradingView Widget Script -->
 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 
-<!-- Service Worker登録 -->
+<!-- Service Worker: 古いキャッシュを強制クリア後に再登録 -->
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js')
-    .then(reg => console.log('[KAIROS] Service Worker registered'))
-    .catch(err => console.log('[KAIROS] Service Worker registration failed:', err));
+  // まず全SWを解除して古いキャッシュを削除
+  navigator.serviceWorker.getRegistrations().then(function(registrations) {
+    var needsClean = registrations.length > 0;
+    var promises = registrations.map(function(reg) { return reg.unregister(); });
+    Promise.all(promises).then(function() {
+      if (needsClean) {
+        caches.keys().then(function(names) {
+          return Promise.all(names.map(function(n) { return caches.delete(n); }));
+        }).then(function() {
+          console.log('[KAIROS] Old caches cleared, re-registering SW...');
+          navigator.serviceWorker.register('./sw.js')
+            .then(function(reg) { console.log('[KAIROS] SW re-registered'); });
+        });
+      } else {
+        navigator.serviceWorker.register('./sw.js')
+          .then(function(reg) { console.log('[KAIROS] SW registered'); });
+      }
+    });
+  });
 }
 </script>
 
