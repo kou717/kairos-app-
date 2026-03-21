@@ -5614,7 +5614,10 @@
   window._onPerfEligibleChange = function() {
     var cb = document.getElementById('perf-eligible-only');
     _perfEligibleOnly = cb ? cb.checked : false;
-    _loadPerformanceData();
+    // Keep current date selection (don't reset to today)
+    var sel = document.getElementById('perf-date-filter');
+    var currentDate = sel ? sel.value : undefined;
+    _loadPerformanceData(currentDate);
   };
 
   window._switchExportMode = function(mode) {
@@ -11262,7 +11265,8 @@
       var ptPage = Math.floor(offset / _tradePopupState.perPage) + 1;
       url = BACKEND_URL + '/api/collector/paper-trades?status=closed' +
         '&per_page=' + _tradePopupState.perPage + '&page=' + ptPage +
-        (dateParam ? dateParam : '');
+        (dateParam ? dateParam : '') +
+        (_perfEligibleOnly ? '&eligible_only=true' : '');
     } else {
       url = BACKEND_URL + '/api/collector/sleeping-lion/closed-trades?' +
         'limit=' + _tradePopupState.perPage + '&offset=' + offset +
@@ -11558,7 +11562,8 @@
   };
 
   window._openPTClosedTrades = function() {
-    _openTradeHistoryPopup('📊 通常トレード履歴', 'pt-closed', '');
+    var title = _perfEligibleOnly ? '🎯 リアル候補 トレード履歴' : '📊 通常トレード履歴';
+    _openTradeHistoryPopup(title, 'pt-closed', '');
   };
 
   function _slFunnelStep(label, count, total) {
