@@ -11389,14 +11389,25 @@
     }
   };
 
-  function _thpFormatTime(isoStr) {
-    if (!isoStr) return '-';
-    try { return formatTimeJST(new Date(isoStr)); } catch(e) { return '-'; }
+  function _thpParseDate(val) {
+    if (!val) return null;
+    // Unix timestamp (seconds) → convert to ms
+    if (typeof val === 'number' && val < 9999999999) return new Date(val * 1000);
+    if (typeof val === 'number') return new Date(val);
+    // ISO string
+    return new Date(val);
   }
 
-  function _thpFormatDateTime(isoStr) {
-    if (!isoStr) return '-';
-    try { return formatDateTimeJST(new Date(isoStr)); } catch(e) { return '-'; }
+  function _thpFormatTime(val) {
+    var d = _thpParseDate(val);
+    if (!d || isNaN(d.getTime())) return '-';
+    try { return formatTimeJST(d); } catch(e) { return '-'; }
+  }
+
+  function _thpFormatDateTime(val) {
+    var d = _thpParseDate(val);
+    if (!d || isNaN(d.getTime())) return '-';
+    try { return formatDateTimeJST(d); } catch(e) { return '-'; }
   }
 
   function _thpTrustBadge(trust) {
