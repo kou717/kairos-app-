@@ -9476,7 +9476,7 @@
     return {
       perTradeJpy: 1000,
       maxConcurrent: 20,
-      dailyLimitJpy: 20000,
+      dailyLimitJpy: 0,
       enableSL: true,
       enablePT: false,
       isActive: false,
@@ -9515,7 +9515,7 @@
         perTradeJpy: s.per_trade_jpy || 1000,
         initialCapitalJpy: s.initial_capital_jpy || 5000,
         maxConcurrent: s.max_concurrent || 20,
-        dailyLimitJpy: s.daily_limit_jpy || 20000,
+        dailyLimitJpy: s.daily_limit_jpy != null ? s.daily_limit_jpy : 0,
         enableSL: !!(s.enable_sl),
         enablePT: !!(s.enable_pt),
         isActive: !!(s.is_active)
