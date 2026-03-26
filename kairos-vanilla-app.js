@@ -9451,7 +9451,8 @@
       };
 
       var newHash = _rtHashData(newData);
-      if (newHash === _rtLastHash) return;
+      var isFirstLoad = !_rtCache.data;
+      if (!isFirstLoad && newHash === _rtLastHash) return;
 
       _rtCache.data = newData;
       _rtCache.time = Date.now();
